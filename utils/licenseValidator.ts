@@ -4,9 +4,9 @@ import { fetchLicensingConfig } from './remoteLicensing';
 // Llave pública en formato JWK (debe coincidir con la generada)
 const PUBLIC_KEY_JWK = {
   "kty": "EC",
-  "x": "NO4prs_ZYvQDusQNvXIBxrhRLY_LoaDfDwZD72cL37s",
-  "y": "R3Vd4Ocv79YvQKxymPGzxPrXkHXHw3XNB140uhKWnfY",
-  "crv": "secp256k1"
+  "x": "X9H1-gHVlIfTLNaM0Vim-B-UQSVW8-9eTk17-c0Lufg",
+  "y": "yWZxISkbVuWUA1unlWVmoD_ayB17UT4-z2QEHqeMlmI",
+  "crv": "P-256"
 };
 
 export interface LicenseData {
@@ -41,7 +41,7 @@ export class LicenseValidator {
       this.publicKey = await window.crypto.subtle.importKey(
         'jwk',
         PUBLIC_KEY_JWK,
-        { name: 'ECDSA', namedCurve: 'secp256k1' },
+        { name: 'ECDSA', namedCurve: 'P-256' },
         true,
         ['verify']
       );
