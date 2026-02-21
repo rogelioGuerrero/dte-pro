@@ -65,12 +65,18 @@ export const usePushNotifications = () => {
 
     try {
       const registration = await navigator.serviceWorker.ready;
-      const pushSubscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: (urlBase64ToUint8Array(
-          'BKeUFT5t_y4Yb_qRcPDsRz67NqJPBBURE_mJ8RvGLg6m-NZlQMHqh7rzqRoljbKiepAsi3ht0HYBtanv_jAvsR0'
-        ) as unknown) as ArrayBuffer
-      });
+      
+      // Verificar si ya existe una suscripción antes de crear una nueva
+      let pushSubscription = await registration.pushManager.getSubscription();
+      
+      if (!pushSubscription) {
+        pushSubscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: (urlBase64ToUint8Array(
+            'BKeUFT5t_y4Yb_qRcPDsRz67NqJPBBURE_mJ8RvGLg6m-NZlQMHqh7rzqRoljbKiepAsi3ht0HYBtanv_jAvsR0'
+          ) as unknown) as ArrayBuffer
+        });
+      }
 
       const subscriptionData = pushSubscription.toJSON();
       setSubscription(subscriptionData as PushSubscription);
