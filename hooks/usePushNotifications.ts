@@ -87,7 +87,8 @@ export const usePushNotifications = () => {
       const businessId = localStorage.getItem('dte_business_id');
       
       if (!token || !businessId) {
-        console.warn('No hay token o business_id para suscripción push');
+        // Usuario no autenticado - omitir suscripción push sin mostrar error
+        console.log('Usuario no autenticado - omitiendo suscripción push');
         return;
       }
 
