@@ -12,6 +12,7 @@ export const usePushNotifications = () => {
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [isSubscribing, setIsSubscribing] = useState(false); // Protección anti-bucle
 
   useEffect(() => {
     checkSupport();
@@ -57,6 +58,14 @@ export const usePushNotifications = () => {
       if (!granted) return null;
     }
 
+    // Protección anti-bucle
+    if (isSubscribing) {
+      console.log('Suscripción ya en progreso - evitando bucle infinito');
+      return null;
+    }
+
+    setIsSubscribing(true);
+
     try {
       const registration = await navigator.serviceWorker.ready;
       const pushSubscription = await registration.pushManager.subscribe({
@@ -77,6 +86,8 @@ export const usePushNotifications = () => {
     } catch (error) {
       console.error('Error subscribing to push notifications:', error);
       return null;
+    } finally {
+      setIsSubscribing(false);
     }
   };
 
