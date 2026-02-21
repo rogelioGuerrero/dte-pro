@@ -1,5 +1,6 @@
-// Base de datos de historial de DTEs emitidos
-// Almacena localmente todos los DTEs transmitidos para backup y consulta
+// Base de datos de cache temporal de DTEs
+// Almacena temporalmente DTEs para offline capability y cache rápido (30 días)
+// La fuente de verdad es el backend (Supabase)
 
 import { openDB, IDBPDatabase } from 'idb';
 import { DTEJSON } from './dteGenerator';
@@ -25,13 +26,18 @@ export const construirDTEArchivado = (
   };
 };
 
-export interface DTEHistoryRecord {
+export interface DTECacheRecord {
   id?: number;
   codigoGeneracion: string;
   numeroControl: string;
   tipoDte: string;
   fechaEmision: string;
   horaEmision: string;
+  
+  // Estado del DTE en cache
+  status: 'pending' | 'completed' | 'failed' | 'contingency';
+  createdAt: string; // Cuando se creó en cache
+  updatedAt: string; // Última actualización
   
   // Datos del emisor
   emisorNit: string;
@@ -47,7 +53,7 @@ export interface DTEHistoryRecord {
   montoIva: number;
   descuentos?: number;
   
-  // Estado
+  // Estado de transmisión
   estado: 'ACEPTADO' | 'RECHAZADO' | 'PENDIENTE' | 'CONTINGENCIA';
   selloRecepcion?: string;
   
@@ -56,14 +62,13 @@ export interface DTEHistoryRecord {
   respuestaMH?: TransmisionResult;
   
   // Metadatos
-  fechaTransmision: string;
+  fechaTransmision?: string;
   ambiente: '00' | '01';
-
-  // Anulación local (cuando aún no existe integración real con MH)
-  anulacionLocal?: {
-    at: string; // ISO
-    motivo?: string;
-  };
+  
+  // Campos para manejo de estados
+  retryCount?: number;
+  contingencyReason?: string;
+  validationErrors?: string[];
   
   // Para búsqueda
   searchText: string; // Concatenación de campos para búsqueda rápida
@@ -77,9 +82,9 @@ export const marcarAnulacionLocal = async (params: {
   try {
     const db = await openHistoryDb();
     const registro = await db.getFromIndex(STORE_NAME, 'codigoGeneracion', params.codigoGeneracion);
-    if (!registro?.id) return { ok: false, message: 'DTE no encontrado en historial' };
+    if (!registro?.id) return { ok: false, message: 'DTE no encontrado en cache' };
 
-    const updated: DTEHistoryRecord = {
+    const updated: DTECacheRecord = {
       ...registro,
       anulacionLocal: params.anulada
         ? {
@@ -87,47 +92,56 @@ export const marcarAnulacionLocal = async (params: {
             motivo: (params.motivo || '').trim() || undefined,
           }
         : undefined,
+      updatedAt: new Date().toISOString(),
     };
 
     await db.put(STORE_NAME, updated);
     return { ok: true };
   } catch (e: any) {
-    return { ok: false, message: e?.message || 'No se pudo actualizar el historial' };
+    return { ok: false, message: e?.message || 'No se pudo actualizar el cache' };
   }
 };
 
-export interface DTEHistoryFilter {
+export interface DTECacheFilter {
   fechaDesde?: string;
   fechaHasta?: string;
   tipoDte?: string;
   estado?: string;
+  status?: 'pending' | 'completed' | 'failed' | 'contingency';
   busqueda?: string;
   limite?: number;
   offset?: number;
 }
 
-export interface DTEHistoryStats {
+export interface DTECacheStats {
   totalEmitidos: number;
   totalAceptados: number;
   totalRechazados: number;
   totalPendientes: number;
+  totalContingencia: number;
   montoTotalEmitido: number;
   montoTotalIva: number;
   porTipo: Record<string, number>;
   porMes: Record<string, { cantidad: number; monto: number }>;
+  porStatus: Record<string, number>;
 }
 
-const DB_NAME = 'dte-history-db';
-const DB_VERSION = 1;
-const STORE_NAME = 'dteHistory';
+const DB_NAME = 'dte-cache-db';
+const DB_VERSION = 2; // Incrementar versión para nueva estructura
+const STORE_NAME = 'dteCache';
 
 let dbInstance: IDBPDatabase | null = null;
 
-export const openHistoryDb = async (): Promise<IDBPDatabase> => {
+export const openCacheDb = async (): Promise<IDBPDatabase> => {
   if (dbInstance) return dbInstance;
   
   dbInstance = await openDB(DB_NAME, DB_VERSION, {
     upgrade(db) {
+      // Eliminar store anterior si existe (migración)
+      if (db.objectStoreNames.contains('dteHistory')) {
+        db.deleteObjectStore('dteHistory');
+      }
+      
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const store = db.createObjectStore(STORE_NAME, {
           keyPath: 'id',
@@ -140,8 +154,10 @@ export const openHistoryDb = async (): Promise<IDBPDatabase> => {
         store.createIndex('fechaEmision', 'fechaEmision', { unique: false });
         store.createIndex('tipoDte', 'tipoDte', { unique: false });
         store.createIndex('estado', 'estado', { unique: false });
+        store.createIndex('status', 'status', { unique: false }); // Nuevo índice
         store.createIndex('emisorNit', 'emisorNit', { unique: false });
         store.createIndex('receptorDocumento', 'receptorDocumento', { unique: false });
+        store.createIndex('createdAt', 'createdAt', { unique: false }); // Nuevo índice
       }
     },
   });
@@ -149,14 +165,18 @@ export const openHistoryDb = async (): Promise<IDBPDatabase> => {
   return dbInstance;
 };
 
-// Guardar DTE transmitido
-export const guardarDTEEnHistorial = async (
+// Mantener compatibilidad temporal
+export const openHistoryDb = openCacheDb;
+
+// Guardar DTE en cache temporal
+export const guardarDTEEnCache = async (
   dte: DTEJSON,
-  respuestaMH: TransmisionResult,
+  respuestaMH?: TransmisionResult,
   ambiente: '00' | '01' = '00',
-  firmaElectronica?: string
+  firmaElectronica?: string,
+  status: 'pending' | 'completed' | 'failed' | 'contingency' = 'completed'
 ): Promise<void> => {
-  const db = await openHistoryDb();
+  const db = await openCacheDb();
   
   // Verificar si ya existe
   const existente = await db.getFromIndex(
@@ -165,12 +185,19 @@ export const guardarDTEEnHistorial = async (
     dte.identificacion.codigoGeneracion
   );
   
-  const record: Omit<DTEHistoryRecord, 'id'> = {
+  const now = new Date().toISOString();
+  
+  const record: Omit<DTECacheRecord, 'id'> = {
     codigoGeneracion: dte.identificacion.codigoGeneracion,
     numeroControl: dte.identificacion.numeroControl,
     tipoDte: dte.identificacion.tipoDte,
     fechaEmision: dte.identificacion.fecEmi,
     horaEmision: dte.identificacion.horEmi,
+    
+    // Estado del DTE en cache
+    status,
+    createdAt: existente?.createdAt || now,
+    updatedAt: now,
     
     emisorNit: dte.emisor.nit,
     emisorNombre: dte.emisor.nombre,
@@ -182,16 +209,21 @@ export const guardarDTEEnHistorial = async (
     montoGravado: dte.resumen.totalGravada,
     montoIva: dte.resumen.tributos?.[0]?.valor || 0,
     
-    estado: respuestaMH.estado === 'CONTINGENCIA' 
+    estado: respuestaMH?.estado === 'CONTINGENCIA' 
       ? 'CONTINGENCIA' 
-      : (respuestaMH.success ? 'ACEPTADO' : 'RECHAZADO'),
-    selloRecepcion: respuestaMH.selloRecepcion,
+      : (respuestaMH?.success ? 'ACEPTADO' : 'RECHAZADO'),
+    selloRecepcion: respuestaMH?.selloRecepcion,
     
     dteJson: construirDTEArchivado(dte, respuestaMH, firmaElectronica),
     respuestaMH,
     
-    fechaTransmision: new Date().toISOString(),
+    fechaTransmision: respuestaMH ? now : undefined,
     ambiente,
+    
+    // Campos para manejo de estados
+    retryCount: status === 'contingency' ? 1 : undefined,
+    contingencyReason: status === 'contingency' ? 'Error de comunicación con MH' : undefined,
+    validationErrors: status === 'failed' ? ['Error en validación'] : undefined,
     
     // Texto para búsqueda
     searchText: [
@@ -201,7 +233,7 @@ export const guardarDTEEnHistorial = async (
       dte.emisor.nit,
       dte.receptor.nombre,
       dte.receptor.numDocumento || '',
-      respuestaMH.selloRecepcion || ''
+      respuestaMH?.selloRecepcion || ''
     ].join(' ').toLowerCase()
   };
   
@@ -214,11 +246,14 @@ export const guardarDTEEnHistorial = async (
   }
 };
 
-// Obtener historial con filtros
-export const obtenerHistorialDTE = async (
-  filtros: DTEHistoryFilter = {}
-): Promise<{ registros: DTEHistoryRecord[]; total: number }> => {
-  const db = await openHistoryDb();
+// Mantener compatibilidad temporal
+export const guardarDTEEnHistorial = guardarDTEEnCache;
+
+// Obtener cache con filtros
+export const obtenerCacheDTE = async (
+  filtros: DTECacheFilter = {}
+): Promise<{ registros: DTECacheRecord[]; total: number }> => {
+  const db = await openCacheDb();
   
   let registros = await db.getAll(STORE_NAME);
   
@@ -237,6 +272,10 @@ export const obtenerHistorialDTE = async (
   
   if (filtros.estado) {
     registros = registros.filter(r => r.estado === filtros.estado);
+  }
+  
+  if (filtros.status) {
+    registros = registros.filter(r => r.status === filtros.status);
   }
   
   if (filtros.busqueda) {
@@ -265,11 +304,14 @@ export const obtenerHistorialDTE = async (
   return { registros, total };
 };
 
+// Mantener compatibilidad temporal
+export const obtenerHistorialDTE = obtenerCacheDTE;
+
 // Obtener un DTE específico
 export const obtenerDTEPorCodigo = async (
   codigoGeneracion: string
-): Promise<DTEHistoryRecord | null> => {
-  const db = await openHistoryDb();
+): Promise<DTECacheRecord | null> => {
+  const db = await openCacheDb();
   const registro = await db.getFromIndex(STORE_NAME, 'codigoGeneracion', codigoGeneracion);
   return registro || null;
 };
@@ -277,25 +319,31 @@ export const obtenerDTEPorCodigo = async (
 // Obtener estadísticas
 export const obtenerEstadisticasDTE = async (
   filtros: { fechaDesde?: string; fechaHasta?: string } = {}
-): Promise<DTEHistoryStats> => {
-  const { registros } = await obtenerHistorialDTE(filtros);
+): Promise<DTECacheStats> => {
+  const { registros } = await obtenerCacheDTE(filtros);
   
-  const stats: DTEHistoryStats = {
+  const stats: DTECacheStats = {
     totalEmitidos: registros.length,
     totalAceptados: 0,
     totalRechazados: 0,
     totalPendientes: 0,
+    totalContingencia: 0,
     montoTotalEmitido: 0,
     montoTotalIva: 0,
     porTipo: {},
-    porMes: {}
+    porMes: {},
+    porStatus: {}
   };
   
   for (const r of registros) {
     // Conteo por estado
     if (r.estado === 'ACEPTADO') stats.totalAceptados++;
     else if (r.estado === 'RECHAZADO') stats.totalRechazados++;
-    else stats.totalPendientes++;
+    else if (r.estado === 'PENDIENTE') stats.totalPendientes++;
+    else if (r.estado === 'CONTINGENCIA') stats.totalContingencia++;
+    
+    // Conteo por status
+    stats.porStatus[r.status] = (stats.porStatus[r.status] || 0) + 1;
     
     // Montos (solo aceptados)
     if (r.estado === 'ACEPTADO') {
@@ -320,9 +368,9 @@ export const obtenerEstadisticasDTE = async (
   return stats;
 };
 
-// Eliminar DTE del historial
-export const eliminarDTEDelHistorial = async (codigoGeneracion: string): Promise<boolean> => {
-  const db = await openHistoryDb();
+// Eliminar DTE del cache
+export const eliminarDTEDelCache = async (codigoGeneracion: string): Promise<boolean> => {
+  const db = await openCacheDb();
   const registro = await db.getFromIndex(STORE_NAME, 'codigoGeneracion', codigoGeneracion);
   
   if (registro?.id) {
@@ -332,14 +380,18 @@ export const eliminarDTEDelHistorial = async (codigoGeneracion: string): Promise
   return false;
 };
 
-// Exportar historial a JSON
-export const exportarHistorialJSON = async (
-  filtros: DTEHistoryFilter = {}
+// Mantener compatibilidad temporal
+export const eliminarDTEDelHistorial = eliminarDTEDelCache;
+
+// Exportar cache a JSON
+export const exportarCacheJSON = async (
+  filtros: DTECacheFilter = {}
 ): Promise<string> => {
-  const { registros } = await obtenerHistorialDTE(filtros);
+  const { registros } = await obtenerCacheDTE(filtros);
   
   const exportData = {
-    version: '1.0',
+    version: '2.0',
+    tipo: 'cache-temporal',
     fechaExportacion: new Date().toISOString(),
     totalRegistros: registros.length,
     registros: registros.map(r => ({
@@ -347,10 +399,11 @@ export const exportarHistorialJSON = async (
       numeroControl: r.numeroControl,
       tipoDte: r.tipoDte,
       fechaEmision: r.fechaEmision,
+      status: r.status,
+      estado: r.estado,
       emisor: r.emisorNombre,
       receptor: r.receptorNombre,
       montoTotal: r.montoTotal,
-      estado: r.estado,
       selloRecepcion: r.selloRecepcion,
       dteCompleto: r.dteJson
     }))
@@ -359,17 +412,23 @@ export const exportarHistorialJSON = async (
   return JSON.stringify(exportData, null, 2);
 };
 
+// Mantener compatibilidad temporal
+export const exportarHistorialJSON = exportarCacheJSON;
+
 // Obtener tipos de DTE para filtros
-export const getTiposDTEEnHistorial = async (): Promise<string[]> => {
-  const db = await openHistoryDb();
+export const getTiposDTEEnCache = async (): Promise<string[]> => {
+  const db = await openCacheDb();
   const registros = await db.getAll(STORE_NAME);
   const tipos = new Set(registros.map(r => r.tipoDte));
   return Array.from(tipos).sort();
 };
 
-// Limpiar historial antiguo (más de X días)
-export const limpiarHistorialAntiguo = async (diasAntiguedad: number = 365): Promise<number> => {
-  const db = await openHistoryDb();
+// Mantener compatibilidad temporal
+export const getTiposDTEEnHistorial = getTiposDTEEnCache;
+
+// Limpiar cache antiguo (más de X días)
+export const limpiarCacheAntiguo = async (diasAntiguedad: number = 30): Promise<number> => {
+  const db = await openCacheDb();
   const fechaLimite = new Date();
   fechaLimite.setDate(fechaLimite.getDate() - diasAntiguedad);
   const fechaLimiteStr = fechaLimite.toISOString().split('T')[0];
@@ -385,4 +444,110 @@ export const limpiarHistorialAntiguo = async (diasAntiguedad: number = 365): Pro
   }
   
   return eliminados;
+};
+
+// Mantener compatibilidad temporal
+export const limpiarHistorialAntiguo = limpiarCacheAntiguo;
+
+// ===== NUEVAS FUNCIONES DE SINCRONIZACIÓN =====
+
+// Sincronizar cache con backend (traer últimos 30 días)
+export const sincronizarCacheConBackend = async (): Promise<{
+  sincronizados: number;
+  errores: string[];
+}> => {
+  const errores: string[] = [];
+  let sincronizados = 0;
+  
+  try {
+    // TODO: Implementar llamada al backend para obtener DTEs recientes
+    // const response = await fetch('/api/dtes/recent?days=30');
+    // const dtesBackend = await response.json();
+    
+    // Por ahora, solo limpiamos cache viejo
+    const eliminados = await limpiarCacheAntiguo(30);
+    console.log(`Cache limpiado: ${eliminados} registros antiguos eliminados`);
+    
+    sincronizados = eliminados;
+  } catch (error) {
+    errores.push(`Error en sincronización: ${error}`);
+  }
+  
+  return { sincronizados, errores };
+};
+
+// Guardar DTE como pendiente (antes de enviar)
+export const guardarDTEComoPending = async (
+  dte: DTEJSON,
+  ambiente: '00' | '01' = '00'
+): Promise<void> => {
+  await guardarDTEEnCache(dte, undefined, ambiente, undefined, 'pending');
+};
+
+// Actualizar DTE con respuesta del backend
+export const actualizarDTEConRespuesta = async (
+  codigoGeneracion: string,
+  respuestaMH: TransmisionResult,
+  firmaElectronica?: string
+): Promise<void> => {
+  const db = await openCacheDb();
+  const registro = await db.getFromIndex(STORE_NAME, 'codigoGeneracion', codigoGeneracion);
+  
+  if (!registro) {
+    console.warn(`DTE ${codigoGeneracion} no encontrado en cache para actualizar`);
+    return;
+  }
+  
+  const status = respuestaMH.estado === 'CONTINGENCIA' ? 'contingency' : 
+                  respuestaMH.success ? 'completed' : 'failed';
+  
+  const updated: DTECacheRecord = {
+    ...registro,
+    status,
+    estado: respuestaMH.estado === 'CONTINGENCIA' 
+      ? 'CONTINGENCIA' 
+      : (respuestaMH.success ? 'ACEPTADO' : 'RECHAZADO'),
+    selloRecepcion: respuestaMH.selloRecepcion,
+    respuestaMH,
+    fechaTransmision: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    retryCount: status === 'contingency' ? (registro.retryCount || 0) + 1 : undefined,
+    contingencyReason: status === 'contingency' ? 'Error de comunicación con MH' : undefined,
+    validationErrors: status === 'failed' ? ['Error en transmisión'] : undefined,
+  };
+  
+  await db.put(STORE_NAME, updated);
+};
+
+// Obtener DTEs pendientes para reintentar
+export const obtenerDTEsPendientes = async (): Promise<DTECacheRecord[]> => {
+  const { registros } = await obtenerCacheDTE({ status: 'pending' });
+  return registros;
+};
+
+// Obtener DTEs en contingencia para reintentar
+export const obtenerDTEsEnContingencia = async (): Promise<DTECacheRecord[]> => {
+  const { registros } = await obtenerCacheDTE({ status: 'contingency' });
+  return registros;
+};
+
+// Marcar DTE como fallido permanentemente
+export const marcarDTEComoFallido = async (
+  codigoGeneracion: string,
+  errores: string[]
+): Promise<void> => {
+  const db = await openCacheDb();
+  const registro = await db.getFromIndex(STORE_NAME, 'codigoGeneracion', codigoGeneracion);
+  
+  if (!registro) return;
+  
+  const updated: DTECacheRecord = {
+    ...registro,
+    status: 'failed',
+    estado: 'RECHAZADO',
+    updatedAt: new Date().toISOString(),
+    validationErrors: errores,
+  };
+  
+  await db.put(STORE_NAME, updated);
 };
