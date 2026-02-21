@@ -73,6 +73,9 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
       limite: ITEMS_POR_PAGINA,
       offset: (paginaActual - 1) * ITEMS_POR_PAGINA
     };
+    
+    // Solo para actualizar referencia interna de exportar (ya que useEffect no tiene setFiltros como dep)
+    setFiltros(filtros);
 
     try {
       const [{ registros }, nuevasStats] = await Promise.all([
@@ -83,6 +86,11 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
       setRegistros(registros);
       setTotalRegistros(registros.length);
       setStats(nuevasStats);
+      
+      // Extraer tipos únicos disponibles en base a los registros actuales y stats
+      if (nuevasStats && Object.keys(nuevasStats.porTipo).length > 0) {
+        setTiposDisponibles(Object.keys(nuevasStats.porTipo));
+      }
     } catch (error) {
       console.error('Error cargando historial:', error);
     } finally {
@@ -96,7 +104,8 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
 
   const totalPaginas = Math.ceil(totalRegistros / ITEMS_POR_PAGINA);
 
-  const handleExport = async () => {
+  const handleExportar = async () => {
+    setExportando(true);
     try {
       const json = await exportarCacheJSON(filtros);
       const blob = new Blob([json], { type: 'application/json' });
@@ -110,7 +119,9 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error exportando historial:', error);
-      alert('Error al exportar el historial');
+      notify('Error al exportar el historial', 'error');
+    } finally {
+      setExportando(false);
     }
   };
 
@@ -539,7 +550,7 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
                 <span className="text-gray-400">Emisión:</span> {dteSeleccionado.fechaEmision} {dteSeleccionado.horaEmision}
               </div>
               <div>
-                <span className="text-gray-400">Transmisión:</span> {new Date(dteSeleccionado.fechaTransmision).toLocaleString()}
+                <span className="text-gray-400">Transmisión:</span> {dteSeleccionado.fechaTransmision ? new Date(dteSeleccionado.fechaTransmision).toLocaleString() : 'N/A'}
               </div>
             </div>
           </div>

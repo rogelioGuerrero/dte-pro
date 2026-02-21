@@ -9,6 +9,7 @@ import AdminModal from './components/AdminModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import ClientFormPage from './components/ClientFormPage';
 import GlobalToastHost from './components/GlobalToastHost';
+import PushNotificationManager from './components/PushNotificationManager';
 import { LicenseManager } from './components/LicenseManager';
 import { MagicLicenseActivator } from './components/MagicLicenseActivator';
 import { LicenseStatus } from './components/LicenseStatus';

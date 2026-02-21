@@ -20,10 +20,15 @@ export const PushBroadcastTab: React.FC = () => {
     try {
       // Obtener token JWT y business_id del localStorage
       const token = localStorage.getItem('dte_token');
-      const businessId = localStorage.getItem('dte_business_id');
+      // Fix: Usar el token del storage o temporal si no existe para pruebas locales
+      const businessId = localStorage.getItem('dte_business_id') || localStorage.getItem('emisor_nit');
       
-      if (!token || !businessId) {
+      if (!token) {
         throw new Error('No hay sesión activa. Por favor inicia sesión.');
+      }
+      
+      if (!businessId) {
+        throw new Error('No se encontró el NIT del negocio. Por favor configura tu negocio primero.');
       }
 
       if (!formData.title.trim() || !formData.body.trim()) {

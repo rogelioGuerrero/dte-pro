@@ -479,16 +479,16 @@ export const sincronizarCacheConBackend = async (): Promise<{
 // Guardar DTE como pendiente (antes de enviar)
 export const guardarDTEComoPending = async (
   dte: DTEJSON,
-  ambiente: '00' | '01' = '00'
+  _firmaElectronica?: string // Parámetro opcional para compatibilidad, con _ para ignorar linting
 ): Promise<void> => {
-  await guardarDTEEnCache(dte, undefined, ambiente, undefined, 'pending');
+  await guardarDTEEnCache(dte, undefined, '00', undefined, 'pending');
 };
 
 // Actualizar DTE con respuesta del backend
 export const actualizarDTEConRespuesta = async (
   codigoGeneracion: string,
   respuestaMH: TransmisionResult,
-  firmaElectronica?: string
+  _firmaElectronica?: string // Parámetro opcional para compatibilidad, con _ para ignorar linting
 ): Promise<void> => {
   const db = await openCacheDb();
   const registro = await db.getFromIndex(STORE_NAME, 'codigoGeneracion', codigoGeneracion);
