@@ -3,6 +3,7 @@ import { Download, Bell, Shield, Key, Store, Upload } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { downloadBackup, restoreBackupFromText } from '../utils/backup';
 import { loadSettings } from '../utils/settings';
+import { getEmisor } from '../utils/emisorDb';
 import { notify } from '../utils/notifications';
 
 interface MiCuentaProps {
@@ -29,17 +30,33 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     const dismissed = localStorage.getItem('push-notification-dismissed');
     setNotificationsEnabled(permission === 'granted' && dismissed !== 'true');
 
-    // Cargar datos de negocio
-    const settings = loadSettings();
-    const storedNit = settings.myNit || localStorage.getItem('emisor_nit') || '';
-    const storedNombre = localStorage.getItem('emisor_nombre') || '';
-    const storedAmbiente = localStorage.getItem('dte_ambiente') || '00';
+    // Cargar datos de negocio desde IndexedDB (fuente de verdad principal)
+    const loadEmisorData = async () => {
+      try {
+        const emisor = await getEmisor();
+        const settings = loadSettings();
+        const storedAmbiente = localStorage.getItem('dte_ambiente') || '00';
+        
+        if (emisor) {
+          setBusinessData({
+            nombre: emisor.nombreComercial || emisor.nombre || 'Empresa No Configurada',
+            nit: emisor.nit || 'No definido',
+            ambiente: storedAmbiente
+          });
+        } else {
+          // Fallback a localStorage si no hay en DB
+          setBusinessData({
+            nombre: localStorage.getItem('emisor_nombre') || 'Empresa No Configurada',
+            nit: settings.myNit || localStorage.getItem('emisor_nit') || 'No definido',
+            ambiente: storedAmbiente
+          });
+        }
+      } catch (err) {
+        console.error('Error cargando datos del emisor:', err);
+      }
+    };
     
-    setBusinessData({
-      nombre: storedNombre || 'Empresa No Configurada',
-      nit: storedNit || 'No definido',
-      ambiente: storedAmbiente
-    });
+    loadEmisorData();
 
     // Cargar estado de credenciales (se mejorará con la conexión a supabase)
     const hasCert = !!localStorage.getItem('dte_certificado');
