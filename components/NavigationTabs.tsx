@@ -2,7 +2,7 @@ import React from 'react';
 import { LayoutDashboard, Users, FileText, History, Boxes, PieChart } from 'lucide-react';
 import { isTabAllowed } from '../utils/userMode';
 
-type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal';
+type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta';
 
 interface NavigationTabsProps {
   activeTab: string;
@@ -27,9 +27,9 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   // Filtrar pestañas según el modo de usuario
   const allowedTabs = TABS_CONFIG.filter(tab => isTabAllowed(tab.key));
 
-  // Encontrar la primera pestaña permitida si la actual no está permitida
+  // Encontrar la primera pestaña permitida si la actual no está permitida (y no es micuenta)
   React.useEffect(() => {
-    if (!isTabAllowed(activeTab) && allowedTabs.length > 0) {
+    if (activeTab !== 'micuenta' && !isTabAllowed(activeTab) && allowedTabs.length > 0) {
       onTabChange(allowedTabs[0].key as AppTab);
     }
   }, [activeTab, allowedTabs, onTabChange]);
