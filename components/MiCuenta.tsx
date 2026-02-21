@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Download, Bell, Shield, Key, Store, Upload } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { downloadBackup, restoreBackupFromText } from '../utils/backup';
+import { loadSettings } from '../utils/settings';
 import { notify } from '../utils/notifications';
 
 interface MiCuentaProps {
@@ -28,8 +29,9 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     const dismissed = localStorage.getItem('push-notification-dismissed');
     setNotificationsEnabled(permission === 'granted' && dismissed !== 'true');
 
-    // Cargar datos de negocio (simulado por ahora, se conectará con api-dte luego)
-    const storedNit = localStorage.getItem('emisor_nit') || '';
+    // Cargar datos de negocio
+    const settings = loadSettings();
+    const storedNit = settings.myNit || localStorage.getItem('emisor_nit') || '';
     const storedNombre = localStorage.getItem('emisor_nombre') || '';
     const storedAmbiente = localStorage.getItem('dte_ambiente') || '00';
     
