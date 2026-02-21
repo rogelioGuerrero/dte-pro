@@ -94,10 +94,11 @@ export const useCertificateManager = (params: {
       // Convertir archivo a Base64
       const certificadoB64 = await readFileAsBase64(certificateFile);
 
-      // El backend espera el NIT con guiones o sin guiones, pero la estructura exacta requerida es:
-      // nit, ambiente, passwordPri, certificadoB64
+      // El backend requiere el NIT puro (sin guiones) de 14 dígitos para enlazarlo correctamente en la BD
+      const nitLimpio = nit.replace(/[\s-]/g, '').trim();
+      
       const payload = {
-        nit: nit, // Mantener el formato original
+        nit: nitLimpio,
         ambiente: ambiente || '00',
         passwordPri: certificatePassword,
         certificadoB64: certificadoB64

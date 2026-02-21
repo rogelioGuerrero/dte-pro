@@ -82,9 +82,9 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
         return;
       }
 
-      // La contraseña se obtiene del backend usando el NIT del emisor
-      const nitEmisor = (processed.dte?.emisor?.nit || '').toString().trim();
-      if (!nitEmisor || nitEmisor.length < 9 || nitEmisor.replace(/[\s-]/g, '') === '00000000000000') {
+      // La contraseña se obtiene del backend usando el NIT del emisor (limpio sin guiones)
+      const nitEmisor = (processed.dte?.emisor?.nit || '').toString().replace(/[\s-]/g, '').trim();
+      if (!nitEmisor || nitEmisor.length < 9 || nitEmisor === '00000000000000') {
         throw new Error('NIT del emisor inválido o no configurado. Revisa la configuración del emisor.');
       }
 
@@ -183,7 +183,7 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
       }
 
       const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
-      const nitEmisor = (processed.dte?.emisor?.nit || '').toString().trim();
+      const nitEmisor = (processed.dte?.emisor?.nit || '').toString().replace(/[\s-]/g, '').trim();
 
       const jwsContingencia = await firmarDocumento({
         nit: nitEmisor,
