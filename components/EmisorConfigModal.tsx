@@ -204,7 +204,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                   <div>
                     <p className="text-xs font-semibold text-gray-700 uppercase">Firma electrónica</p>
                     <p className="text-[11px] text-gray-500">
-                      Sube tu certificado digital (.p12/.pfx) y contraseña
+                      Sube tu certificado digital (.crt) y contraseña
                     </p>
                   </div>
                 </div>
@@ -214,7 +214,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".p12,.pfx"
+                  accept=".crt"
                   onChange={handleCertFileSelect}
                   className="hidden"
                 />
@@ -226,7 +226,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                       : 'border-gray-300 text-gray-600 hover:border-blue-400 hover:bg-blue-50'
                   }`}
                 >
-                  {certificateFile ? <span>{certificateFile.name}</span> : <span>Seleccionar archivo .p12 / .pfx</span>}
+                  {certificateFile ? <span>{certificateFile.name}</span> : <span>Seleccionar archivo .crt</span>}
                 </button>
                 
                 {certificateFile && (

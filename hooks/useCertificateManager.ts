@@ -29,12 +29,12 @@ export const useCertificateManager = (params: {
   const handleCertFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validar que sea un archivo .p12 o .pfx
-      const validExtensions = ['.p12', '.pfx'];
+      // Validar que sea un archivo .crt
+      const validExtensions = ['.crt'];
       const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
       
       if (!validExtensions.includes(fileExtension)) {
-        setCertificateError('El archivo debe ser un certificado digital (.p12 o .pfx)');
+        setCertificateError('El archivo debe ser un certificado digital (.crt)');
         setCertificateFile(null);
         return;
       }
