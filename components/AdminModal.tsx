@@ -55,6 +55,8 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
       const secret = getStoredSecret();
       if (secret && verifyToken(pinInput, secret)) {
         setIsAuthenticated(true);
+        // Guardar el PIN estático en memoria para mandarlo en peticiones de Admin si aplica
+        localStorage.setItem('admin_secret', pinInput);
       } else {
         setError('Código incorrecto');
       }
@@ -62,6 +64,8 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
       // Verificar PIN estático
       if (validateAdminPin(pinInput)) {
         setIsAuthenticated(true);
+        // Guardar la contraseña maestra para mandarla en peticiones a la API
+        localStorage.setItem('admin_secret', pinInput);
       } else {
         setError('PIN incorrecto');
       }

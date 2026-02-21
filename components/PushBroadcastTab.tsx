@@ -21,8 +21,13 @@ export const PushBroadcastTab: React.FC = () => {
       // Obtener token JWT y business_id del localStorage
       const token = localStorage.getItem('dte_token') || 'dev-token-temporal';
       const businessId = localStorage.getItem('dte_business_id') || localStorage.getItem('emisor_nit') || 'uuid-business-temporal';
+      const adminSecret = localStorage.getItem('admin_secret');
       
       // Permitimos token temporal para pruebas locales. Backend validará.
+
+      if (!adminSecret) {
+        throw new Error('No estás autenticado como administrador. Vuelve a ingresar el PIN maestro.');
+      }
 
       if (!formData.title.trim() || !formData.body.trim()) {
         throw new Error('El título y el mensaje son obligatorios.');
@@ -41,6 +46,7 @@ export const PushBroadcastTab: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
           'x-business-id': businessId,
+          'x-admin-secret': adminSecret
         },
         body: JSON.stringify(payload)
       });
