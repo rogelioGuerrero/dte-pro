@@ -43,9 +43,8 @@ export const useCertificateManager = (params: {
         body: JSON.stringify({
           nit: nit.replace(/-/g, ''), // Limpiar guiones
           nrc: nrc.replace(/-/g, ''),
-          password_pri: certificatePassword,  // Corregido a password_pri
+          passwordPri: certificatePassword,  // Backend espera camelCase
           ambiente,
-          business_id: nit.replace(/-/g, ''),  // Usar NIT como business_id para ON CONFLICT
           activo: true // Asegurar que las credenciales se marquen como activas
         })
       });
