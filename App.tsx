@@ -115,7 +115,9 @@ const App: React.FC = () => {
       // Auto-suscribir si ya tiene permiso
       subscribeToPush();
     }
-  }, [isSupported, permission, subscribeToPush]);
+    // Ignoramos subscribeToPush en las dependencias para evitar bucles infinitos
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSupported, permission]);
 
   // Ejecutar backup automático mensual (deshabilitado)
   // useEffect(() => {
