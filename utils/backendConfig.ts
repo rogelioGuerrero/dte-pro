@@ -1,11 +1,11 @@
 // Configuración del Backend LangGraph
 export const BACKEND_CONFIG = {
-  // URL del backend (apuntando al backend en Render)
+  // URL del backend (apuntando al backend en LangGraph/api-dte)
   URL: import.meta.env.VITE_BACKEND_URL || 'https://api-dte.onrender.com',
   
   // Autenticación
   AUTH: {
-    // JWT Bearer Token (requerido por el contrato)
+    // JWT Bearer Token (requerido por el contrato LangGraph)
     JWT_TOKEN: import.meta.env.VITE_JWT_TOKEN || '',
     
     // API Key (opcional, según configuración)
