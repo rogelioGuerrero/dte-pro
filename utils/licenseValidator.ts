@@ -3,11 +3,10 @@ import { fetchLicensingConfig } from './remoteLicensing';
 
 // Llave pública en formato JWK (debe coincidir con la generada)
 const PUBLIC_KEY_JWK = {
-  "crv": "P-256",
   "kty": "EC",
-  "x": "SNRRU4EtbO9lZgMX2wFMUvbyi5D-8zgPD2Vsd_UDO9Y",
-  "y": "lwuahZF85sNCqu3spi7ZROLkCJO2h8FuWIkyqZHnBUg",
-  "alg": "ES256"
+  "x": "NO4prs_ZYvQDusQNvXIBxrhRLY_LoaDfDwZD72cL37s",
+  "y": "R3Vd4Ocv79YvQKxymPGzxPrXkHXHw3XNB140uhKWnfY",
+  "crv": "secp256k1"
 };
 
 export interface LicenseData {
