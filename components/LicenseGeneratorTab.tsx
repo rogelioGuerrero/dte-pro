@@ -1,14 +1,8 @@
 import React, { useState } from 'react';
-import { Shield, Key, Calendar, Mail, User, Smartphone, Copy, Check, ExternalLink, Lock, AlertTriangle } from 'lucide-react';
+import { Shield, Key, Calendar, Mail, User, Smartphone, Copy, Check, ExternalLink } from 'lucide-react';
 import { notify } from '../utils/notifications';
 
 export const LicenseGeneratorTab: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState('');
-  const [totpCode, setTotpCode] = useState('');
-  const [requires2FA, setRequires2FA] = useState(false);
-  const [error, setError] = useState('');
-  
   // Form State
   const [formData, setFormData] = useState({
     email: '',
@@ -29,74 +23,6 @@ export const LicenseGeneratorTab: React.FC = () => {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      const response = await fetch('/.netlify/functions/admin-generate-license', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          password,
-          action: 'verify-access'
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (data.requires2FA) {
-          setRequires2FA(true);
-          setError('');
-        } else {
-          throw new Error(data.error || 'Error de autenticación');
-        }
-      } else {
-        setIsAuthenticated(true);
-        setPassword('');
-      }
-    } catch (error) {
-      setError((error as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLoginWith2FA = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      const response = await fetch('/.netlify/functions/admin-generate-license', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          password,
-          totpCode,
-          action: 'verify-access-2fa'
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Código 2FA incorrecto');
-      } else {
-        setIsAuthenticated(true);
-        setPassword('');
-        setTotpCode('');
-        setRequires2FA(false);
-      }
-    } catch (error) {
-      setError((error as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -106,22 +32,34 @@ export const LicenseGeneratorTab: React.FC = () => {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + formData.daysValid);
 
+      // Obtener token JWT y business_id del localStorage
+      const token = localStorage.getItem('dte_token');
+      const businessId = localStorage.getItem('dte_business_id');
+      
+      if (!token || !businessId) {
+        throw new Error('No hay sesión activa. Por favor inicia sesión.');
+      }
+
       const payload = {
-        password,
-        totpCode, // Enviar el código TOTP si existe
-        licenseData: {
-          email: formData.email,
-          companyName: formData.companyName,
-          userId: formData.userId || undefined,
-          expiresAt: expiresAt.toISOString(),
-          maxExports: Number(formData.maxExports),
-          deviceFingerprint: formData.deviceFingerprint || undefined
-        }
+        id: crypto.randomUUID(),
+        userId: formData.userId || `user-${Date.now()}`,
+        email: formData.email,
+        companyName: formData.companyName,
+        expiresAt: expiresAt.toISOString(),
+        maxExports: Number(formData.maxExports),
+        deviceFingerprint: formData.deviceFingerprint || undefined,
+        features: ['basic'],
+        version: '1.0'
       };
 
-      const response = await fetch('/.netlify/functions/admin-generate-license', {
+      const apiUrl = import.meta.env.VITE_API_DTE_URL || '';
+      const response = await fetch(`${apiUrl}/api/admin/generate-license`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'x-business-id': businessId,
+        },
         body: JSON.stringify(payload)
       });
 
@@ -140,9 +78,6 @@ export const LicenseGeneratorTab: React.FC = () => {
     } catch (error) {
       console.error(error);
       notify((error as Error).message, 'error');
-      if ((error as Error).message.includes('Contraseña')) {
-        setIsAuthenticated(false);
-      }
     } finally {
       setLoading(false);
     }
@@ -162,81 +97,6 @@ export const LicenseGeneratorTab: React.FC = () => {
       notify('Error al copiar', 'error');
     }
   };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="flex gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h4 className="font-semibold text-amber-800">Acceso Seguro Requerido</h4>
-              <p className="text-sm text-amber-700 mt-1">
-                Esta funcionalidad requiere autenticación con la contraseña de administrador y 2FA si está activado.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <form onSubmit={requires2FA ? handleLoginWith2FA : handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Contraseña de Administrador
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="••••••••"
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          {requires2FA && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Código 2FA
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={totpCode}
-                onChange={(e) => setTotpCode(e.target.value)}
-                className="w-full text-center text-2xl tracking-widest font-mono py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                placeholder="000000"
-                maxLength={6}
-                autoComplete="one-time-code"
-              />
-            </div>
-          )}
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium ${loading ? 'opacity-70 cursor-wait' : ''}`}
-          >
-            {loading ? (
-              <>Verificando...</>
-            ) : (
-              <>
-                <Lock className="w-5 h-5" />
-                {requires2FA ? 'Verificar 2FA' : 'Acceder'}
-              </>
-            )}
-          </button>
-        </form>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">

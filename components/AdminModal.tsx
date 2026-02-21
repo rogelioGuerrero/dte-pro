@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Save, Settings, Shield, X, Key, LayoutTemplate, CheckCircle2, ShieldCheck, Smartphone, Trash2 } from 'lucide-react';
+import { Lock, Save, Settings, Shield, X, Key, LayoutTemplate, CheckCircle2, ShieldCheck, Smartphone, Trash2, Bell } from 'lucide-react';
 import QRCode from 'qrcode';
 import { loadSettings, saveSettings, AppSettings } from '../utils/settings';
 import { validateAdminPin, hasAdminPin } from '../utils/adminPin';
@@ -12,6 +12,7 @@ interface AdminModalProps {
 }
 
 import { LicenseGeneratorTab } from './LicenseGeneratorTab';
+import { PushBroadcastTab } from './PushBroadcastTab';
 
 const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   const [settings, setSettings] = useState<AppSettings>(loadSettings());
@@ -117,7 +118,8 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     { id: 'general', label: 'General', icon: Settings },
     { id: 'modo', label: 'Modo de Uso', icon: LayoutTemplate },
     { id: 'security', label: 'Seguridad', icon: ShieldCheck },
-    { id: 'licencias', label: 'Licencias', icon: Shield }
+    { id: 'licencias', label: 'Licencias', icon: Shield },
+    { id: 'push', label: 'Push', icon: Bell }
   ];
 
   if (!isOpen) return null;
@@ -355,6 +357,10 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
 
                 {activeTab === 'licencias' && (
                   <LicenseGeneratorTab />
+                )}
+
+                {activeTab === 'push' && (
+                  <PushBroadcastTab />
                 )}
               </div>
 

@@ -11,8 +11,10 @@ export interface RemoteLicensingConfig {
 
 export async function fetchLicensingConfig(): Promise<RemoteLicensingConfig> {
   try {
-    // URL del endpoint de configuración desde variable de entorno
-    const configUrl = import.meta.env.VITE_LICENSING_CONFIG_URL || '/api/licensing/config';
+    // Usar endpoint de api-dte para configuración remota
+    const configUrl = import.meta.env.VITE_API_DTE_URL 
+      ? `${import.meta.env.VITE_API_DTE_URL}/api/licensing/config`
+      : '/api/licensing/config';
     
     const response = await fetch(configUrl, {
       method: 'GET',

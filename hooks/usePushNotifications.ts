@@ -82,16 +82,32 @@ export const usePushNotifications = () => {
 
   const sendSubscriptionToBackend = async (subscription: PushSubscription) => {
     try {
-      await fetch('/api/push/subscribe', {
+      // Obtener token del usuario logueado
+      const token = localStorage.getItem('dte_token');
+      const businessId = localStorage.getItem('dte_business_id');
+      
+      if (!token || !businessId) {
+        console.warn('No hay token o business_id para suscripción push');
+        return;
+      }
+
+      const apiUrl = import.meta.env.VITE_API_DTE_URL || '';
+      const response = await fetch(`${apiUrl}/api/push/subscribe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'x-business-id': businessId,
         },
         body: JSON.stringify({
           subscription,
           userAgent: navigator.userAgent,
         }),
       });
+
+      if (!response.ok) {
+        throw new Error('Error suscribiéndose a push notifications');
+      }
     } catch (error) {
       console.error('Error sending subscription to backend:', error);
     }
@@ -107,16 +123,24 @@ export const usePushNotifications = () => {
       if (pushSubscription) {
         await pushSubscription.unsubscribe();
         
-        // Notificar al backend
-        await fetch('/api/push/unsubscribe', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            endpoint: subscription.endpoint,
-          }),
-        });
+        // Notificar al backend con auth
+        const token = localStorage.getItem('dte_token');
+        const businessId = localStorage.getItem('dte_business_id');
+        
+        if (token && businessId) {
+          const apiUrl = import.meta.env.VITE_API_DTE_URL || '';
+          await fetch(`${apiUrl}/api/push/unsubscribe`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+              'x-business-id': businessId,
+            },
+            body: JSON.stringify({
+              endpoint: subscription.endpoint,
+            }),
+          });
+        }
       }
 
       setSubscription(null);
