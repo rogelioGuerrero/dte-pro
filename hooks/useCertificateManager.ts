@@ -94,20 +94,22 @@ export const useCertificateManager = (params: {
       // Convertir archivo a Base64
       const certificadoB64 = await readFileAsBase64(certificateFile);
 
+      // El backend espera el NIT con guiones o sin guiones, pero la estructura exacta requerida es:
+      // nit, ambiente, passwordPri, certificadoB64
+      const payload = {
+        nit: nit, // Mantener el formato original
+        ambiente: ambiente || '00',
+        passwordPri: certificatePassword,
+        certificadoB64: certificadoB64
+      };
+
       // Guardar certificado en Supabase (via backend)
       const response = await fetch(`https://api-dte.onrender.com/api/business/credentials`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          nit: nit.replace(/-/g, ''), // Limpiar guiones
-          nrc: nrc.replace(/-/g, ''),
-          passwordPri: certificatePassword,  // Backend espera camelCase
-          certificadoB64, // Certificado en Base64
-          ambiente,
-          activo: true // Asegurar que las credenciales se marquen como activas
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
@@ -116,9 +118,10 @@ export const useCertificateManager = (params: {
       }
 
       const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error?.userMessage || 'Error guardando credenciales');
+
+      // Validar explícitamente que el backend retorne hasCert: true
+      if (!result.success || !result.data?.hasCert) {
+        throw new Error(result.error?.userMessage || 'El servidor no confirmó el guardado del certificado (hasCert: false)');
       }
 
       // Limpiar formulario después de guardar
