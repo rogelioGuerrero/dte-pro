@@ -1,14 +1,4 @@
-﻿import { useState } from 'react';
-
-interface PushSubscription {
-  endpoint: string;
-  keys: {
-    p256dh: string;
-    auth: string;
-  };
-}
-
-export const usePushNotifications = () => {
+﻿export const usePushNotifications = () => {
   return {
     isSupported: false,
     permission: 'default' as NotificationPermission,
