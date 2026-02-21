@@ -21,7 +21,7 @@ export const useCertificateManager = (params: {
   setCertificateError: (value: string | null) => void;
   handleCertFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleValidateCertificate: () => Promise<void>;
-  handleSaveCertificate: () => Promise<void>;
+  handleSaveCertificate: (nit: string, nrc: string, ambiente?: string) => Promise<void>;
   refreshCertificateStatus: () => Promise<void>;
 } => {
   const [hasCert, setHasCert] = useState(false);
@@ -81,16 +81,42 @@ export const useCertificateManager = (params: {
     }
   };
 
-  const handleSaveCertificate = async () => {
+  const handleSaveCertificate = async (nit: string, nrc: string, ambiente: string = '00') => {
     if (!p12Data || !certificatePassword || !certificateInfo) return;
+    
+    if (!nit || !nrc) {
+      setCertificateError('NIT y NRC son requeridos para guardar la contraseña en el servidor.');
+      return;
+    }
+
     setIsSavingCert(true);
     try {
+      // Guardar contraseña en Supabase (via backend)
+      const response = await fetch(`https://api-dte.onrender.com/api/business/credentials`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          nit: nit.replace(/-/g, ''), // Limpiar guiones
+          nrc: nrc.replace(/-/g, ''),
+          passwordPri: certificatePassword,
+          ambiente
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || errorData.message || 'Error guardando credenciales en el servidor');
+      }
+
+      // Guardar certificado localmente (por si acaso se necesita)
       await saveCertificate(p12Data, certificatePassword);
       setHasCert(true);
-      params.onToast?.('Certificado guardado correctamente', 'success');
+      params.onToast?.('Certificado guardado correctamente en el servidor', 'success');
     } catch (error) {
       console.error('Error guardando certificado:', error);
-      setCertificateError('Error al guardar el certificado. Intenta de nuevo.');
+      setCertificateError(error instanceof Error ? error.message : 'Error al guardar el certificado. Intenta de nuevo.');
       setHasCert(false);
     } finally {
       setIsSavingCert(false);

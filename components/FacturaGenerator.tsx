@@ -752,7 +752,7 @@ const FacturaGenerator: React.FC = () => {
         setCertificateError={setCertificateError}
         handleCertFileSelect={handleCertFileSelect}
         handleValidateCertificate={handleValidateCertificate}
-        handleSaveCertificate={handleSaveCertificate}
+        handleSaveCertificate={() => handleSaveCertificate(emisorForm.nit, emisorForm.nrc)}
         // ProductPickerModal
         canUseCatalogoProductos={canUseCatalogoProductos}
         showProductPicker={showProductPicker}

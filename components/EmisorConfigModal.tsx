@@ -38,7 +38,7 @@ interface EmisorConfigModalProps {
   setCertificateError: (value: string | null) => void;
   handleCertFileSelect: React.ChangeEventHandler<HTMLInputElement>;
   handleValidateCertificate: () => void | Promise<void>;
-  handleSaveCertificate: () => void | Promise<void>;
+  handleSaveCertificate: (nit: string, nrc: string, ambiente?: string) => void | Promise<void>;
 }
 
 export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
@@ -303,7 +303,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                     </div>
                   )}
                   <button
-                    onClick={handleSaveCertificate}
+                    onClick={() => handleSaveCertificate(emisorForm.nit, emisorForm.nrc)}
                     disabled={!certificateInfo || isSavingCert}
                     className="w-full mt-2 py-2 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
                   >
