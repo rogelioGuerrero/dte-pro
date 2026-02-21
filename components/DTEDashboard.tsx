@@ -20,13 +20,12 @@ import {
   Ban
 } from 'lucide-react';
 import {
-  DTEHistoryRecord,
-  DTEHistoryFilter,
-  DTEHistoryStats,
-  obtenerHistorialDTE,
+  DTECacheRecord,
+  DTECacheFilter,
+  DTECacheStats,
+  obtenerCacheDTE,
   obtenerEstadisticasDTE,
-  exportarHistorialJSON,
-  getTiposDTEEnHistorial
+  exportarCacheJSON
 } from '../utils/dteHistoryDb';
 import { tiposDocumento } from '../utils/dteGenerator';
 import { descargarPDFConPlantilla, TemplateName } from '../utils/pdfTemplates';
@@ -42,12 +41,12 @@ interface DTEDashboardProps {
 const ITEMS_POR_PAGINA = 10;
 
 const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
-  const [registros, setRegistros] = useState<DTEHistoryRecord[]>([]);
-  const [stats, setStats] = useState<DTEHistoryStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [registros, setRegistros] = useState<DTECacheRecord[]>([]);
+  const [stats, setStats] = useState<DTECacheStats | null>(null);
+  const [filtros, setFiltros] = useState<DTECacheFilter>({});
   const [totalRegistros, setTotalRegistros] = useState(0);
   const [paginaActual, setPaginaActual] = useState(1);
-  
+
   // Filtros
   const [busqueda, setBusqueda] = useState('');
   const [fechaDesde, setFechaDesde] = useState('');
@@ -55,35 +54,35 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
   const [tipoDte, setTipoDte] = useState('');
   const [estado, setEstado] = useState('');
   const [tiposDisponibles, setTiposDisponibles] = useState<string[]>([]);
-  
+
   // Vista
   const [vistaActiva, setVistaActiva] = useState<'lista' | 'estadisticas'>('lista');
-  const [dteSeleccionado, setDteSeleccionado] = useState<DTEHistoryRecord | null>(null);
+  const [dteSeleccionado, setDteSeleccionado] = useState<DTECacheRecord | null>(null);
   const [exportando, setExportando] = useState(false);
+
+  const [loading, setLoading] = useState(false);
 
   const cargarDatos = async () => {
     setLoading(true);
+    const filtros: DTECacheFilter = {
+      busqueda: busqueda || undefined,
+      fechaDesde: fechaDesde || undefined,
+      fechaHasta: fechaHasta || undefined,
+      tipoDte: tipoDte || undefined,
+      estado: estado || undefined,
+      limite: ITEMS_POR_PAGINA,
+      offset: (paginaActual - 1) * ITEMS_POR_PAGINA
+    };
+
     try {
-      const filtros: DTEHistoryFilter = {
-        busqueda: busqueda || undefined,
-        fechaDesde: fechaDesde || undefined,
-        fechaHasta: fechaHasta || undefined,
-        tipoDte: tipoDte || undefined,
-        estado: estado || undefined,
-        limite: ITEMS_POR_PAGINA,
-        offset: (paginaActual - 1) * ITEMS_POR_PAGINA
-      };
-      
-      const [resultado, estadisticas, tipos] = await Promise.all([
-        obtenerHistorialDTE(filtros),
-        obtenerEstadisticasDTE({ fechaDesde, fechaHasta }),
-        getTiposDTEEnHistorial()
+      const [{ registros }, nuevasStats] = await Promise.all([
+        obtenerCacheDTE(filtros),
+        obtenerEstadisticasDTE(filtros)
       ]);
-      
-      setRegistros(resultado.registros);
-      setTotalRegistros(resultado.total);
-      setStats(estadisticas);
-      setTiposDisponibles(tipos);
+
+      setRegistros(registros);
+      setTotalRegistros(registros.length);
+      setStats(nuevasStats);
     } catch (error) {
       console.error('Error cargando historial:', error);
     } finally {
@@ -97,31 +96,25 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
 
   const totalPaginas = Math.ceil(totalRegistros / ITEMS_POR_PAGINA);
 
-  const handleExportar = async () => {
-    setExportando(true);
+  const handleExport = async () => {
     try {
-      const json = await exportarHistorialJSON({
-        fechaDesde: fechaDesde || undefined,
-        fechaHasta: fechaHasta || undefined,
-        tipoDte: tipoDte || undefined,
-        estado: estado || undefined
-      });
-      
+      const json = await exportarCacheJSON(filtros);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `historial-dte-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `dte-historial-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error exportando:', error);
-    } finally {
-      setExportando(false);
+      console.error('Error exportando historial:', error);
+      alert('Error al exportar el historial');
     }
   };
 
-  const handleDescargarPDF = (registro: DTEHistoryRecord) => {
+  const handleDescargarPDF = (registro: DTECacheRecord) => {
     descargarPDFConPlantilla({
       dte: registro.dteJson,
       resultado: registro.respuestaMH,
@@ -178,7 +171,7 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
               </div>
             </div>
           </div>
-          
+
           <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
@@ -190,7 +183,7 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
               </div>
             </div>
           </div>
-          
+
           <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
@@ -202,7 +195,7 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
               </div>
             </div>
           </div>
-          
+
           <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
@@ -223,20 +216,14 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
             Por Tipo de Documento
           </h3>
           <div className="space-y-3">
-            {Object.entries(stats.porTipo).map(([tipo, cantidad]) => (
-              <div key={tipo} className="flex items-center gap-3">
-                <div className="flex-1">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-700">{getTipoDocNombre(tipo)}</span>
-                    <span className="text-sm text-gray-500">{cantidad}</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-indigo-500 rounded-full"
-                      style={{ width: `${(cantidad / stats.totalEmitidos) * 100}%` }}
-                    />
-                  </div>
-                </div>
+            {Object.entries(stats.porTipo).map(([tipo, cantidad]: [string, any]) => (
+              <div key={tipo} className="flex justify-between items-center text-sm">
+                <span className="text-gray-600 truncate mr-2" title={tipo}>
+                  {tipo}
+                </span>
+                <span className="font-medium text-gray-900 bg-gray-100 px-2 py-0.5 rounded-full">
+                  {cantidad as number}
+                </span>
               </div>
             ))}
           </div>
@@ -261,11 +248,14 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
                 <tbody>
                   {Object.entries(stats.porMes)
                     .sort((a, b) => b[0].localeCompare(a[0]))
-                    .map(([mes, data]) => (
-                      <tr key={mes} className="border-b border-gray-100">
-                        <td className="py-2 font-medium text-gray-900">{mes}</td>
-                        <td className="py-2 text-right text-gray-600">{data.cantidad}</td>
-                        <td className="py-2 text-right text-gray-900 font-mono">{formatMonto(data.monto)}</td>
+                    .slice(0, 3)
+                    .map(([mes, data]: [string, any]) => (
+                      <tr key={mes} className="border-t border-gray-100 last:border-0">
+                        <td className="py-2 text-gray-900 font-medium">
+                          {new Date(`${mes}-01`).toLocaleDateString('es-SV', { month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="py-2 text-right text-gray-600">{(data as { cantidad: number; monto: number }).cantidad}</td>
+                        <td className="py-2 text-right text-gray-900 font-mono">{formatMonto((data as { cantidad: number; monto: number }).monto)}</td>
                       </tr>
                     ))}
                 </tbody>

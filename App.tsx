@@ -16,14 +16,12 @@ import { UserModeSetup } from './components/UserModeSetup';
 import { shouldShowUserModeSelection } from './utils/remoteLicensing';
 import { licenseValidator } from './utils/licenseValidator';
 import { NavigationTabs } from './components/NavigationTabs';
-import { LayoutDashboard, CheckCircle, Download } from 'lucide-react';
-import { downloadBackup, restoreBackupFromText } from './utils/backup';
-import { notify } from './utils/notifications';
+import { LayoutDashboard, CheckCircle } from 'lucide-react';
 import ForceUpdateModal from './components/ForceUpdateModal';
 import { usePushNotifications } from './hooks/usePushNotifications';
-import PushNotificationManager from './components/PushNotificationManager';
+import MiCuenta from './components/MiCuenta';
 
-type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal';
+type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta';
 
 // Detectar si estamos en la pagina publica del cliente
 const isClientFormPage = (): boolean => {
@@ -51,11 +49,7 @@ const App: React.FC = () => {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showLicenseManager, setShowLicenseManager] = useState(false);
   const [showUserModeSetup, setShowUserModeSetup] = useState(false);
-  const [showBackupMenu, setShowBackupMenu] = useState(false);
   const [forceUpdateInfo, setForceUpdateInfo] = useState<{ minVersion: string; message?: string } | null>(null);
-  // TODO: Implementar modal de restauración
-  // const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const restoreFileInputRef = useRef<HTMLInputElement | null>(null);
   const clickCountRef = useRef(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -132,20 +126,11 @@ const App: React.FC = () => {
     if (activeTab === 'products') setActiveTab('inventory');
   }, [activeTab]);
 
-  // Cerrar dropdown de backup al hacer clic fuera
+  // Cerrar dropdown de backup al hacer clic fuera (obsoleto, removido menú de backup)
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showBackupMenu) {
-        const target = event.target as Element;
-        if (!target.closest('.backup-dropdown')) {
-          setShowBackupMenu(false);
-        }
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showBackupMenu]);
+    // Empty effect to satisfy hooks rules if needed, or we could remove it. 
+    // I'll remove the code inside since showBackupMenu is gone.
+  }, []);
 
   const handleLogoClick = () => {
     clickCountRef.current += 1;
@@ -162,40 +147,6 @@ const App: React.FC = () => {
   const handleSetupComplete = () => {
     localStorage.setItem('dte_setup_completed', 'true');
     setShowUserModeSetup(false);
-  };
-
-  const handleExportBackup = () => {
-    setShowBackupMenu(false);
-    (async () => {
-      try {
-        await downloadBackup();
-        notify('Backup descargado', 'success');
-      } catch (e: any) {
-        notify(e?.message || 'No se pudo descargar el backup', 'error');
-      }
-    })();
-  };
-
-  const handleRestoreBackup = () => {
-    setShowBackupMenu(false);
-    const ok = confirm('Restaurar un backup reemplazará los datos locales (inventario, clientes, historial y configuración). ¿Continuar?');
-    if (!ok) return;
-    restoreFileInputRef.current?.click();
-  };
-
-  const handleRestoreBackupFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      await restoreBackupFromText(text);
-      notify('Backup restaurado. Recargando...', 'success');
-      setTimeout(() => window.location.reload(), 400);
-    } catch (e: any) {
-      notify(e?.message || 'No se pudo restaurar el backup', 'error');
-    }
   };
 
   // Si está en modo setup, mostrar pantalla completa
@@ -259,49 +210,27 @@ const App: React.FC = () => {
             {activeTab === 'inventory' && 'Inventario'}
             {activeTab === 'factura' && 'Facturar'}
             {activeTab === 'historial' && 'Historial'}
+            {activeTab === 'micuenta' && 'Mi Cuenta'}
           </div>
           
           {/* Right Actions */}
           <div className="flex items-center gap-2">
-            {/* Backup Button */}
-            <div className="relative backup-dropdown">
-              <input
-                ref={restoreFileInputRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                onChange={handleRestoreBackupFile}
-              />
-              <button
-                onClick={() => setShowBackupMenu(!showBackupMenu)}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Backup</span>
-              </button>
-              
-              {/* Backup Dropdown */}
-              {showBackupMenu && (
-                <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[200px] z-50">
-                  <button
-                    onClick={handleExportBackup}
-                    className="w-full px-4 py-2 text-sm text-left hover:bg-gray-50 flex items-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    Descargar Backup
-                  </button>
-                  <button
-                    onClick={handleRestoreBackup}
-                    className="w-full px-4 py-2 text-sm text-left hover:bg-gray-50 flex items-center gap-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Restaurar Backup
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Mi Cuenta Button */}
+            <button
+              onClick={() => setActiveTab('micuenta' as AppTab)}
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'micuenta'
+                  ? 'bg-indigo-50 text-indigo-700'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                <span className="text-xs font-bold text-indigo-600">
+                  {localStorage.getItem('emisor_nombre')?.charAt(0) || 'U'}
+                </span>
+              </div>
+              <span className="hidden sm:inline">Mi Cuenta</span>
+            </button>
           </div>
         </div>
       </header>
@@ -315,6 +244,7 @@ const App: React.FC = () => {
         {activeTab === 'inventory' && <SistemaInventario />}
         {activeTab === 'factura' && <FacturaGenerator />}
         {activeTab === 'historial' && <DTEDashboard />}
+        {activeTab === 'micuenta' && <MiCuenta onBack={() => setActiveTab('factura')} />}
       </main>
 
       {/* Mobile Bottom Navigation */}

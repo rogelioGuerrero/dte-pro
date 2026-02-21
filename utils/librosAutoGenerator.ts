@@ -1,7 +1,7 @@
 // Generador automático de libros IVA desde DTEs transmitidos en IndexedDB
 // Elimina necesidad de subir JSONs manualmente
 
-import { obtenerHistorialDTE, DTEHistoryRecord } from './dteHistoryDb';
+import { obtenerHistorialDTE, DTECacheRecord } from './dteHistoryDb';
 import { saveLibroData, getLibroData } from './libroLegalDb';
 import { GroupedData, ProcessedFile } from '../types';
 import { notify } from './notifications';
@@ -41,7 +41,7 @@ const normalizeId = (id: string): string => {
 };
 
 // Determinar si un DTE es de compra o venta
-const esDTECompra = (record: DTEHistoryRecord): boolean => {
+const esDTECompra = (record: DTECacheRecord): boolean => {
   const settings = loadSettings();
   const myNit = normalizeId(settings.myNit || '');
   const myNrc = normalizeId(settings.myNrc || '');
@@ -60,7 +60,7 @@ const esDTECompra = (record: DTEHistoryRecord): boolean => {
 };
 
 // Convertir DTEHistoryRecord a ProcessedFile (formato esperado por libros)
-const convertirDTEAProcessedFile = (record: DTEHistoryRecord): ProcessedFile => {
+const convertirDTEAProcessedFile = (record: DTECacheRecord): ProcessedFile => {
   const isCompra = esDTECompra(record);
   const owner = getOwnerTaxpayer();
 
