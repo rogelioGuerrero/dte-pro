@@ -43,7 +43,7 @@ export const useCertificateManager = (params: {
         body: JSON.stringify({
           nit: nit.replace(/-/g, ''), // Limpiar guiones
           nrc: nrc.replace(/-/g, ''),
-          passwordPri: certificatePassword,
+          password_pri: certificatePassword,  // Corregido a password_pri
           ambiente
         })
       });
