@@ -20,8 +20,6 @@ import { generarLibroDesdeDTEs } from '../utils/librosAutoGenerator';
 import { getCertificate } from '../utils/secureStorage';
 import { firmarDocumento, limpiarDteParaFirma, wakeFirmaService } from '../utils/firmaApiClient';
 import { processDTE } from '../utils/mh/process';
-import { getMHMode } from '../utils/mh/config';
-import { transmitirDTESandbox } from '../utils/mh/sandboxClient';
 import { loadSettings } from '../utils/settings';
 import { 
   TransmisionResult,
@@ -84,38 +82,43 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
         return;
       }
 
-      const stored = await getCertificate();
-      const passwordPri = stored?.password
-        ? stored.password
-        : (window.prompt('Ingresa la contraseña/PIN del certificado para firmar (no se guardará):') || '').trim();
-      if (!passwordPri) {
-        throw new Error('No se proporcionó passwordPri para firmar.');
-      }
-
-      await wakeFirmaService({ retries: 3, baseDelayMs: 1000, timeoutMs: 15000 });
-
-      const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
+      // La contraseña se obtiene del backend usando el NIT del emisor
       const nitEmisor = (processed.dte?.emisor?.nit || '').toString().replace(/[\s-]/g, '').trim();
       if (!nitEmisor || nitEmisor.length < 9 || nitEmisor === '00000000000000') {
         throw new Error('NIT del emisor inválido o no configurado. Revisa la configuración del emisor.');
       }
 
-      const jwsFirmado = await firmarDocumento({
-        nit: nitEmisor,
-        passwordPri,
-        dteJson: dteLimpio,
+      await wakeFirmaService({ retries: 3, baseDelayMs: 1000, timeoutMs: 15000 });
+
+      const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
+
+      // Enviar al backend para que obtenga la contraseña y firme
+      const response = await fetch('https://api-dte.onrender.com/api/dte/process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          dteJson: dteLimpio,
+          nit: nitEmisor
+        })
       });
 
-      setJwsFirmado(jwsFirmado);
+      if (!response.ok) {
+        throw new Error('Error del backend al procesar DTE');
+      }
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error?.userMessage || 'Error del backend');
+      }
+
+      setJwsFirmado(result.data?.jwsFirmado || '');
       setEstado('transmitiendo');
 
-      const mode = getMHMode();
-      const transmisionResult =
-        mode === 'sandbox'
-          ? await transmitirDTESandbox(jwsFirmado, ambienteFinal)
-          : (() => {
-              throw new Error('Transmisión en producción aún no implementada.');
-            })();
+      // El backend ya hizo la transmisión, usar resultado directo
+      const transmisionResult = result.data?.transmisionResult;
       
       // Debug: log completo para ver errores MH
       console.log('TransmisionResult completo:', JSON.stringify(transmisionResult, null, 2));
@@ -135,7 +138,7 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
         }
       } else {
         // Verificar si es error de comunicación
-        const isCommError = transmisionResult.errores?.some(e => e.codigo === 'COM-ERR' || e.codigo.startsWith('HTTP-'));
+        const isCommError = transmisionResult.errores?.some((e: any) => e.codigo === 'COM-ERR' || e.codigo.startsWith('HTTP-'));
         if (isCommError) {
           setIsConnectionError(true);
         }
