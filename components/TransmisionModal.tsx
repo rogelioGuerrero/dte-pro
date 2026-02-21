@@ -99,8 +99,10 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          dteJson: dteLimpio,
-          nit: nitEmisor
+          dte: dteLimpio,
+          nit: nitEmisor,
+          ambiente: (dteLimpio as any).identificacion?.ambiente || '00',
+          flowType: 'emission'
         })
       });
 
