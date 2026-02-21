@@ -51,9 +51,12 @@ interface FacturaModalsProps {
   showCertPassword: boolean;
   certificateError: string | null;
   isSavingCert: boolean;
+  certificateFile: File | null;
   setCertificatePassword: (value: string) => void;
   setShowCertPassword: (value: boolean) => void;
+  handleCertFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSaveCertificate: (nit: string, nrc: string, ambiente?: string) => Promise<void>;
+  fileInputRef: React.RefObject<HTMLInputElement>;
   // ProductPickerModal
   canUseCatalogoProductos: boolean;
   showProductPicker: boolean;
@@ -114,9 +117,12 @@ export const FacturaModals: React.FC<FacturaModalsProps> = ({
   showCertPassword,
   certificateError,
   isSavingCert,
+  certificateFile,
   setCertificatePassword,
   setShowCertPassword,
+  handleCertFileSelect,
   handleSaveCertificate,
+  fileInputRef,
   // ProductPickerModal
   canUseCatalogoProductos,
   showProductPicker,
@@ -208,9 +214,12 @@ export const FacturaModals: React.FC<FacturaModalsProps> = ({
         showCertPassword={showCertPassword}
         certificateError={certificateError}
         isSavingCert={isSavingCert}
+        certificateFile={certificateFile}
         setCertificatePassword={setCertificatePassword}
         setShowCertPassword={setShowCertPassword}
+        handleCertFileSelect={handleCertFileSelect}
         handleSaveCertificate={handleSaveCertificate}
+        fileInputRef={fileInputRef}
       />
 
       <ProductPickerModal

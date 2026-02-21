@@ -20,9 +20,12 @@ interface EmisorConfigModalProps {
   showCertPassword: boolean;
   certificateError: string | null;
   isSavingCert: boolean;
+  certificateFile: File | null;
   setCertificatePassword: (value: string) => void;
   setShowCertPassword: (value: boolean) => void;
+  handleCertFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSaveCertificate: (nit: string, nrc: string, ambiente?: string) => void | Promise<void>;
+  fileInputRef: React.RefObject<HTMLInputElement>;
 }
 
 export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
@@ -42,9 +45,12 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
   showCertPassword,
   certificateError,
   isSavingCert,
+  certificateFile,
   setCertificatePassword,
   setShowCertPassword,
+  handleCertFileSelect,
   handleSaveCertificate,
+  fileInputRef,
 }) => {
   if (!isOpen) return null;
 
@@ -198,34 +204,54 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                   <div>
                     <p className="text-xs font-semibold text-gray-700 uppercase">Firma electrónica</p>
                     <p className="text-[11px] text-gray-500">
-                      Ingresa la contraseña de tu certificado digital (.p12/.pfx)
+                      Sube tu certificado digital (.p12/.pfx) y contraseña
                     </p>
                   </div>
                 </div>
               </div>
               
               <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase mb-1">
-                    Contraseña del Certificado <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showCertPassword ? "text" : "password"}
-                      value={certificatePassword}
-                      onChange={(e) => setCertificatePassword(e.target.value)}
-                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                      placeholder="Ingresa la contraseña del certificado"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCertPassword(!showCertPassword)}
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showCertPassword ? "👁️" : "👁️‍🗨️"}
-                    </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".p12,.pfx"
+                  onChange={handleCertFileSelect}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`w-full p-3 border-2 border-dashed rounded-xl text-sm mb-3 transition-colors ${
+                    certificateFile
+                      ? 'border-green-300 bg-green-50 text-green-700'
+                      : 'border-gray-300 text-gray-600 hover:border-blue-400 hover:bg-blue-50'
+                  }`}
+                >
+                  {certificateFile ? <span>{certificateFile.name}</span> : <span>Seleccionar archivo .p12 / .pfx</span>}
+                </button>
+                
+                {certificateFile && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase mb-1">
+                      Contraseña del Certificado <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showCertPassword ? "text" : "password"}
+                        value={certificatePassword}
+                        onChange={(e) => setCertificatePassword(e.target.value)}
+                        className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="Ingresa la contraseña del certificado"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCertPassword(!showCertPassword)}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showCertPassword ? "👁️" : "👁️‍🗨️"}
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
                 
                 {certificateError && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-2">
@@ -235,18 +261,18 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                 
                 <button
                   onClick={() => handleSaveCertificate(emisorForm.nit, emisorForm.nrc)}
-                  disabled={isSavingCert || !certificatePassword || !emisorForm.nit || !emisorForm.nrc}
+                  disabled={isSavingCert || !certificateFile || !certificatePassword || !emisorForm.nit || !emisorForm.nrc}
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                 >
                   {isSavingCert ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Guardando credenciales...
+                      Guardando certificado...
                     </>
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      Guardar credenciales de firma
+                      Guardar certificado digital
                     </>
                   )}
                 </button>

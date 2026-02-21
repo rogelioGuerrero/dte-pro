@@ -127,9 +127,12 @@ const FacturaGenerator: React.FC = () => {
     showCertPassword,
     certificateError,
     isSavingCert,
+    certificateFile,
     setCertificatePassword,
     setShowCertPassword,
+    handleCertFileSelect,
     handleSaveCertificate,
+    fileInputRef,
   } = useCertificateManager({ onToast: (msg, type) => addToast(msg, type) });
 
   const { stockByCode } = useStockByCode();
@@ -730,7 +733,10 @@ const FacturaGenerator: React.FC = () => {
         isSavingCert={isSavingCert}
         setCertificatePassword={setCertificatePassword}
         setShowCertPassword={setShowCertPassword}
+        certificateFile={certificateFile}
+        handleCertFileSelect={handleCertFileSelect}
         handleSaveCertificate={() => handleSaveCertificate(emisorForm.nit, emisorForm.nrc)}
+        fileInputRef={fileInputRef}
         // ProductPickerModal
         canUseCatalogoProductos={canUseCatalogoProductos}
         showProductPicker={showProductPicker}
