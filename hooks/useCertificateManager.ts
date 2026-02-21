@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { getAuthHeaders } from '../utils/backendConfig';
 
 export const useCertificateManager = (params: {
   onToast?: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -112,12 +113,19 @@ export const useCertificateManager = (params: {
         certificadoB64: certificadoB64
       };
 
+      // Logging para diagnóstico
+      console.log('Enviando credenciales MH:', {
+        nit: nitConGuiones,
+        ambiente: ambiente || '00',
+        hasCert: !!certificadoB64,
+        certLength: certificadoB64?.length || 0,
+        certStart: certificadoB64?.substring(0, 20) + '...'
+      });
+
       // Guardar certificado en Supabase (via backend)
       const response = await fetch(`https://api-dte.onrender.com/api/business/credentials`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload)
       });
 
