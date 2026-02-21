@@ -1,0 +1,1641 @@
+Ro yod
+
+MINISTERIO DE HACIENDA
+
+Manual Tecnológico para
+la Integración del Sistema
+
+de Transmisión
+
+Control de Versiones
+
+10
+
+MINISTERIO DE HACIENDA
+
+02/2023
+
+Control de Cambios
+
+Versión 1.0
+
+Versión Inicial
+
+Glosario
+
+Documento Tributario Electrónico
+
+JSON
+
+JSON, cuyo nombre corresponde a las siglas JavaScript Object Notation
+o Notación de Objetos de JavaScript, es un formato ligero de intercambio
+de datos, que resulta sencillo de leer y escribir para los programadores y
+simple de interpretar y generar para las máquinas.
+
+JWS
+
+JSON Web Signature (abreviado JWS) es un estándar propuesto por IETF
+para la firma de JSON arbitrario.1 Se utiliza como base para una variedad
+de tecnologías basadas en la web, incluyendo JSON Web Token.
+
+JIWT
+
+JSON Web Token (abreviado JWT) es el estándar abierto basado en JSON
+propuesto por lETF (RFC 7519) para la creación de tokens de acceso que
+permiten la propagación de identidad y privilegios O claims en inglés,
+utilizado para la parte de seguridad de los DIE
+
+Una AP| es una interfaz de programación de aplicaciones (del inglés API:
+Application Programming Interface). Es un conjunto de rutinas que provee
+acceso a funciones de un determinado software. Básico en el entorno de
+microservicios.
+
+Página | 2
+
+Contenido
+
+Comtrol de Versiones anni 2
+Camtral de ambas inn ninnnnn 2
+ANS A 2
+EA 3
+Lo Flujo de Autenticación nine 4
+11 Autenticación para API (Sistema de Transmisión DTE) 00ccccccioccccincococncocococonocnninncnns 4
+2. Solución de Firma ElectrÓniCa ocoococcococcconocononononnnonocnononn conocen 5
+2.1 Opciones para Instalación coccion 5
+2.2 Consumo de Servicio de la Solución de Firma ElectrÓniCa.oocococcccccoconcinninnoss 12
+
+3. Flujo para Recepción de Documentos
+3.1 Holguras en la transmisión
+BR PLOCOSO le COMUNA is
+3.21 Funcionamiento Operativo Evento de CONTINGENCIA. .occcocccononnconononininiananoss 13
+3.3 Política de ReIMtentOS coccion 16
+3.4 Servicio de Recepción por LOteS coccion conc no conocen 17
+4. APIS - Sistema Transmisión de DT E ooooocociccocococoncnoonocncnnncnno conc n cnn conos 18
+41 Servicio de AUTeMtICaCciÓN ccoo 18
+UI SOI VICIO le ReCeaciÓN ns 20
+ALI Modelo Un a UM nn 20
+AL Madelo en Late ninia 23
+43 Servicio de COnsulla occ ninos 25
+4.3.1 Consulta de DT Eoceno nnnnnnninnnnni 25
+4.3.2 Consulta de Lote DT E oooociocooococonocononnonononcnnnncnnnnn cnn none 27
+4.4 Servicio de envío para Evento COMUNYGenClA..ooococoocococoninconononcnonononcn conoceis 29
+4.5 Servicio de envío para Evento de InvalidaciÓN occ 30
+BO AR 32
+
+Página | 3
+oy ok
+
+MINISTERIO DE HACIENDA
+
+1. Flujo de Autenticación
+1.1 Autenticación para API (Sistema de Transmisión DTE)
+
+el contribuyente que utilice los servicios del API| de Recepción para el envío de los DTE, deberá
+autenticarse contra la AP| de Seguridad, para ello deberá enviar el usuario y contraseña a la URI
+contenido en la sección Servicio de Autenticación de este Manual.
+
+Las credenciales serán verificadas con los datos almacenados en la base de datos del módulo de
+seguridad.
+
+Estas credenciales serán del tipo de aplicación. Esta contraseña no tiene vencimiento, pero puede
+ser modificada a demanda desde la Consola de Administración de Facturación Electrónica.
+
+Al respecto del formato, la contraseña deberá contener letras, números, un carácter especial y debe
+estar entre el rango de 13 a 25 caracteres.
+
+En el caso de que las credenciales sean correctas y el usuario exista, se generará un Token, que
+brindará el acceso para el consumo del resto de servicios del sistema de Documentos Tributarios
+Electrónicos.
+
+A continuación, se especifica el proceso de autenticación para APl.
+La vigencia del token generado mediante el Servicio de Autenticación será configurable en la
+
+plataforma de servicio, de tal forma que no será necesario realizar por cada envío de documento
+electrónico el proceso de autenticación, sino sólo una autenticación cada 24 horas.
+
+g
+
+E
+
+5 Búsqueda Envio de
+
+£ de usuario respuesta
+
+S
+
+3
+
+a
+
+¿Numero de
+J ¿Credenciales Correctas? remeros
+No Es si
+z Consulta Captura de Conteo Bloquear
+E de la respuesta SÍ de Errores y Usuario
+ES] si
+HE
+33
+x|S
+lo ¡Se genera J
+
+g
+
+2
+3 3
+s|3 ¿Usuario
+E bloqueado? Si
+2 Recepción de Ss al Envio de
+3 credenciales SÍ | respuesta
+
+SS
+= 4
+po
+pra
+E
+Envio de
+
+3 usuario y
+
+E contraseña
+
+B
+
+E
+
+S
+
+Página | 4
+Roy ok
+
+MINISTERIO DE HACIENDA
+
+2. Solución de Firma Electrónica
+
+La Administración Tributaria comparte un proyecto de firma de documentos, basado en JAVA, que
+permitirá al contribuyente firmar los documentos acordes al estándar dictado por el Ministerio de
+Hacienda. La aplicación es Standalone y no necesita conectividad hacia afuera de la infraestructura
+del contribuyente. Las opciones son las siguientes:
+
+e Proyecto Java Spring Boot.
+e Contenedor Docker (con SSL y sin SSL).
+e Servicio de Windows.
+
+2.1 Opciones para Instalación
+
+Proyecto Java Spring Boot
+
+El proyecto Java svfe-api-firmador.zip brinda a los contribuyentes la posibilidad de personalizar a
+su gusto la solución provista, para agregar cualquier posible control adicional. Este proyecto se
+ponará a disposición de los contribuyentes mediante los canales que esta Administración Tributaria
+estime convenientes.
+
+Contenedor Docker Sin SSL
+
+La segunda opción es la instalación y configuración de una imagen de Docker, lista para ejecutar,
+una vez instalado el software base de Docker, debe procederse con los siguientes pasos para
+habilitar el servicio de firmado:
+
+Lo primero que se necesita es tener instalado Docker Desktop en Windows, o en Linux, las guías
+de instalación oficiales las pueden encontrar en el siguiente link:
+
+httos://docs docker. com/engine/install/
+
+Posteriormente esta Administración Tributaria le proporcionará el archivo dte-firmador.zip,
+mediante los canales que estime convenientes. Leer las indicaciones en la carpeta temp. Se
+recomienda descomprimir el archivo en una ruta accesible ya sea en Windows y/o Linux.
+
+Luego seguir los pasos a continuación:
+
+1. Ingresar a la carpeta docker
+2. Dentro de la carpeta temp se debe agregar el certificado que fue descargado del sitio, y
+renombrarlo solo con el número de NIT del contribuyente.
+3. Una vez que se tenga el certificado en la carpeta temp, regresar a la carpeta Docker
+4 Si
+a. Se usa Windows, abrir una consola de PowerShell, e ir a la carpeta de docker y
+ejecutar el comando siguiente: docker-compose up -d
+b. Sise usa Linux, debe ubicar en la ruta donde está la carpeta y ejecutar el comando
+siguiente: docker-compose up -d.
+
+Página | 5
+MINISTERIO DE HACIENDA
+
+“Desktopidocker> docke -compose up E
+
+v20210609: Pulling from svfe/svfe-api-firmador
+Digest: sha256:1380a66502ebd0d7a55d926d4b08cff4523902373feb7f6c82b3529d4dcb7e84
+Status: Downloaded newer image for svfe/svfe-api-firmador :v20210609
+
+PS C ¡Desktopidocker>
+
+5. Confirmar que el contenedor se está ejecutando con el siguiente comando: docker ps. Se
+mostrará una respuesta como la siguiente:
+
+: Pulling fi vfe/svfe-api-Firmador
+4b08cfFf45239 73feb7f6c82b3529d4dcb7e84
+
+Digest: al
+Status: Downloaded newer imag: dor :v20210609
+
+siroberto menalDesktopidocker> docker ps
+
+PS s
+CONTAINER 10 IM COMMAND CREATED STA PORTS NAMES
+8c895c67acf1  svfe/svfe-api-firmador:v20210609 "java -cp app:app/liá€;" 30 minutes ago Up 30 minutes 0.0.0.0:8080->8013/tcp, :::8080->8013/tcp  svfe-api-firmador
+
+Contenedor Docker con SSL
+
+e Es requerido que esté instalado la herramienta Docker y ejecutándose en el servidor O
+computadora desde el cual se generará la firma, si no está instalado se puede descargar e
+instalar desde el siguiente link: https://www.docker.com/products/docker-desktop
+
+Extraer la carpeta descargada (recomendación CA)
+
+Copiar el certificado proporcionado por la Administración Tributaria en la carpeta
+RUTA_EXTRACCION_CARPETA dockeritemp, y renombrarlo sólo con el número de NIT:
+
+dows (C:) > docker > temp
+
+Nombre Fecha de modificación Tipo Tamaño
+
+E] 94502809550010.crt 18/10/2021 12:00 Certificado de seg... 6 KB
+
+Página | 6
+MINISTERIO DE HACIENDA
+
+Luego regresar a la carpeta RUTA_EXTRACCION_CARPETA docker
+
+idows (Ex) > docker >
+
+Nombre Fecha de modificación Tipo Tamaño
+1 ssl Carpeta de archivos
+mM ña da E
+1 temp Carpeta de archivos
+!) docker-compose.ymil Archivo de Origen ... 1 KB
+|] sufe-api.env Archivo ENV | KB
+
+Configuración de SSL
+Dirigirse a la sección: Ejecución del servicio con docker-compose, sino se utilizará SSL.
+
+Para utilizar SSL, debe agregar su certificado en la carpeta ssl, como se muestra a continuación:
+
+dows (C:) + docker > ssl
+
+Nombre Fecha de modificación Tipo Tamaño
+
+ES certificado. p12 18/10/2021 15:17 Intercambio de inf... 3 KB
+
+en el archivo docker-compose.yml. puede cambiar el puerto que se encuentra por defecto (443),
+por otro que desee utilizar.
+
+En el archivo svfe-api.env, se debe actualizar la variable SVFE_ARCHIVO, con el nombre del archivo
+correspondiente al certificado que se ubicó en la carpeta ssl.
+
+Página | 7
+MINISTERIO DE HACIENDA
+
+De igual forma, se debe ingresar en el valor de la variable SVFE_PASSWORD, la contraseña que
+corresponde al certificado anterior.
+
+¡HHHRHHARHAREREARE Quitar esta variable para no usar ssl HHHHHRRAHE
+SPRING_PROFILES _ACTIWE=551
+id
+
+Ejecución del servicio con docker-compose
+
+e Sino desea utilizar SSL, remueva la variable SPRING_PROFILES_ ACTIVE del archivo svfe-
+api.env
+
+A continuación, abra una consola de PowerShell y diríjase a la carpeta de docker y ejecute el
+siguiente comando:
+
+docker> docker-compose up -d
+La primera vez que se descargue la imagen se verá de la forma siguiente:
+
+a Windows PowerShell ¡SE
+
+Archivo Editar Ver Herramientas Depurar Complementos Ayuda
+
+D-e-44 DBA O ¿naa (Boo.
+
+ea A Desktopidocker> docker-compose up -d
+
+g : Pulling from svfe/svfe-api -firmador '
+: sha256:1380a66502ebd0d7a55d926d4b08cff4523902373feb7f6c82b3529d4dcb7e84
+Status: Downloaded newer image for svfe/svfe-api-firmador :v20210609
+
+ps Cc ¡Desktopidocker>
+
+Para confirmar que la imagen está arriba, utilice el siguiente comando:
+
+docker> docker ps
+
+Página | 8
+MINISTERIO DE HACIENDA
+
+v20210609: Pulling from svfe, e
+Digest: si 80466502ebdí 04! a 523902373feb7f6c82b3529d4dcb7e84
+Status: Downloaded newer image for svfe/svfe-ap1-firmador :v20210609
+
+PS C:AUsersiroberto menalDesktopidocker> docker ps
+
+CON CREATE! STATUS
+ca:
+
+El MMAND D PORTS NAMES
+67acf1  svfe/svfe-api-Firmador:w20210609 "java -cp appzapp/li8€;” 30 minutes ago Up 30 minutes 0.0.0.0:8080->8013/tcp, :::8080->8013/tcp  svfe-api-Firmador
+
+Servicio de Windows
+
+Dada las diferentes arquitecturas que pueden poseer los contribuyentes, es conveniente poder
+proveer una solución aplicable para entornos Windows. A continuación, el detalle para instalar el
+servicio de firmado, como un servicio más dentro del entorno de Windows. El certificado SSL debe
+ser el provisto por su organización:
+
+Paso L.
+
+Parametrizar variable de sistema “CERTIFICATE HOME” con la ruta en la que se ubicará el
+certificado del contribuyente.
+
+Variables de usuario para Roberto Flores
+Variable Valor
+Intellil IDEA. CaáProgram FilesWetBrains!IntelliJ IDEA 2021.2 bin;
+OneDrive CiUsers| Roberto Flores|OneDrive
+OneDriveConsumer CñUsersiRoberto Flores OneDrive
+Path CilsersiRoberto Flores AppDatal Local Microsoft WindowsÁpps;;...
+TEMP ChUsersiRoberto Flores AppDatal Local Temp
+THAD. Cálblear Roberto Flare AnoaPlatal Lara aman. dl
+
+Nombre de la variable: | CERTIFICATE. HOME |
+
+Valor de la variable: | Cacertificado |
+a Decana || mila archivo... | | Aceptar IM a
+GUMaper O e
+DriverData CiWindows! System32 Drivers DriverData
+JAVA_HOME CiáProgram Files Wavatjdk1.8.0_231
+MAVEN_HOME CaProgram Filestapache-maven-3.6,3
+NUMBER_OF_PROCES5OR5 16
+Os Windows NT $
+Nueva... T Editar... || Eliminar
+Aceptar | Cancelar
+
+Además, agregar la variable CERTIFICATE_PROFILE con el valor de ssl o nonssl según sea lo
+requerido.
+
+Página | 9
+Roy ok
+
+MINISTERIO DE HACIENDA
+
+Editar la variable del sistema
+
+Xx
+Nombre de la variable: | CERTIFICATE PROFILE |
+Valor de la variable: |
+
+Examinar Directorio...
+
+Examinar archivo...
+
+Paso 2.
+
+Colocar el certificado del contribuyente con el NIT respectivo.
+Windows (€) > certificado
+
+Nombre
+
+Fecha de modificación
+
+Tipo Tamaño
+Ez] NUMERO_NIT.crt 28/10/2021 14:16 Certificado de seg... b KB
+Paso 3.
+Descomprimir la carpeta FIRMADOR
+a
+E a
+
+/G) > IRMADOR
+
+] vansivaml
+
+7 taa Fa
+
+Paso 4.
+Mover la carpeta FIRMADOR a la ubicación deseada y ubicarse ahí mismo (para este ejemplo se
+usará CAFIRMADOR)
+
+EN Ci Windows System32lemd.exe
+
+dindows [Versión 16
+
+8.19 1
+
+as los de
+
+Paso 5.
+
+Ejecutar: WinSW exe install WinSW. xml
+
+WinSW exe start WinSW xml
+
+Página | 10
+Roy ok
+
+MINISTERIO DE HACIENDA
+
+Corroborar instalación y ejecutar: WinSW exe status WinSW xml.
+
+C:1UserslRoberto FloresiDocumentsiJAVA FINA
+
+Abrir la aplicación de servicio (modo gráfico)
+
+Jadiel Ve
+
+lBe]omno
+
+> Semvicics (locales)
+
+FIRMADOR Nombre 2 Descripción Estado Tipo deinicio. — Iniciar sesión como
+
+La
+
+¿) Detección de hardware shell Proporciona natificacionessobre eventas de hardware AutoPlay. En ecución Automático — Sistemalocal
+¿Detección SSDP Detecta dispostivos y servicios en red que usan el protocolo de detección SSDP, c...— En eecución Manual Seniciolocal
+DeviceAssociationBroker_7974 Enables apps to pair devices Manual Sistema local
+
+Descripción:
+Servicio fimador de documentos MH
+
+¿Els
+
+Directiva de extracción de taretas inteligentes Permite configurar el sistema para bloquear el escritorio de! usuaric al quiterlatarj Manual Sistema local
+
+Ch Disco virtual Proporciona semicios de administreción para discos, vclúrrenes, sistemas de archi. Manual Sistema local
+E) Dispositivo host ce UPNP Permite que los dispostivos UPNP se hospeden en el ecuipo, Sise cetiene el semi. Manual Senicio local
+2) DUL de host del Contador de vencimiento Habilite alos usuarios rzmctos y los procesas de 64-bits consultar con los contado, Menual Senicio local
+E) Docker Desktop Service En eecución Axtomático — Sistemalocal
+E) Energía Administra la drectiva de energía yla entrega ce notificaciones de dicha directiva. — En eecución Automático — Sistemalocal
+Eh Enrutamiento y acceso remoto trece servcios de enrutamiento a empresas en entornos de red de ares local y ext, Veshanilitado — Sistemalocal
+dh Estación detrabajo Crea y mantiens conexiones dered de cliente con servidores remotos con el proto... En eecución Automático — Seniciodered
+
+local
+Eh Fax disponibles en este equipo o en Manual Senicio de ted
+Sh Fle History Service 19 them toa backuo location Manual (dese... Sistemallocal
+¿) Filtro de teclado de icresoft Controla elfilrado y la asignación de palsaciór detecla Deshavilitado — Sistemalocal
+itomático
+
+¿ Google Carome tlevatror Serice (GoogleChrometlevatso
+E) Google Usdate Servicio (gupdate. Keeps your Gocgle software up to cate. Ifthi:
+dl Google Un fra
+Ex Graphi
+
+ice isdisebled orstopped, your
+¡adiscbled orstopped your
+
+icio (gupdatem) to cate.IF th
+
+Corroborar en ruta: http://1P:8113/firmardocumento/status
+
+Application is running ..!!
+
+Flujo Alterno:
+
+Paso A.
+En caso necesitar detener el servicio, ejecutar: sc stop FIRMADOR-SERVICE
+
+Paso B.
+En caso de necesitar e
+
+lete FIRMADOR-SERVICE
+e FIRMADOR-
+
+minar el servicio, ejecutar: sc dl
+lindows' E dele
+IRRECTO
+
+rt
+
+En caso de necesitar cambiar el servicio por otra versión:
+Ejecutar:
+
+Paso A -> Paso B -> Cambiar el JAR que se encuentra en la carpeta FIRMADOR -> Paso 5 -> Paso 6
+
+Página | 11
+MINISTERIO DE HACIENDA
+
+2.2 Consumo de Servicio de la Solución de Firma Electrónica
+
+Posteriormente al proceso de instalación/configuración del servicio de firmado, se detallan los
+datos para poder hacer uso del servicio de firmado de DTE:
+
+URL
+
+OREA to //localnost:8113/firmardocumento/
+[Método TA POST
+
+Parámetros:
+content Tipo de Contenido Headers String aplica IsON
+Type
+Nit del contribuyente
+nit que realizada el proceso | String String 211111111111114"
+de Firmado
+Indicador si
+activo contribuyente está Boolean Boolean True
+activo
+Contraseña de la llave
+passwordPri | privada del certificado String String "123456"
+
+de firma simple
+Documento JSON del
+
+ateJson DTE que se desealfirmar String JSON [JSON DTE]
+
+Respuesta Exitosa:
+
+status Estado resultante de la transacción String
+body Documento firmado String
+
+Ejemplos respuesta
+
+Éxito
+Código: HTTP/1.1 200 OK
+í
+
+“status”: "OK",
+
+"body": "eyJhbGciOiJSUZUXMIJ9.ewOKICAlaWRlonRpZmiYWNpb24¡IDogew0KICAglCI22XIz
+aWOulilA6IDIsSDQog|CAglmFtYmllonRUIAGICIWMSIsDGoglCAgIimNvZGlnbO0dlbmVyYWNpb24i/D
+ogImQ2Y22mZDcxLWUxZGUtNGUyNi05MZU1LTgzOWI1Y2QGxMzUyMilsDQoglCAglmZUcmFuc
+2lpc2lvbilgO¡AIMjAyMSOwMyOyNylsDQogl|CAglmhUcmFuc21pc2lvoilgO¡lAIMTAGNTEGMDMIDO
+og/HOSDQoglCJloWIlzb3liIDogew0KICAg/CJuaXQilDogljEzMTYxXNzEwOTMxMDEOliwNCiAglCA
+¡omZhY3R1cmFkb3lilDoglEzMzAwMDQI1MCIsSDGQoglCAgimbvoWJyZSIgOlAiSsm9zAWUgJQ2hpY
+2FzliwNCIiAgICAlbm9tYnJlUmVzcG9uc2FibGUIIDogikpve3VllENoaWNhcyIsDQGogl|CAglnRpcG9
+Eb2NSZXNwb25zYWJsZSIgOiAxXLAOKICAg/|CJub1RlboGVmb25vIiA6ICIyMjk50Dg3NylsDQogiCAg
+ImNvendlb0VsZWNOcm9uaWNvliAGICIKYXZpZEBKYXZpZC5jb20IDQGoglHOSDQ0glCIkZXRhbGx
+[RFRFIA6IFsgewOKICAgICJub0lO0ZWO¡DogMSwNCiAglCAIY29kaWdvR2VuZXIhY2lvbilgO ¡AIN ml
+3Mj¡cyNGMtYzg1Y¡I0OMMOwLWIZYWMtZjkSYmVjY¡RINDInliwNCiAglICAidGlwbORvYyIgO¡AIMDE¡
+DQGoglHOsIHsNCiAglICAlom9JAGVHAGIDISDQOQICAgImNvZGlnb0dlbmVyYWNpb24iIDogliYyN
+
+Página | 12
+MINISTERIO DE HACIENDA
+
+TgzNWJIkLTE¡MzINDUIZS1iZWVmLWJIMTkxMjg3YzhimMCIsDQoglCAgInRpcG9Eb2MilDogljAxlg
+OKICB9IFOSDGOgICItb3Rpam8ilDogew0KICAgICIMSW5pY2WIAGICIyMDIxLTAzZLTISliwNCiAg]l
+CAiZkZpbilgO¡AIMjAyMSOwMy0O0yNylINCiAgfQOKfQ.mXEP-
+a2x9KMFgWnfnasq97GUYUZFmIVsDaEvXTNgDI7H4lAKgThLYriSMxw7dFD2aHGKrokc65eyL3hly
+UazDJaPh6_SB9z7XU8VoTDtpDS3XJ_rh_R106YN30_HcPWI-
+4sgeM8FO¡CuyBYAWkYPupUNLaluE27ZRfQYGxaX3nU1_Ellu47j4RamkOs_b6A9TVCIZOEOKND5
+tk_8UQE_-embqOrgaDUjwB3qgmFQlgaJDgC_JGe_P289iMnxLK_CN-
+afkHOgehi2XYtHRPkQZC7XicO9wRlawyvín!7N4yELHBk-
+WH_aWvp0yc8Xv30olgDfzk0vqH9qGtY6upaB-w-g"
+
+)
+
+Error
+
+í
+"status": "ERROR",
+"body": (
+"codigo": "809",
+“mensaje”: |
+"Formato de NIT no valido - (9000000000000007Y
+]
+)
+)
+
+3. Flujo para Recepción de Documentos
+
+El proceso de envío de los documentos se describe a continuación:
+
+E ES id dsd
+
+gritan) Ñ
+
+romartrdcomacoro
+
+vaidatetrtobte)
+
+Ea)
+
+1ecapro GRAO)
+
+Página | 13
+
+Roy ok
+
+MINISTERIO DE HACIENDA
+
+Del diagrama anterior es importante mencionar:
+
+e  Lageneración del token de seguridad es una vez cada N minutos. Para el caso, en ambiente
+de pruebas será de 48 hrs y para producción será de 24 hrs.
+
+e Posteriormente, el emisor deberá enviar la solicitud de recepción al WS de Recepción y
+desde el mismo se realizará la primera verificación de firma electrónica, si todo está
+correcto, se continuará con el proceso.
+
+e Una vez verificada la firma se procede con el envío del documento para su revisión de
+estructura y datos.
+
+e Si el documento cumple con todos los requisitos, la administración emite un sello de
+recepción para el documento, que es la confirmación para el contribuyente emisor que el
+documento ha sido recibido con éxito.
+
+3.1 Holguras en la transmisión
+
+Se recibirán documentos con un día posterior a la fecha de transmisión, exceptuando el último día
+del periodo tributario, donde solo se permitirá 30 min. de diferencia hacia adelante en referencia a
+la fecha y hora del servicio de recepción del Ministerio de Hacienda.
+
+3.2 Proceso de Contingencia
+
+La Administración Tributaria ha definido 3 pasos que conforman el proceso para envió de los DTE
+emitidos en contingencia, los cuáles se detallan a continuación:
+
+Página | 14
+MINISTERIO DE HACIENDA
+
+Diagrama de Secuencia Proceso Contingencia
+
+SERVICIO
+RECEPCION
+
+SERVICIO
+VALIDACION
+
+notifyContingency()
+
+a
+
+verifyIsonContingency(
+e /
+
+generateEventContingency()
+
+authorizeContingency()
+
+o AS
+notifyEventContingency()
+ooo ooo
+approveContingencyBatchProcess()
+sendContingencyLot()
+——s,
+processLot()
+«——
+validateContingencyLot()
+save£ProcessLot()
+A validateContingencyLotResponse()
+
+contengencyLotResponse()
+
+X
+
+Es importante explicar cómo operará la contingencia:
+
+1. Sí el emisor entra en contingencia por alguna razón, al reestablecer la conexión, deberá
+hacer lo siguiente:
+
+a. Generar el evento de contingencia informando los DTE emitidos en el periodo de
+la contingencia.
+b. Enviar el lote con los DTE informados en el literal anterior.
+3.2.1 Funcionamiento Operativo Evento de Contingencia
+El envío de los DTE emitidos en contingencia e informados mediante el evento respectivo se realiza
+
+mediante un servicio de lotes donde las respuestas NO son inmediatas, dependiendo de la carga
+de la plataforma, un lote de 100 DTE (que es el máximo permitido) se procesa en un promedio de
+
+Página | 15
+Roy ok
+
+MINISTERIO DE HACIENDA
+
+2 a 3 minutos. Cuando el contribuyente envíe el lote, la plataforma de Documentos Tributarios
+Electrónicos dará una respuesta de lote recibido y un código de lote asociado:
+
+í
+“versionApp”: 1,
+"estado" : "RECIBIDO",
+"fhProcesamiento" : "19/10/2021 08:39:47",
+"descripcionMsg" : "LOTE RECIBIDO”,
+"ambiente" : "90",
+“clasificaMsg" : "10",
+"codigoLote” : "43308218-/CEE-4C66-9BCO-F/AGDAEGIABD”,
+“¡aEnvio” : *91512B3D-2534-4009-817B-2522B8154993",
+"codigoMsg” : "001",
+“version” : 1
+
+)
+
+Luego, con ese código de lote el contribuyente consulta el estado del lote (puede enviar cada N
+minutos la consulta para verificar el estado), y cuando estén procesados los Documentos
+Tributarios Electrónicos, regresará un JSON conteniendo el resultado del procesamiento del lote
+con el detalle para cada DTE y su correspondiente Sello de recepción. En este Manual se especifica
+la URL y forma de invocación del servicio de consulta de lote.
+
+3.3 Política de Reintentos
+
+Los contribuyentes emisores implementarán una política de reintentos en cada proceso de envío
+de DTE, respetando las siguientes reglas:
+
+1. Si al momento de enviar un DTE, el servicio de Documentos Tributarios Electrónicos no
+responde después de 8 segundos.
+a. Enviar consulta de estado sobre el documento transmitido, para verificar si no ha
+sido recibido.
+b. Sino ha sido recibido, enviar una nueva solicitud para recepción. Repetir hasta
+obtener la respuesta exitosa, un máximo de 2 veces.
+
+2. Si al momento de enviar un DTE, el servicio del emisor falla y no procesa la respuesta del
+servicio de recepción.
+a. Enviar consulta de estado sobre el documento transmitido, para verificar si no ha
+sido recibido.
+b. Sino ha sido recibido, enviar una nueva solicitud para recepción. Repetir hasta
+obtener la respuesta exitosa, un máximo de 2 veces.
+
+Página | 16
+Roy ok
+
+MINISTERIO DE HACIENDA
+
+EMISOR eFacturaSV
+
+reguest (/reception/dte)
+
+response (fail response)
+
+request (/reception/dte) - 3
+
+response (fail response)
+A ts MA
+
+Política de consulta de estado de DTE
+
+request (/reception/consultadte)
+
+response
+
+Si, respuesta falliada (no response), se inicia proceso de contigencia
+
+El umbral de espera está configurando inicialmente en 8 segundos, previo a las optimizaciones de
+infraestructura.
+
+Si después de aplicar la política de reintentos los documentos no pueden ser recibidos por el
+Ministerio de Hacienda, y/o procesadas las respuestas por el sistema del emisor, se inicia
+operaciones en modalidad de contingencia.
+
+3,4 Servicio de Recepción por Lotes
+
+l Ambiente de pruebas
+
+Para el procesamiento de la información de lotes en ambiente de pruebas, el máximo de DTE por
+lote será de 100 documentos, en un máximo de hasta 300 lotes.
+
+Los que serán procesados, cada lote de 100 DTE en un promedio de 2 a 3 minutos cada uno. El
+horario de recepción de lotes será de 08:00 am a 05:00 pm.
+
+ii Ambiente productivo
+
+Página | 17
+*oyo
+
+MINISTERIO DE HACIENDA
+
+Para el procesamiento de lotes de documentos en ambiente productivo, el máximo de DTE por
+lote será de 100 documentos, en un máximo de 400 lotes.
+
+Los que serán procesados, cada lote de 100 DTE en un promedio de 1 a 3 minutos cada uno. El
+horario de recepción será de 10:00 pm a 05:00 am.
+
+iii, Diferencia para emisión de DTE en Contingencia
+
+El evento de contingencia hace uso del servicio de lotes y el servicio de consulta de lotes para la
+transmisión y recepción de los DTE, los horarios para el envío de lotes de DTE por contingencia
+están abiertos 24 horas del día 365 días del año.
+
+La restricción de horarios para la transmisión de lotes de documentos está establecida para los
+contribuyentes que posean facturación cíclica.
+
+4. APIS - Sistema Transmisión de DTE
+
+A continuación, se detallan los aspectos necesarios para integración y consumo de los servicios de
+documentos tributarios electrónicos. Los servicios de documentos tributarios electrónicos son del
+tipo REST.
+
+4.1 Servicio de Autenticación
+
+El servicio de autenticación es el componente que habilitará al contribuyente emisor a obtener, con
+sus credenciales de acceso, un token de seguridad que le habilitará para el consumo del resto de
+servicios dentro del módulo de recepción de la plataforma de documentos tributarios electrónicos.
+Sin la generación de dicho token, es imposible consumir los servicios de recepción.
+
+URL
+httos://apitest ates.mh.gob.sv/seguridad/auth
+
+[UREPROD IA httos://api ates.mh.gob.sv/seguridad/autn
+
+POST
+Parámetros
+content Tipo de Headers | Strin application/x-www-form-urlencoded
+Type Contenido 3 Pp
+Agente de
+User-Agent ysuano oESeS Headers | String
+donde se origina
+la petición
+user Usuario Body String facturadorO1
+pwa Contraseña Body String Password del usuario asignado
+Respuesta:
+status estado de la petición String
+body.user usuario que solicita acceso String
+
+Página | 18
+Roy ok
+
+MINISTERIO DE HACIENDA
+
+body.token token/clave de acceso para consumo de servicio de String
+recepción
+
+body.rol nombre nombre del rol asignado String
+body.rol codigo código del rol asignado String
+body.roldescripcion | descripción del rol asignado String
+boay.rolrolSuperior | Rol padre del rol asignado al usuario Object
+body.rol nivel nivel de rol asignado String
+body.rolactivo Estado del rol devuelto para el usuario Boolean
+body.rol permisos permisos asignados al rol Array
+tokenType Tipo de token utilizado String
+roles listado de roles asignado al usuario Array
+
+Ejemplos respuesta
+
+Éxito
+Código: HTTP/1.1 200 OK
+í
+
+“status”: "OK",
+
+"body": (
+
+"user": "10101010101010”,
+
+"token": "Bearer eyJnbGciOJIUZUxMiJ9.eyJzaWliOilxMDEwMTAxMDEwMTAxMCIsImFldG
+avemldaWVzljoiVXN1YXJpbyIlsimihaCi6MTYXMDO2NTM1NSwiZXhwljoxNjEwNTUxNzU1fQ.AV1
+U-5e7JwONjEZPI5pbpgchP8YB3u5SakAoyidbXyjShiFKurXzMgw6pon6-
+[QRbheWQzZ4Srs6hy0pOmLsNpg”,
+
+“rol 4
+
+"nombre": “Usuario”,
+"codigo": "ROLE_USER”,
+"descripcion": null,
+“rolSuperior”: null,
+“nivel”: null,
+"activo": null,
+“permisos”: null
+
+),
+
+“roles”: [
+
+"ROLE_USER”
+]
+
+"tokenType": "Bearer"
+
+J
+J
+
+Error
+
+(
+“status”: "ERROR",
+“error”: "Unauthorizeo”,
+"message": "Usuario no valido"
+
+)
+
+Página | 19
+
+El servicio de autorización se deberá ejecutar una vez en el día o según sea el modelo de facturación
+
+del contribuyente.
+
+El token es necesario en el uso de cada servicio pues es la llave que permite la ejecución de
+
+MINISTERIO DE HACIENDA
+
+los servicios de documentos tributarios electrónicos.
+
+Código de Respuesta
+
+200 Status: ok
+Body: Se recupera el JSON Web Token
+
+200 Status: Error
+Body: Se presenta un mensaje describiendo el posible fallo.
+
+100 ERROR USUARIO INCORRECTO
+
+101 ERROR CONTACTAR CON SOPORTE TÉCNICO
+
+102 ERROR NO SE PUDO AUTENTICAR EL USUARIO
+
+103 CONTRASEÑA EXPIRADA, POR FAVOR ACTUALIZAR
+
+104 ERROR EN ACTUALIZACIÓN DE CONTRASEÑA.
+
+los LA NUEVA CONTRASEÑA Y LA CONFIRMACIÓN DEBE SER LA
+MISMA
+
+106 CREDENCIALES INVÁLIDAS
+
+107 ERROR TOKEN INVÁLIDO
+
+108 ERROR TOKEN ES REQUERIDO
+
+109 ERROR EN GENERACION DE TOKEN
+
+110 ERROR EN TIPO REQUERIDO
+
+111 ERROR EN PARÁMETRO SOLICITADO
+
+4.2 Servicio de Recepción
+
+La recepción de documentos puede ser procesada uno a uno o en lote:
+
+4.2.1 Modelo Uno a uno
+
+URL
+
+PURLTESTIITA httos://apitest dtes.mh.gob.sv/fesv/recepcionate
+[UREPROD A httos://api ates.mh.gob.sv/fesv/recepciondte
+[Mt dAA POST
+
+Página | 20
+
+Parámetros
+
+MINISTERIO DE HACIENDA
+
+Authorization Veis » de Headers String veis SBSIdO por el
+autorización servicio de autenticación.
+User-Agent Agente de usuario. — Headers String Agente de A esas
+donde se origina la petición.
+content-Type | Tipo de Contenido | Headers String applcidomiISON
+ambiente Código de Body String Ambiente: 00" Prueba; “01
+ambiente. Producción.
+Identificador de .
+. . . Campo correlativo a
+¡dEnvio envío de la Body Integer . Y
+0% discreción.
+transmisión.
+Versión del JSON Debe coincidir con la versión
+version del DTE Body Integer del de la sección de
+: Identificación del DTE.
+Debe coincidir con el tipo de
+tipoDte Tipo de DTE. Body String DTE de la sección de
+Identificación del DTE.
+Documento Tributario
+documento DTE. Body String Electrónico firmado a
+transmitir.
+codigoGenera Código o de Body Sting Código de Generación del
+cion Generación documento a transmitir.
+Respuesta
+version Versión de Respuesta Integer
+ambiente Ambiente de Ejecución String
+versionApp Versión de aplicación Integer
+estado Estado resultando del procesamiento String
+codigoGeneracion | Código de generación de DTE String
+selloRecibido Sello de Recepción del DTE Aceptado String
+fhProcesamiento Fecha-Hora de procesamiento (da/MM/yyyy HH:mm:ss String
+clasificaMsg Código de clasificación de mensaje
+codigoMsg Código de Mensaje String
+descripcionMsg Descripción del Mensaje String
+Observaciones Detalle de observaciones de validación del DTE Array [String]
+
+Página | 21
+
+MINISTERIO DE HACIENDA
+
+Ejemplos de Respuesta
+
+Éxito
+Código: HTTP/1.1 200 OK — Sin Observaciones
+
+í
+“version”: 2,
+"ambiente" : "90",
+“versionApp" : 2,
+"estado" : “PROCESADO”,
+"codigoGeneracion” : "FF84E5DB-79C5-42CE-B415-ECS510C53EFB5",
+"selloRecibido" : "20219E9D4DC0292F4681AD759BOBOF5CA99DC23G",
+"fhProcesamiento" : "12/04/2021 13:29:04",
+“clasificaMsg" : "10",
+"codigoMsg”: "001",
+"gescripcionMsg": “RECIBIDO”,
+"observaciones": [""""]
+
+NOTA: El servicio de recepción tendrá como parte de su respuesta el campo observaciones, donde
+para algunos campos, detallará los inconvenientes con los datos enviados, lo que no afecta
+directamente a la recepción del DTE.
+
+Código: HTTP/1.1 200 OK-— Con Observaciones
+
+(
+“version” : 2,
+"ambiente" : "00",
+“versionApp" : 2,
+"estado" : “PROCESADO”,
+"codigoGeneracion” : "FF84E5DB-79C5-42CE-B415-ECS10C53EFB5”,
+"selloRecibido” : "20219E9D4DC0292F4681AD759BOBOF5CA99DC23GC",
+"fhProcesamiento" : "12/04/2021 13:29:04”,
+“clasificaMsg" : "10",
+"codigoMsg'” : "002",
+"descripcionMsg" : "RECIBIDO CON OBSERVACIONES”,
+"observaciones" : |
+"lresumen.totalVentaGra] CALCULO INCORRECTO" ]
+y
+
+Página | 22
+
+MINISTERIO DE HACIENDA
+
+Error
+Código: HTTP/1.1 400 Bad Request
+
+(
+“version”: 2,
+"ambiente": "00",
+“versionApp": 2,
+"estado": "RECHAZADO",
+"codigoGeneracion": "CF89B21E-4268-4711-8320-8A54866B1763",
+"selloRecibido”: null,
+“fhProcesamiento”: null,
+"clasificaMsg” : null,
+"codigoMsg”: "ERROR_CODIGO”,
+“descripcionMsg": "ERROR_DESCRIPCION!”,
+“observaciones”: null
+
+)
+
+4.2.2 Modelo en Lote
+
+URL
+
+[URLTES TIA httos://apitestdtes mh.gob.sv/fesv/recepcionlote/
+FURUPROD O httos://api otes.mh.gob.sv/fesv/recepcionlote/
+[Méto dE POST
+
+Parámetros:
+o Token de | Header . Token obtenido por el servicio de
+Authorization o String OA
+autorización S autenticación.
+User-Agent Agente de | Header String Agente de usuario desde donde se
+usuario. S origina la petición.
+content-type Tipo de | Mieader Strin application/JSON
+y? contenido S 3 Pp
+ambiente Código de Body String Ambiente: 00 Prueba; 01
+ambiente. Producción.
+AO! Identificador de Bod Strin Debe cumplir con estándar VUID v4,
+control de envió y 9 todo en MAYUSCULA.
+Versión del
+version JSON Schema | Body Integer
+de Lotes.
+nitemisor NIT del emisor. Body String NIT del emisor, sin guiones
+documentos | Lista de DTE Body Array[Strin Lista de Documentos Tributarios
+gl Electrónicos Firmados a procesar
+
+Página | 23
+
+MINISTERIO DE HACIENDA
+
+Respuesta:
+
+Campo Descripción Tipo Dato
+version Versión de Respuesta Integer
+ambiente Ambiente de Ejecución String
+versionApp Versión de aplicación Integer
+estado Estado de la respuesta String
+¡dEnviO ID específico del envió de solicitud String
+fiProcesamiento | Fecha/Hora de procesamiento ad/MM/yyyy HH:mm:ss String
+codigoLote Código de generación del lote String
+codigoMsg Código de Mensaje String
+descripcionMsg Descripción del Mensaje String
+
+Éxito
+
+Código: HTTP/1.1 200 OK
+JSON devuelto ej.:
+
+(
+“version”: 2,
+"ambiente": "00",
+“versionApp": 2,
+"¡dEnvio": "CF89B21E-4268-4711-832D-8A54866B1763",
+"fhProcesamiento": "11/08/2020 09:50.52”,
+"codigoLote": "CF89B21E-4268-4711-832D-8A54866B1763",
+"codigoMsg”: "001",
+"descripcionMsg": "LOTE RECIBIDO, VALIDADO Y PROCESADO"
+
+Página | 24
+
+MINISTERIO DE HACIENDA
+
+Códigos de Respuesta Servicio de Recepción
+
+CLASIFICACION DE MENSAJES DE ERROR - SERVICIO DE RECEPCION
+
+10 ¡Recepcion exitosa 001 RECIBIDO
+11 Errores de datos del DTE 002 RECIBIDO CON OBSERVACIONES
+12 Errores en los datos del emisor 003 [campo] VALOR NO VALIDO
+13 Errores en los datos del receptor 004 [campo] YA EXISTE UN REGISTRO CON ESE VALOR
+14 Errores en los datos de Doc. Relacionandos 005 [campo] DEBE PROPORCIONAR UN VALOR
+15 Errores en los datos de Items 006 [campo] FORMATO NO VALIDO
+16 Errores en los datos de Resumen 007 [campo] VALOR NO ES PERMITIDO
+17 Errores en los datos de Extension 008 [campo] NO CORRESPONDE A CONTRIBUYENTE
+18 Errores en los datos de Apendice 009 [campo] NIT CONTRIBUYENTE NO EXISTE
+19 Errores relacionados a seguridad 010 [campo] CONTRIBUYENTE NO SE ENCUENTRA ACTIVO
+20 Errores realcionados a la firma electronica 011 [campo] NO ES CONTRIBUYENTE IVA
+21 Errores en los datos de Venta a Terceros 012 [campo] NO EXISTE EVENTO DE CONTINGENCIA
+98 Errores no cumplen esquema 013 [campo] NO ESTA ENTRE PERIODO REPORTADO EN EVENTO DE CONTINGENCIA
+99 Errores generales del servicio 014 [campo] NO EXISTE UN REGISTRO CON ESTE DATO
+015 [campo] DOCUMENTO SE ENCUENTA ANULADO
+016 [campo] MONTO DE OPERACIÓN ES MAYOR AL DOCUMENTO RELACIONADO
+017 [campo] FECHA NO ES CORRECTA
+015 [campo] FECHA FUERA DE PLAZO PERMITIDO
+019 [campo] ERROR EN CORRELATIVO
+020 [campo] CALCULO INCORRECTO
+021 [campo] NO SE PUEDE VALIDAR CAMPO
+022 [firma] SERVICIO DE VALIDACION DE FIRMA NO DISPONIBLE
+023 [campo] FALTAN DATOS PARA VALIDAR INFORMACION
+024 [campo] VALOR EN CAMPO NO APLICA
+025 [campo] VALORES REPETIDOS
+026 [campo] NO SE PERMITEN VALORES DIFERENTES
+027 [campo] DATO NO COINCIDE CON DTE
+028 [campo] DTE ESTA RELACIONADO CON OTRO DTE
+096 DOCUMENTO NO CUMPLE ESQUEMA JSON
+097 NO SE HA PROPORCIONADO DATOS PARA VALIDAR
+098 DATOS NO CUMPLEN ESTANDAR JSON
+099 ERROR NO CATALOGADO
+100 ERROR USUARIO INCORRECTO
+101 ERROR CONTACTAR CON SOPORTE TÉCNICO
+102 ERROR NO SE PUDO AUTENTICAR EL USUARIO
+103 CONTRASEÑA EXPIRADA, POR FAVOR ACTUALIZAR /auth/update-password
+104 ERROR EN ACTUALIZACIÓN DE CONTRASEÑA: [campo]
+105 LA NUEVA CONTRASEÑA Y LA CONFIRMACIÓN DEBE SER LA MISMA
+106 CREDENCIALES INVÁLIDAS
+107 ERROR TOKEN INVÁLIDO: [campo]
+108 ERROR TOKEN ES REQUERIDO
+109 ERROR EN GENERACION DE TOKEN: [campo]
+110 ERROR EN TIPO REQUERIDO: [campo]
+111 ERROR EN PARÁMETRO SOLICITADO: [campo]
+
+4.3 Servicio de Consulta
+
+4.3.1 Consulta de DTE
+
+URL
+
+PURETESTIA httos://apitest dtes.mh.gob.sv/fesv/recepcion/consultadte/
+
+FUREPROD O httos://api.dtes.mh.gob.sv/fesv/recepcion/consultadte/
+
+[MétodA POST
+
+Página | 25
+MINISTERIO DE HACIENDA
+
+Parámetros
+
+Token de Token obtenido por el servicio de
+Authorization autorizació | Headers | String A P
+” autenticación.
+User-Agent Agente de Headers | String Agente de usuario desde donde se
+usuario. origina la petición.
+Tipo de . o
+content-type contenido Headers | String application/JSON
+nitemisor NT del Body String NIT del emisor, sin guiones
+emisor.
+tote ds ss Body String Tipo de DTE a buscar
+codigoGeneracion So de Body String ESAS os ESSE: e
+Generación documento a buscar
+Respuesta
+version Versión de Respuesta Integer
+ambiente Ambiente de Ejecución String
+versionApp Versión de aplicación Integer
+estado Estado resultando del procesamiento String
+codigoGeneracion | Código de generación de DTE String
+selloRecibido Sello de Recepción del DTE Aceptado String
+Procesamiento recha-nio:s de procesamiento (dd/MM/yyyy Sting
+HH:mm:ss
+clasificaMsg Código de clasificación de mensaje
+codigoMsg Código de Mensaje String
+descripcionMsg Descripción del Mensaje String
+observaciones Detalle de observaciones en campos que no Array [Strina]
+afectan el proceso de recepción del DTE y 9
+
+Ejemplos respuesta
+Exito
+
+Código: HTTP/1.1 200 OK
+
+(
+“version”: 2,
+"ambiente" : "00",
+“versionApp" : 2,
+"estado" :
+
+"selloRecibido” :
+
+"fmProcesamiento"
+“clasificaMsg" : "10",
+"codigoMsg”: "001",
+
+"PROCESADO”,
+"codigoGeneracion” :
+"20219E9D4DC0292F4681AD759BOBOF5CA99DC23C",
+12/04/2021 13:29:04",
+
+"FF84E£DDB-79C5-42CE-B415-ECS1OCOSEFBD”,
+
+"gescripcionMsg": “RECIBIDO”,
+
+"observaciones": [""""
+
+=—
+
+Página | 26
+
+Error
+
+MINISTERIO DE HACIENDA
+
+Código: HTTP/1.1 400 Bad Request
+
+(
+
+“version”: 2,
+
+"ambiente": “90”,
+“versionApp": 2,
+"estado": "RECHAZADO”,
+
+"codigoGeneracion": "CF89B21E-4268-4711-8320-8A54866B1763",
+
+"selloRecibido”: null,
+
+"fhProcesamiento": "12/04/2021 13:29:04”,
+"clasificaMsg” : null,
+
+"codigoMsg”: "ERROR_CODIGO”,
+“descripcionMsg": "ERROR_DESCRIPCION!”,
+“observaciones”: null
+
+=—
+
+4.3.2 Consulta de Lote DTE
+
+[a
+
+RL
+
+Parámetros
+
+httos://apitest ates.mh.gob .sv/fesv/recepcion/consultadtelote/fcodigoLote)
+
+httos://api.dtes mh.gob.sv/fesv/recepcion/consultadtelote/fcodigoLote)
+
+GET
+
+Authorizatio Token de . Token obtenido por el servicio de
+o Headers | String A
+
+n autorización autenticación.
+
+User-Agent Agente de usuario. Headers | String Agente de Usuario EREBAS
+origina la petición.
+
+contenttype | Tipo de contenido Headers | String application/JSON
+
+codigoLote Código de Lote Path String Código de lote asignado durante el
+proceso de transmisión
+
+Respuesta:
+procesados Resultado de DIE procesados exitosamente. JSON Array
+rechazados Resultado de DTE rechazados JSON Array
+
+Página | 27
+
+Éxito
+
+MINISTERIO DE HACIENDA
+
+(
+
+“procesados”: |
+
+(
+
+J
+]
+
+"version": 2,
+
+"ambiente": "90",
+
+"versionApp": 2,
+
+“estado”: “PROCESADO”,
+
+"codigoGeneracion": "C3AF84A7-8BB8-4867-ABE4-F40BB3AE3052”,
+"selloRecibido": "2021606AB37149A642B3921AD9D9A4A4F934QDHB",
+"fhProcesamiento”: "14/10/2021 10:36:15",
+
+“clasificaMsg": "10",
+
+"codigoMsg”: "001",
+
+"descripcionMsg": "RECIBIDO Y PROCESADO”,
+
+"observaciones": []
+
+“version”: 2,
+
+"ambiente": "00",
+
+"versionApp": 2,
+
+"estado": "PROCESADO",
+
+"codigoGeneracion”: "53DC5B96-FBF9-4F86-BB15-0B6808188758",
+"selloRecibido”: "20211F7FE700F5E74FDCB3AEB12C769A2AFFAABA”,
+"fhProcesamiento": "14/10/2021 10:36:15",
+
+“clasificaMsg": "10",
+
+"codigoMsg”: "001",
+
+"descripcionMsg": "RECIBIDO Y PROCESADO”,
+
+“observaciones”: []
+
+"version": 2,
+
+"ambiente": "90",
+
+"versionApp": 2,
+
+“estado”: “PROCESADO”,
+
+"codigoGeneracion": "3SEB5AOFC-4562-4C1D-A61B-B1FC17F30678",
+"selloRecibido": "20210922534849CB436/8D5806D92FABADO7F68F",
+"fhProcesamiento”: *14/10/2021 10:36:16",
+
+“clasificaMsg": "10",
+
+"codigoMsg”: "001",
+
+"descripcionMsg": "RECIBIDO Y PROCESADO”,
+
+"observaciones": []
+
+"rechazados": |
+
+(
+
+"version": 2,
+
+"ambiente": "90",
+
+"versionApp": 2,
+
+“estado”: “RECHAZADO”,
+
+"codigoGeneracion": "3EB5AOFC-4562-4C1D-A61B-B1FC17F30A30",
+
+Página | 28
+
+MINISTERIO DE HACIENDA
+
+"selloRecibido”: null,
+
+"fhProcesamiento": *14/10/2021 10:36:16",
+"clasificaMsg": "20",
+
+"codigoMsg”: "802",
+
+"descripcionMsg”: "No valido”,
+"observaciones": []
+
+"version": 2,
+
+"ambiente": "90",
+
+"versionApp": 2,
+
+"estado": "RECHAZADO",
+"codigoGeneracion”: "SEBBADFC-4562-4C1D-A61B-B1FC17F30D25”,
+"selloRecibido”: null,
+
+"fhProcesamiento”: *14/10/2021 10:36:16",
+"clasificaMsg": "20",
+
+"codigoMsg”: "802",
+
+"descripcionMsg”: "No valido”,
+"observaciones": []
+
+4.4 Servicio de envío para Evento Contingencia
+
+El servicio de contingencia es el componente que habilitará al contribuyente emisor poder
+transmitir DTE que hayan sido generados durante un evento de fuerza mayor que imposibllite la
+transmisión de dichos documentos para su verificación; después de haber transmitido el Evento de
+Contingencia deberá hacer uso de los servicios uno a uno o por lote para transmitir los documentos
+generados en contingencia.
+
+URL
+
+URLTESTIIA httos://apitest dtes.mh.gob.sv/fesv/contingencia
+[UREPROD A httos://api ates.mh.gob.sv/fesv/contingencia
+[Mt dAA POST
+
+Parámetros:
+
+Token obtenido por el
+servicio de autenticación.
+Agente de usuario desde
+
+Authorization Token de autorización  Headers String
+
+User-Agent Agente de usuario. Headers String donde se origina la
+petición.
+
+content-Type | Tipo de Contenido Headers String Application/JSON
+
+nit NIT del emisor. Body String MU Sis 5
+guiones
+JSON de Evento de
+
+documento Evento. Body String Contingencia firmado a
+transmitir.
+
+Página | 29
+
+MINISTERIO DE HACIENDA
+
+Respuesta:
+
+Campo descriptivo, que indica si recibió o se rechazó
+
+estado e
+
+solicitud
+fechaHora Fecha y hora en que se efectuó el proceso
+mensaje Mensaje con detalle del resultado de la operación
+
+En Caso es recibido, se indica un código alfanumérico
+indicando su respectivo número de registro
+
+Si existieran observaciones se presenta un objeto con un
+arreglo del detalle de estas.
+
+selloRecibido
+
+observaciones
+
+Ejemplos respuesta
+
+Éxito
+Código: HTTP/1.1 200 OK
+
+String
+
+String
+String
+
+String
+
+Array[String]
+
+í
+“estado”: "RECIBIDO",
+"fechaHora": "23/03/2021 10:09:18",
+"mensaje": "Documento recibido”,
+"seloRecibido": "202197AF602319654B9C95A5ECA4ODAFISAEFBDN",
+"observaciones": []
+
+)
+Error
+í
+"estado": “RECHAZADO”,
+"fechaHora": "23/03/2021 09:59:12",
+"mensaje": "Validaciones no superadas”,
+"selloRecibido”: null,
+“observaciones”: |
+"OBSERVACION 1",
+"OBSERVACION N”
+]
+)
+
+4.5 Servicio de envío para Evento de Invalidación
+
+El servicio de invalidación es el componente que habilitará al contribuyente emisor para trasmitir la
+
+inactivación de un DTE recibido previamente.
+
+URL
+
+FURLTESTIA nttos://apitest.dtes.mh.gob.sv/fesv/anulardte
+[UREPROD IA nttos://api.dtes.mh.gob.sv/fesv/anulardte
+[Métod A POST
+
+Página | 30
+MINISTERIO DE HACIENDA
+
+Parámetros:
+Authorization Token de autorización  Headers String Token obtenido por el
+servicio de autenticación.
+Agente de usuario desde
+User-Agent Agente de usuario. Headers String donde se origina la
+petición.
+DES Tipo de Contenido Headers String application JSON
+. cas . . Ambiente: “00” Prueba:
+ambiente Código de ambiente. Booy String "01" Producción.
+Envia Identificador de envío Body Integer Campo correlativo a
+de la transmisión. discreción.
+version Versión del JSON. Body Integer IN del IS ON TEE
+Invalidación.
+JSON Evento de
+documento Evento. Body String Invalidación firmado a
+transmitir.
+Respuesta:
+version Versión de Respuesta Integer
+ambiente Ambiente de Ejecución String
+versionApp Versión de aplicación Integer
+selloRecibido Sello de Recepción del DTE String
+Procesamiento rechallciora de procesamiento (dda/MM/yyyy Sting
+HH:mm:ss
+codigoGeneracion | Código de generación de DTE String
+codigoMsg Código de Mensaje String
+descripcionMsg Descripción del Mensaje String
+Ejemplos respuesta
+Éxito
+Código: HTTP/1.1 200 OK
+(
+“version”: 2,
+
+"ambiente": "00",
+
+“versionApp”: 1,
+
+"estado": "PROCESADO”,
+
+"codigoGeneracion": * CF89B21E-4268-4711-8320-8A54866B1763",
+"seloRecibido": "20206DFFF66F78D24/F7A66D155E68FC7318UADD”,
+"fhProcesamiento": "11/08/2020 09:50.52",
+
+"codigoMsg”: "001",
+
+"descripcionMsg”: "Invalidación Recibida y Procesada”,
+“observaciones”: null
+
+Página | 31
+Roy ok
+
+MINISTERIO DE HACIENDA
+
+Error
+
+(
+“version”: 2,
+"ambiente": "00",
+“versionApp”: 1,
+"estado": "RECHAZADO",
+"codigoGeneracion": "CF89B21E-4268-4711-8320-8A54866B1763",
+"selloRecibido”: null,
+“fhProcesamiento”: null,
+"codigoMsg”: "ERROR_CODIGO”,
+“descripcionMsg": "ERROR_DESCRIPCION!”,
+"observaciones": |
+"Observación 1",
+"Observación N"
+
+5. Código QR
+
+En las versiones electrónicas interpretadas y legibles del DTE, se requiere que se integre un
+parámetro de consulta dentro de un Código GR. Los parámetros para cada ambiente son los
+siguientes:
+
+URL
+
+httos://admin factura.gob.sv/consultaPublica?ambiente=f(ambiente) ScodGen=(cod_generacion)
+SfechaEmi=ffechaEmi)
+
+Parámetro Descripción Comentario
+ambiente Código de ambiente Ambiente: *00” Prueba; “01” Producción.
+codGen Código de Generación Código de generación del DTE a consultar
+fechaEmi Fecha de Generación Fecha de generación del DIE
+
+Ejemplo:
+
+httos://admin factura.gob.sv/consultaPublica?ambiente=008codGen=00000000-0000-0000-
+0000-0000000000008fechaEmi=2022-05-01
+
+Página | 32
+

@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 font-sans antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+  
+  /* Prevent pull-to-refresh on mobile */
+  html {
+    overscroll-behavior: none;
+  }
+}
+
+/* Safe area for devices with notch */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+/* Touch-friendly inputs */
+@layer components {
+  input, select, textarea, button {
+    @apply touch-manipulation;
+  }
+  
+  /* Larger touch targets on mobile */
+  @media (max-width: 768px) {
+    input, select, textarea {
+      @apply text-base; /* Prevents zoom on iOS */
+      min-height: 44px;
+    }
+    
+    button {
+      min-height: 44px;
+    }
+  }
+}
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+
+.animate-in { animation-duration: 0.3s; animation-fill-mode: both; }
+.fade-in { animation-name: fadeIn; }
+.zoom-in-95 { animation-name: zoomIn; }
+.slide-in-from-bottom { animation-name: slideUp; }
+.slide-in-from-bottom-4 { animation-name: fadeIn; transform: translateY(1rem); }
+
+/* Mobile drawer animation */
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s ease-out;
+}
+
+/* Scrollbar styling */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}

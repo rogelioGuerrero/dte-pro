@@ -1,0 +1,9 @@
+{
+  "enabled": false,
+  "announcement": "",
+  "forceUserModeSelection": false,
+  "minVersion": "",
+  "maintenanceMode": false,
+  "maintenanceMessage": "",
+  "dailyExportLimit": 5
+}

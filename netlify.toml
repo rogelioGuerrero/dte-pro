@@ -1,0 +1,49 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "18"
+  # Google Analytics ID
+  GOOGLE_ANALYTICS_ID = "G-CJHWVLPBZW"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  external_node_modules = ["@netlify/blobs"]
+
+[dev]
+  command = "npm run dev"
+  targetPort = 5173
+  port = 8888
+
+[[redirects]]
+  from = "/api/mh/transmitir"
+  to = "/.netlify/functions/mh-transmitir"
+  status = 200
+
+[[redirects]]
+  from = "/api/mh/consulta/*"
+  to = "/.netlify/functions/mh-consulta/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/pending-clients"
+  to = "/.netlify/functions/pending-clients"
+  status = 200
+
+[[redirects]]
+  from = "/api/stripe/payment"
+  to = "/.netlify/functions/stripe-payment"
+  status = 200
+
+[[redirects]]
+  from = "/api/licensing/config"
+  to = "/.netlify/functions/licensing-config"
+  status = 200
+
+# Redirección SPA para /cliente
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

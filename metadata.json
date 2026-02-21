@@ -1,0 +1,5 @@
+{
+  "name": "dte",
+  "description": "A modern web interface to batch convert JSON sales documents (DTE) into CSV format grouped by month, running entirely in the browser.",
+  "requestFramePermissions": []
+}
