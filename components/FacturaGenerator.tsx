@@ -123,26 +123,14 @@ const FacturaGenerator: React.FC = () => {
 
   // Certificate Manager
   const {
-    hasCert,
-    certificateFile,
     certificatePassword,
     showCertPassword,
-    certificateInfo,
     certificateError,
-    isValidatingCert,
     isSavingCert,
-    fileInputRef,
     setCertificatePassword,
     setShowCertPassword,
-    setCertificateInfo,
-    setCertificateError,
-    handleCertFileSelect,
-    handleValidateCertificate,
     handleSaveCertificate,
-    refreshCertificateStatus,
-  } = useCertificateManager({
-    onToast: (msg, type) => addToast(msg, type),
-  });
+  } = useCertificateManager({ onToast: (msg, type) => addToast(msg, type) });
 
   const { stockByCode } = useStockByCode();
 
@@ -173,7 +161,6 @@ const FacturaGenerator: React.FC = () => {
       const { id, ...rest } = loadedEmisor;
       setEmisorForm(rest);
     }
-    await refreshCertificateStatus();
   };
 
   const receptorEsConsumidorFinal = selectedReceptor ? !selectedReceptor.nit.trim() : false;
@@ -737,21 +724,12 @@ const FacturaGenerator: React.FC = () => {
         formatMultilineTextInput={formatMultilineTextInput}
         handleSaveEmisor={handleSaveEmisor}
         isSavingEmisor={isSavingEmisor}
-        hasCert={hasCert}
-        fileInputRef={fileInputRef}
-        certificateFile={certificateFile}
         certificatePassword={certificatePassword}
         showCertPassword={showCertPassword}
-        certificateInfo={certificateInfo}
         certificateError={certificateError}
-        isValidatingCert={isValidatingCert}
         isSavingCert={isSavingCert}
         setCertificatePassword={setCertificatePassword}
         setShowCertPassword={setShowCertPassword}
-        setCertificateInfo={setCertificateInfo}
-        setCertificateError={setCertificateError}
-        handleCertFileSelect={handleCertFileSelect}
-        handleValidateCertificate={handleValidateCertificate}
         handleSaveCertificate={() => handleSaveCertificate(emisorForm.nit, emisorForm.nrc)}
         // ProductPickerModal
         canUseCatalogoProductos={canUseCatalogoProductos}

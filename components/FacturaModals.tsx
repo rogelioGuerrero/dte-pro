@@ -47,22 +47,13 @@ interface FacturaModalsProps {
   formatMultilineTextInput: (value: string) => string;
   handleSaveEmisor: () => void;
   isSavingEmisor: boolean;
-  hasCert: boolean;
-  fileInputRef: React.RefObject<HTMLInputElement>;
-  certificateFile: File | null;
   certificatePassword: string;
   showCertPassword: boolean;
-  certificateInfo: any;
   certificateError: string | null;
-  isValidatingCert: boolean;
   isSavingCert: boolean;
   setCertificatePassword: (value: string) => void;
   setShowCertPassword: (value: boolean) => void;
-  setCertificateInfo: (value: any) => void;
-  setCertificateError: (value: string | null) => void;
-  handleCertFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleValidateCertificate: () => Promise<void>;
-  handleSaveCertificate: () => Promise<void>;
+  handleSaveCertificate: (nit: string, nrc: string, ambiente?: string) => Promise<void>;
   // ProductPickerModal
   canUseCatalogoProductos: boolean;
   showProductPicker: boolean;
@@ -119,21 +110,12 @@ export const FacturaModals: React.FC<FacturaModalsProps> = ({
   formatMultilineTextInput,
   handleSaveEmisor,
   isSavingEmisor,
-  hasCert,
-  fileInputRef,
-  certificateFile,
   certificatePassword,
   showCertPassword,
-  certificateInfo,
   certificateError,
-  isValidatingCert,
   isSavingCert,
   setCertificatePassword,
   setShowCertPassword,
-  setCertificateInfo,
-  setCertificateError,
-  handleCertFileSelect,
-  handleValidateCertificate,
   handleSaveCertificate,
   // ProductPickerModal
   canUseCatalogoProductos,
@@ -222,21 +204,12 @@ export const FacturaModals: React.FC<FacturaModalsProps> = ({
         formatMultilineTextInput={formatMultilineTextInput}
         handleSaveEmisor={handleSaveEmisor}
         isSavingEmisor={isSavingEmisor}
-        hasCert={hasCert}
-        fileInputRef={fileInputRef}
-        certificateFile={certificateFile}
         certificatePassword={certificatePassword}
         showCertPassword={showCertPassword}
-        certificateInfo={certificateInfo}
         certificateError={certificateError}
-        isValidatingCert={isValidatingCert}
         isSavingCert={isSavingCert}
         setCertificatePassword={setCertificatePassword}
         setShowCertPassword={setShowCertPassword}
-        setCertificateInfo={setCertificateInfo}
-        setCertificateError={setCertificateError}
-        handleCertFileSelect={handleCertFileSelect}
-        handleValidateCertificate={handleValidateCertificate}
         handleSaveCertificate={handleSaveCertificate}
       />
 

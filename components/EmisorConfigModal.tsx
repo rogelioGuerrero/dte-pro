@@ -1,43 +1,27 @@
 import React from 'react';
 import { Building2, FileSignature, Loader2, Save } from 'lucide-react';
-import type { EmisorData } from '../utils/emisorDb';
 import { EmailField, NitOrDuiField, NrcField, PhoneField, SelectActividad, SelectUbicacion } from './formularios';
 import LogoUploader from './LogoUploader';
-import { CertificadoInfo, formatearFechaCertificado } from '../utils/p12Handler';
-
-type ValidationResult = {
-  valid: boolean;
-  message: string;
-};
 
 interface EmisorConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
-  emisorForm: Omit<EmisorData, 'id'>;
-  setEmisorForm: React.Dispatch<React.SetStateAction<Omit<EmisorData, 'id'>>>;
-  nitValidation: ValidationResult;
-  nrcValidation: ValidationResult;
-  telefonoValidation: ValidationResult;
-  correoValidation: ValidationResult;
+  emisorForm: any;
+  setEmisorForm: (form: any) => void;
+  nitValidation: any;
+  nrcValidation: any;
+  telefonoValidation: any;
+  correoValidation: any;
   formatTextInput: (value: string) => string;
   formatMultilineTextInput: (value: string) => string;
   handleSaveEmisor: () => void;
   isSavingEmisor: boolean;
-  hasCert: boolean;
-  fileInputRef: React.RefObject<HTMLInputElement>;
-  certificateFile: File | null;
   certificatePassword: string;
   showCertPassword: boolean;
-  certificateInfo: CertificadoInfo | null;
   certificateError: string | null;
-  isValidatingCert: boolean;
   isSavingCert: boolean;
   setCertificatePassword: (value: string) => void;
   setShowCertPassword: (value: boolean) => void;
-  setCertificateInfo: (value: CertificadoInfo | null) => void;
-  setCertificateError: (value: string | null) => void;
-  handleCertFileSelect: React.ChangeEventHandler<HTMLInputElement>;
-  handleValidateCertificate: () => void | Promise<void>;
   handleSaveCertificate: (nit: string, nrc: string, ambiente?: string) => void | Promise<void>;
 }
 
@@ -54,21 +38,12 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
   formatMultilineTextInput,
   handleSaveEmisor,
   isSavingEmisor,
-  hasCert,
-  fileInputRef,
-  certificateFile,
   certificatePassword,
   showCertPassword,
-  certificateInfo,
   certificateError,
-  isValidatingCert,
   isSavingCert,
   setCertificatePassword,
   setShowCertPassword,
-  setCertificateInfo,
-  setCertificateError,
-  handleCertFileSelect,
-  handleValidateCertificate,
   handleSaveCertificate,
 }) => {
   if (!isOpen) return null;
@@ -168,10 +143,10 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
               <SelectUbicacion
                 departamento={emisorForm.departamento}
                 municipio={emisorForm.municipio}
-                onDepartamentoChange={(codigo) =>
-                  setEmisorForm((prev) => ({ ...prev, departamento: codigo, municipio: '' }))
+                onDepartamentoChange={(codigo: string) =>
+                  setEmisorForm((prev: any) => ({ ...prev, departamento: codigo, municipio: '' }))
                 }
-                onMunicipioChange={(codigo) => setEmisorForm((prev) => ({ ...prev, municipio: codigo }))}
+                onMunicipioChange={(codigo: string) => setEmisorForm((prev: any) => ({ ...prev, municipio: codigo }))}
                 required
                 showLabels
                 layout="horizontal"
@@ -219,98 +194,63 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
             <div className="col-span-2 mt-2 pt-4 border-t border-gray-100">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <FileSignature className={`w-4 h-4 ${hasCert ? 'text-blue-600' : 'text-gray-400'}`} />
+                  <FileSignature className="w-4 h-4 text-blue-600" />
                   <div>
                     <p className="text-xs font-semibold text-gray-700 uppercase">Firma electrónica</p>
                     <p className="text-[11px] text-gray-500">
-                      {hasCert
-                        ? 'Tu certificado está guardado. Puedes actualizarlo cuando quieras.'
-                        : 'Aún no has registrado tu certificado digital (.p12/.pfx) y PIN.'}
+                      Ingresa la contraseña de tu certificado digital (.p12/.pfx)
                     </p>
                   </div>
                 </div>
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".p12,.pfx"
-                onChange={handleCertFileSelect}
-                className="hidden"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className={`w-full p-3 border-2 border-dashed rounded-xl text-sm mb-3 transition-colors ${
-                  certificateFile
-                    ? 'border-green-300 bg-green-50 text-green-700'
-                    : 'border-gray-300 text-gray-600 hover:border-blue-400 hover:bg-blue-50'
-                }`}
-              >
-                {certificateFile ? <span>{certificateFile.name}</span> : <span>Seleccionar archivo .p12 / .pfx</span>}
-              </button>
-              {certificateFile && (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                      Contraseña / PIN del certificado
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showCertPassword ? 'text' : 'password'}
-                        value={certificatePassword}
-                        onChange={(e) => {
-                          setCertificatePassword(e.target.value);
-                          setCertificateInfo(null);
-                          setCertificateError(null);
-                        }}
-                        placeholder="PIN que te dio Hacienda"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm pr-10 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowCertPassword(!showCertPassword)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs"
-                      >
-                        {showCertPassword ? 'Ocultar' : 'Ver'}
-                      </button>
-                    </div>
-                    <p className="text-[11px] text-gray-400 mt-1">
-                      Es el PIN que recibiste junto con tu certificado.
-                    </p>
-                  </div>
-                  {certificatePassword.length >= 4 && !certificateInfo && (
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 uppercase mb-1">
+                    Contraseña del Certificado <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showCertPassword ? "text" : "password"}
+                      value={certificatePassword}
+                      onChange={(e) => setCertificatePassword(e.target.value)}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      placeholder="Ingresa la contraseña del certificado"
+                    />
                     <button
-                      onClick={handleValidateCertificate}
-                      disabled={isValidatingCert}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      type="button"
+                      onClick={() => setShowCertPassword(!showCertPassword)}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
-                      {isValidatingCert ? 'Validando…' : 'Validar certificado'}
+                      {showCertPassword ? "👁️" : "👁️‍🗨️"}
                     </button>
-                  )}
-                  {certificateError && (
-                    <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
-                      {certificateError}
-                    </div>
-                  )}
-                  {certificateInfo && (
-                    <div className="p-3 rounded-lg border bg-green-50 border-green-200 text-xs space-y-1">
-                      <p className="font-semibold text-green-700 flex items-center gap-1">
-                        <span>Certificado válido</span>
-                      </p>
-                      <p className="text-gray-700">Titular: {certificateInfo.subject.commonName}</p>
-                      <p className="text-gray-700">
-                        Válido hasta: {formatearFechaCertificado(certificateInfo.validTo)}
-                      </p>
-                    </div>
-                  )}
-                  <button
-                    onClick={() => handleSaveCertificate(emisorForm.nit, emisorForm.nrc)}
-                    disabled={!certificateInfo || isSavingCert}
-                    className="w-full mt-2 py-2 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
-                  >
-                    {isSavingCert ? 'Guardando firma…' : 'Guardar firma digital'}
-                  </button>
+                  </div>
                 </div>
-              )}
+                
+                {certificateError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-2">
+                    <p className="text-xs text-red-600">{certificateError}</p>
+                  </div>
+                )}
+                
+                <button
+                  onClick={() => handleSaveCertificate(emisorForm.nit, emisorForm.nrc)}
+                  disabled={isSavingCert || !certificatePassword || !emisorForm.nit || !emisorForm.nrc}
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  {isSavingCert ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Guardando credenciales...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Guardar credenciales de firma
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
