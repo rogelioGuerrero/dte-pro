@@ -62,8 +62,8 @@ export const usePushNotifications = () => {
       const pushSubscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(
-          // Tu VAPID public key - esto debe venir de api-dte
-          'BKxL8R7E8b9c2d4f6a8b0c2d4f6a8b0c2d4f6a8b0c2d4f6a8b0c2d4f6a8b0c2d4'
+          // VAPID public key de api-dte
+          'BKeUFT5t_y4Yb_qRcPDsRz67NqJPBBURE_mJ8RvGLg6m-NZlQMHqh7rzqRoljbKiepAsi3ht0HYBtanv_jAvsR0'
         ) as any
       });
 
