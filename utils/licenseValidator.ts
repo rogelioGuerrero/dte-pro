@@ -41,7 +41,7 @@ export class LicenseValidator {
       this.publicKey = await window.crypto.subtle.importKey(
         'jwk',
         PUBLIC_KEY_JWK,
-        { name: 'ECDSA', namedCurve: 'P-256' },
+        { name: 'ECDSA', namedCurve: 'secp256k1' },
         true,
         ['verify']
       );
