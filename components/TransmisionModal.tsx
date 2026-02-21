@@ -96,7 +96,8 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
       const response = await fetch('https://api-dte.onrender.com/api/dte/process', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-business-id': nitEmisor
         },
         body: JSON.stringify({
           dte: dteLimpio,
