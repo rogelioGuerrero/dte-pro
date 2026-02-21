@@ -82,9 +82,17 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
         return;
       }
 
-      // La contraseña se obtiene del backend usando el NIT del emisor (limpio sin guiones)
-      const nitEmisor = (processed.dte?.emisor?.nit || '').toString().replace(/[\s-]/g, '').trim();
-      if (!nitEmisor || nitEmisor.length < 9 || nitEmisor === '00000000000000') {
+      const formatNitConGuiones = (rawNit: string) => {
+        const clean = rawNit.replace(/[\s-]/g, '');
+        if (clean.length === 14) {
+          return `${clean.substring(0, 4)}-${clean.substring(4, 10)}-${clean.substring(10, 13)}-${clean.substring(13, 14)}`;
+        }
+        return rawNit;
+      };
+
+      // La contraseña se obtiene del backend usando el NIT del emisor (garantizando formato con guiones)
+      const nitEmisor = formatNitConGuiones((processed.dte?.emisor?.nit || '').toString().trim());
+      if (!nitEmisor || nitEmisor.replace(/[\s-]/g, '').length < 9 || nitEmisor.replace(/[\s-]/g, '') === '00000000000000') {
         throw new Error('NIT del emisor inválido o no configurado. Revisa la configuración del emisor.');
       }
 
@@ -182,8 +190,16 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
         return;
       }
 
+      const formatNitConGuiones = (rawNit: string) => {
+        const clean = rawNit.replace(/[\s-]/g, '');
+        if (clean.length === 14) {
+          return `${clean.substring(0, 4)}-${clean.substring(4, 10)}-${clean.substring(10, 13)}-${clean.substring(13, 14)}`;
+        }
+        return rawNit;
+      };
+
       const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
-      const nitEmisor = (processed.dte?.emisor?.nit || '').toString().replace(/[\s-]/g, '').trim();
+      const nitEmisor = formatNitConGuiones((processed.dte?.emisor?.nit || '').toString().trim());
 
       const jwsContingencia = await firmarDocumento({
         nit: nitEmisor,
