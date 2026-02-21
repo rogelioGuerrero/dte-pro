@@ -214,7 +214,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".crt"
+                  accept=".crt,.p12,.pfx"
                   onChange={handleCertFileSelect}
                   className="hidden"
                 />
