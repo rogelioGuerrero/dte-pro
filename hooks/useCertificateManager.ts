@@ -45,7 +45,8 @@ export const useCertificateManager = (params: {
           nrc: nrc.replace(/-/g, ''),
           password_pri: certificatePassword,  // Corregido a password_pri
           ambiente,
-          business_id: nit.replace(/-/g, '')  // Usar NIT como business_id para ON CONFLICT
+          business_id: nit.replace(/-/g, ''),  // Usar NIT como business_id para ON CONFLICT
+          activo: true // Asegurar que las credenciales se marquen como activas
         })
       });
 
