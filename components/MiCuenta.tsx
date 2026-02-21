@@ -4,15 +4,54 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 import { downloadBackup, restoreBackupFromText } from '../utils/backup';
 import { loadSettings } from '../utils/settings';
 import { getEmisor } from '../utils/emisorDb';
+import { getCertificate } from '../utils/secureStorage';
 import { notify } from '../utils/notifications';
+import { Settings } from 'lucide-react';
+import { EmisorConfigModal } from './EmisorConfigModal';
+import { useCertificateManager } from '../hooks/useCertificateManager';
+import { EmisorData } from '../utils/emisorDb';
 
 interface MiCuentaProps {
   onBack?: () => void;
 }
 
 const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
-  const { isSupported, permission, requestPermission } = usePushNotifications();
+  const { isSupported, permission, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [showEmisorConfig, setShowEmisorConfig] = useState(false);
+  const [emisorForm, setEmisorForm] = useState<Omit<EmisorData, 'id'>>({
+    nit: '',
+    nrc: '',
+    nombre: '',
+    nombreComercial: '',
+    actividadEconomica: '',
+    descActividad: '',
+    tipoEstablecimiento: '',
+    departamento: '',
+    municipio: '',
+    direccion: '',
+    telefono: '',
+    correo: '',
+    codEstableMH: null,
+    codPuntoVentaMH: null
+  });
+  const [isSavingEmisor, setIsSavingEmisor] = useState(false);
+
+  const {
+    certificatePassword,
+    showCertPassword,
+    certificateError,
+    isSavingCert,
+    certificateFile,
+    setCertificatePassword,
+    setShowCertPassword,
+    handleCertFileSelect,
+    handleSaveCertificate,
+    fileInputRef
+  } = useCertificateManager({ 
+    onToast: (msg, type) => notify(msg, type)
+  });
+
   const [businessData, setBusinessData] = useState({
     nombre: '',
     nit: '',
@@ -58,11 +97,53 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     
     loadEmisorData();
 
-    // Cargar estado de credenciales (se mejorará con la conexión a supabase)
-    const hasCert = !!localStorage.getItem('dte_certificado');
-    const hasPassword = !!localStorage.getItem('dte_password');
-    setCredentialsStatus({ hasCert, hasPassword });
-  }, [permission]);
+    // Cargar estado de credenciales desde IndexedDB (secureStorage)
+    const loadCredentials = async () => {
+      try {
+        const cert = await getCertificate();
+        setCredentialsStatus({ 
+          hasCert: !!cert?.certificate, 
+          hasPassword: !!cert?.password 
+        });
+      } catch (err) {
+        console.error('Error cargando credenciales:', err);
+      }
+    };
+
+    loadCredentials();
+  }, [permission, showEmisorConfig]);
+
+  const loadEmisorParaConfig = async () => {
+    try {
+      const emisor = await getEmisor();
+      if (emisor) {
+        const { id, ...rest } = emisor;
+        setEmisorForm(rest);
+      }
+    } catch (err) {
+      console.error('Error cargando emisor para form:', err);
+    }
+  };
+
+  const handleOpenConfig = () => {
+    loadEmisorParaConfig();
+    setShowEmisorConfig(true);
+  };
+
+  const handleSaveEmisor = async () => {
+    setIsSavingEmisor(true);
+    try {
+      const { saveEmisor } = await import('../utils/emisorDb');
+      await saveEmisor(emisorForm);
+      notify('Datos del emisor guardados', 'success');
+      setShowEmisorConfig(false);
+    } catch (error) {
+      console.error(error);
+      notify('Error guardando emisor', 'error');
+    } finally {
+      setIsSavingEmisor(false);
+    }
+  };
 
   const handleNotificationToggle = async (checked: boolean) => {
     if (checked) {
@@ -71,16 +152,19 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
         if (granted) {
           localStorage.removeItem('push-notification-dismissed');
           setNotificationsEnabled(true);
+          await subscribeToPush();
         }
       } else if (permission === 'granted') {
         localStorage.removeItem('push-notification-dismissed');
         setNotificationsEnabled(true);
+        await subscribeToPush();
       } else {
         alert('Debes habilitar las notificaciones en la configuración de tu navegador.');
       }
     } else {
       localStorage.setItem('push-notification-dismissed', 'true');
       setNotificationsEnabled(false);
+      await unsubscribeFromPush();
     }
   };
 
@@ -133,9 +217,18 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Información del Negocio */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="border-b border-gray-200 px-6 py-4 flex items-center gap-3">
-            <Store className="w-5 h-5 text-gray-500" />
-            <h2 className="text-lg font-medium text-gray-900">Información del Negocio</h2>
+          <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Store className="w-5 h-5 text-gray-500" />
+              <h2 className="text-lg font-medium text-gray-900">Información del Negocio</h2>
+            </div>
+            <button
+              onClick={handleOpenConfig}
+              className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              Configurar
+            </button>
           </div>
           <div className="p-6 space-y-4">
             <div>
@@ -255,6 +348,33 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
           </div>
         </div>
       </div>
+
+      {showEmisorConfig && (
+        <EmisorConfigModal
+          isOpen={showEmisorConfig}
+          onClose={() => setShowEmisorConfig(false)}
+          emisorForm={emisorForm}
+          setEmisorForm={setEmisorForm}
+          nitValidation={{ isValid: true, message: '' }} // Basic mock for validation
+          nrcValidation={{ isValid: true, message: '' }}
+          telefonoValidation={{ isValid: true, message: '' }}
+          correoValidation={{ isValid: true, message: '' }}
+          formatTextInput={(v) => v}
+          formatMultilineTextInput={(v) => v}
+          handleSaveEmisor={handleSaveEmisor}
+          isSavingEmisor={isSavingEmisor}
+          certificatePassword={certificatePassword}
+          showCertPassword={showCertPassword}
+          certificateError={certificateError}
+          isSavingCert={isSavingCert}
+          certificateFile={certificateFile}
+          setCertificatePassword={setCertificatePassword}
+          setShowCertPassword={setShowCertPassword}
+          handleCertFileSelect={handleCertFileSelect}
+          handleSaveCertificate={() => handleSaveCertificate(emisorForm.nit, emisorForm.nrc)}
+          fileInputRef={fileInputRef}
+        />
+      )}
     </div>
   );
 };
