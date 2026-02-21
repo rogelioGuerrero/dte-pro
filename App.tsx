@@ -20,6 +20,8 @@ import { LayoutDashboard, CheckCircle, Download } from 'lucide-react';
 import { downloadBackup, restoreBackupFromText } from './utils/backup';
 import { notify } from './utils/notifications';
 import ForceUpdateModal from './components/ForceUpdateModal';
+import { usePushNotifications } from './hooks/usePushNotifications';
+import PushNotificationManager from './components/PushNotificationManager';
 
 type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal';
 
@@ -109,6 +111,16 @@ const App: React.FC = () => {
   useEffect(() => {
     licenseValidator.loadLicenseFromStorage();
   }, []);
+
+  // Inicializar push notifications
+  const { isSupported, permission, subscribeToPush } = usePushNotifications();
+  
+  useEffect(() => {
+    if (isSupported && permission === 'granted') {
+      // Auto-suscribir si ya tiene permiso
+      subscribeToPush();
+    }
+  }, [isSupported, permission, subscribeToPush]);
 
   // Ejecutar backup automático mensual (deshabilitado)
   // useEffect(() => {
@@ -362,6 +374,7 @@ const App: React.FC = () => {
       <MagicLicenseActivator />
       <PWAInstallPrompt />
       <GlobalToastHost />
+      <PushNotificationManager />
     </div>
   );
 };
