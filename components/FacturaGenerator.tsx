@@ -132,7 +132,6 @@ const FacturaGenerator: React.FC = () => {
     setApiPassword,
     setCertificatePassword,
     setShowCertPassword,
-    setCertificateError,
     handleCertFileSelect,
     handleSaveCertificate,
     fileInputRef,
@@ -730,10 +729,12 @@ const FacturaGenerator: React.FC = () => {
         formatMultilineTextInput={formatMultilineTextInput}
         handleSaveEmisor={handleSaveEmisor}
         isSavingEmisor={isSavingEmisor}
+        apiPassword={apiPassword}
         certificatePassword={certificatePassword}
         showCertPassword={showCertPassword}
         certificateError={certificateError}
         isSavingCert={isSavingCert}
+        setApiPassword={setApiPassword}
         setCertificatePassword={setCertificatePassword}
         setShowCertPassword={setShowCertPassword}
         certificateFile={certificateFile}
