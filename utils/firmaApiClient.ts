@@ -66,7 +66,9 @@ export const wakeFirmaService = async (opts?: {
     } catch (err: any) {
       // Detectar Timeout
       const isTimeout = err.name === 'AbortError' || err.message?.includes('Timeout');
-      const errorToThrow = isTimeout ? new Error(`Timeout esperando servicio de firma (${timeoutMs}ms)`) : err;
+      const errorToThrow = isTimeout
+        ? new Error('El servicio de firma tardó más de lo esperado. Reintenta en unos segundos.')
+        : err;
       
       lastError = errorToThrow;
       
