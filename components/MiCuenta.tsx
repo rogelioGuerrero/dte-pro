@@ -38,11 +38,13 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
   const [isSavingEmisor, setIsSavingEmisor] = useState(false);
 
   const {
+    apiPassword,
     certificatePassword,
     showCertPassword,
     certificateError,
     isSavingCert,
     certificateFile,
+    setApiPassword,
     setCertificatePassword,
     setShowCertPassword,
     handleCertFileSelect,
@@ -363,11 +365,13 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
           formatMultilineTextInput={(v) => v}
           handleSaveEmisor={handleSaveEmisor}
           isSavingEmisor={isSavingEmisor}
+          apiPassword={apiPassword}
           certificatePassword={certificatePassword}
           showCertPassword={showCertPassword}
           certificateError={certificateError}
           isSavingCert={isSavingCert}
           certificateFile={certificateFile}
+          setApiPassword={setApiPassword}
           setCertificatePassword={setCertificatePassword}
           setShowCertPassword={setShowCertPassword}
           handleCertFileSelect={handleCertFileSelect}

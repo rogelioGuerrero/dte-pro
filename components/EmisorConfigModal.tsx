@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Building2, FileSignature, Loader2, Save } from 'lucide-react';
 import { EmailField, NitOrDuiField, NrcField, PhoneField, SelectActividad, SelectUbicacion } from './formularios';
 import LogoUploader from './LogoUploader';
@@ -16,11 +16,13 @@ interface EmisorConfigModalProps {
   formatMultilineTextInput: (value: string) => string;
   handleSaveEmisor: () => void;
   isSavingEmisor: boolean;
+  apiPassword: string;
   certificatePassword: string;
   showCertPassword: boolean;
   certificateError: string | null;
   isSavingCert: boolean;
   certificateFile: File | null;
+  setApiPassword: (value: string) => void;
   setCertificatePassword: (value: string) => void;
   setShowCertPassword: (value: boolean) => void;
   handleCertFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -41,11 +43,13 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
   formatMultilineTextInput,
   handleSaveEmisor,
   isSavingEmisor,
+  apiPassword,
   certificatePassword,
   showCertPassword,
   certificateError,
   isSavingCert,
   certificateFile,
+  setApiPassword,
   setCertificatePassword,
   setShowCertPassword,
   handleCertFileSelect,
@@ -53,6 +57,8 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
   fileInputRef,
 }) => {
   if (!isOpen) return null;
+
+  const [activeTab, setActiveTab] = useState<'datos' | 'firma' | 'mh'>('datos');
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -66,151 +72,188 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
           </button>
         </div>
 
+        <div className="px-4 pt-3 border-b border-gray-100">
+          <div className="inline-flex rounded-xl bg-gray-100 p-1 text-sm font-medium">
+            {[
+              { id: 'datos', label: 'Datos del emisor' },
+              { id: 'firma', label: 'Firma y token' },
+              { id: 'mh', label: 'Códigos MH' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as 'datos' | 'firma' | 'mh')}
+                className={`px-3 py-2 rounded-lg transition-colors ${
+                  activeTab === tab.id ? 'bg-white shadow text-blue-600' : 'text-gray-500'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <NitOrDuiField
-                label="NIT"
-                required
-                value={emisorForm.nit}
-                onChange={(nit) => setEmisorForm({ ...emisorForm, nit })}
-                validation={nitValidation}
-                placeholder="0000-000000-000-0"
-                messageVariant="below-invalid"
-                colorMode="status"
-              />
+          {activeTab === 'datos' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <NitOrDuiField
+                  label="NIT"
+                  required
+                  value={emisorForm.nit}
+                  onChange={(nit) => setEmisorForm({ ...emisorForm, nit })}
+                  validation={nitValidation}
+                  placeholder="0000-000000-000-0"
+                  messageVariant="below-invalid"
+                  colorMode="status"
+                />
+              </div>
+              <div>
+                <NrcField
+                  label="NRC"
+                  required
+                  value={emisorForm.nrc}
+                  onChange={(nrc) => setEmisorForm({ ...emisorForm, nrc })}
+                  validation={nrcValidation}
+                  placeholder="000000-0"
+                  messageVariant="below-invalid"
+                  colorMode="status"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-500 uppercase mb-1">
+                  Nombre / Razón Social <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={emisorForm.nombre}
+                  onChange={(e) => setEmisorForm({ ...emisorForm, nombre: formatTextInput(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Nombre legal del contribuyente"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Nombre Comercial</label>
+                <input
+                  type="text"
+                  value={emisorForm.nombreComercial}
+                  onChange={(e) =>
+                    setEmisorForm({ ...emisorForm, nombreComercial: formatTextInput(e.target.value) })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Nombre comercial (opcional)"
+                />
+              </div>
+              <div className="col-span-2">
+                <LogoUploader
+                  currentLogo={emisorForm.logo}
+                  onLogoChange={(logo) => setEmisorForm({ ...emisorForm, logo })}
+                />
+              </div>
+              <div>
+                <SelectActividad
+                  value={emisorForm.actividadEconomica}
+                  onChange={(codigo, descripcion) =>
+                    setEmisorForm({ ...emisorForm, actividadEconomica: codigo, descActividad: descripcion })
+                  }
+                  required
+                  label="Actividad Económica"
+                  placeholder="Escribe una actividad..."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 uppercase mb-1">
+                  Código Actividad <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={emisorForm.actividadEconomica}
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-700 font-mono focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Se completa al seleccionar"
+                />
+              </div>
+              <div className="col-span-2">
+                <SelectUbicacion
+                  departamento={emisorForm.departamento}
+                  municipio={emisorForm.municipio}
+                  onDepartamentoChange={(codigo: string) =>
+                    setEmisorForm((prev: any) => ({ ...prev, departamento: codigo, municipio: '' }))
+                  }
+                  onMunicipioChange={(codigo: string) => setEmisorForm((prev: any) => ({ ...prev, municipio: codigo }))}
+                  required
+                  showLabels
+                  layout="horizontal"
+                  size="md"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-500 uppercase mb-1">
+                  Dirección <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={emisorForm.direccion}
+                  onChange={(e) =>
+                    setEmisorForm({ ...emisorForm, direccion: formatMultilineTextInput(e.target.value) })
+                  }
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                  placeholder="Calle, número, colonia, etc."
+                />
+              </div>
+              <div>
+                <PhoneField
+                  label="Teléfono"
+                  required
+                  value={emisorForm.telefono}
+                  onChange={(telefono) => setEmisorForm({ ...emisorForm, telefono })}
+                  validation={telefonoValidation}
+                  placeholder="0000-0000"
+                  messageVariant="below-invalid"
+                  colorMode="status"
+                />
+              </div>
+              <div>
+                <EmailField
+                  label="Correo"
+                  required
+                  value={emisorForm.correo}
+                  onChange={(correo) => setEmisorForm({ ...emisorForm, correo })}
+                  validation={correoValidation}
+                  placeholder="correo@ejemplo.com"
+                  messageVariant="below-invalid"
+                  colorMode="status"
+                />
+              </div>
             </div>
-            <div>
-              <NrcField
-                label="NRC"
-                required
-                value={emisorForm.nrc}
-                onChange={(nrc) => setEmisorForm({ ...emisorForm, nrc })}
-                validation={nrcValidation}
-                placeholder="000000-0"
-                messageVariant="below-invalid"
-                colorMode="status"
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-500 uppercase mb-1">
-                Nombre / Razón Social <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={emisorForm.nombre}
-                onChange={(e) => setEmisorForm({ ...emisorForm, nombre: formatTextInput(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Nombre legal del contribuyente"
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Nombre Comercial</label>
-              <input
-                type="text"
-                value={emisorForm.nombreComercial}
-                onChange={(e) =>
-                  setEmisorForm({ ...emisorForm, nombreComercial: formatTextInput(e.target.value) })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Nombre comercial (opcional)"
-              />
-            </div>
-            <div className="col-span-2">
-              <LogoUploader
-                currentLogo={emisorForm.logo}
-                onLogoChange={(logo) => setEmisorForm({ ...emisorForm, logo })}
-              />
-            </div>
-            <div>
-              <SelectActividad
-                value={emisorForm.actividadEconomica}
-                onChange={(codigo, descripcion) =>
-                  setEmisorForm({ ...emisorForm, actividadEconomica: codigo, descActividad: descripcion })
-                }
-                required
-                label="Actividad Económica"
-                placeholder="Escribe una actividad..."
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 uppercase mb-1">
-                Código Actividad <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={emisorForm.actividadEconomica}
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-700 font-mono focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Se completa al seleccionar"
-              />
-            </div>
-            <div className="col-span-2">
-              <SelectUbicacion
-                departamento={emisorForm.departamento}
-                municipio={emisorForm.municipio}
-                onDepartamentoChange={(codigo: string) =>
-                  setEmisorForm((prev: any) => ({ ...prev, departamento: codigo, municipio: '' }))
-                }
-                onMunicipioChange={(codigo: string) => setEmisorForm((prev: any) => ({ ...prev, municipio: codigo }))}
-                required
-                showLabels
-                layout="horizontal"
-                size="md"
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-500 uppercase mb-1">
-                Dirección <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={emisorForm.direccion}
-                onChange={(e) =>
-                  setEmisorForm({ ...emisorForm, direccion: formatMultilineTextInput(e.target.value) })
-                }
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                placeholder="Calle, número, colonia, etc."
-              />
-            </div>
-            <div>
-              <PhoneField
-                label="Teléfono"
-                required
-                value={emisorForm.telefono}
-                onChange={(telefono) => setEmisorForm({ ...emisorForm, telefono })}
-                validation={telefonoValidation}
-                placeholder="0000-0000"
-                messageVariant="below-invalid"
-                colorMode="status"
-              />
-            </div>
-            <div>
-              <EmailField
-                label="Correo"
-                required
-                value={emisorForm.correo}
-                onChange={(correo) => setEmisorForm({ ...emisorForm, correo })}
-                validation={correoValidation}
-                placeholder="correo@ejemplo.com"
-                messageVariant="below-invalid"
-                colorMode="status"
-              />
-            </div>
-            <div className="col-span-2 mt-2 pt-4 border-t border-gray-100">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <FileSignature className="w-4 h-4 text-blue-600" />
-                  <div>
-                    <p className="text-xs font-semibold text-gray-700 uppercase">Firma electrónica</p>
-                    <p className="text-[11px] text-gray-500">
-                      Sube tu certificado digital (.crt) y contraseña
-                    </p>
-                  </div>
+          )}
+
+          {activeTab === 'firma' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <FileSignature className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Firma electrónica</p>
+                  <p className="text-xs text-gray-500">
+                    Sube tu certificado (.crt/.p12/.pfx), la contraseña y la clave API MH
+                  </p>
                 </div>
               </div>
-              
+
               <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 uppercase mb-1">
+                    Clave API MH (api_password) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={apiPassword}
+                    onChange={(e) => setApiPassword(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="Password para el token"
+                    title="Se usa para renovar el token con MH; no se comparte ni se envía por correo"
+                  />
+                </div>
+
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -261,7 +304,14 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                 
                 <button
                   onClick={() => handleSaveCertificate(emisorForm.nit, emisorForm.nrc)}
-                  disabled={isSavingCert || !certificateFile || !certificatePassword || !emisorForm.nit || !emisorForm.nrc}
+                  disabled={
+                    isSavingCert ||
+                    !certificateFile ||
+                    !certificatePassword ||
+                    !apiPassword ||
+                    !emisorForm.nit ||
+                    !emisorForm.nrc
+                  }
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                 >
                   {isSavingCert ? (
@@ -278,7 +328,59 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                 </button>
               </div>
             </div>
-          </div>
+          )}
+
+          {activeTab === 'mh' && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Códigos MH (Opcional)</p>
+                <p className="text-xs text-gray-500">Si los dejas vacíos se usarán M001/P001 por defecto.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Tipo de Establecimiento</label>
+                  <select
+                    value={emisorForm.tipoEstablecimiento || '01'}
+                    onChange={(e) =>
+                      setEmisorForm({ ...emisorForm, tipoEstablecimiento: e.target.value })
+                    }
+                    className="w-full mt-1 px-4 py-3 border border-gray-300 rounded-xl"
+                  >
+                    {/* Valores permitidos por esquema MH: 01-05 */}
+                    <option value="01">Casa Matriz</option>
+                    <option value="02">Sucursal</option>
+                    <option value="03">Agencia</option>
+                    <option value="04">Bodega</option>
+                    <option value="05">Otro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Cód. Establecimiento</label>
+                  <input
+                    type="text"
+                    value={emisorForm.codEstableMH || ''}
+                    onChange={(e) =>
+                      setEmisorForm({ ...emisorForm, codEstableMH: e.target.value || null })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="M001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Cód. Punto Venta</label>
+                  <input
+                    type="text"
+                    value={emisorForm.codPuntoVentaMH || ''}
+                    onChange={(e) =>
+                      setEmisorForm({ ...emisorForm, codPuntoVentaMH: e.target.value || null })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="P001"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="p-4 border-t border-gray-100 flex items-center justify-between">

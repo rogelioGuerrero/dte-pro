@@ -47,11 +47,13 @@ interface FacturaModalsProps {
   formatMultilineTextInput: (value: string) => string;
   handleSaveEmisor: () => void;
   isSavingEmisor: boolean;
+  apiPassword: string;
   certificatePassword: string;
   showCertPassword: boolean;
   certificateError: string | null;
   isSavingCert: boolean;
   certificateFile: File | null;
+  setApiPassword: (value: string) => void;
   setCertificatePassword: (value: string) => void;
   setShowCertPassword: (value: boolean) => void;
   handleCertFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -113,11 +115,13 @@ export const FacturaModals: React.FC<FacturaModalsProps> = ({
   formatMultilineTextInput,
   handleSaveEmisor,
   isSavingEmisor,
+  apiPassword,
   certificatePassword,
   showCertPassword,
   certificateError,
   isSavingCert,
   certificateFile,
+  setApiPassword,
   setCertificatePassword,
   setShowCertPassword,
   handleCertFileSelect,
@@ -210,11 +214,13 @@ export const FacturaModals: React.FC<FacturaModalsProps> = ({
         formatMultilineTextInput={formatMultilineTextInput}
         handleSaveEmisor={handleSaveEmisor}
         isSavingEmisor={isSavingEmisor}
+        apiPassword={apiPassword}
         certificatePassword={certificatePassword}
         showCertPassword={showCertPassword}
         certificateError={certificateError}
         isSavingCert={isSavingCert}
         certificateFile={certificateFile}
+        setApiPassword={setApiPassword}
         setCertificatePassword={setCertificatePassword}
         setShowCertPassword={setShowCertPassword}
         handleCertFileSelect={handleCertFileSelect}

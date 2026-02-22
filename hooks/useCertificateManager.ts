@@ -4,11 +4,13 @@ import { getAuthHeaders } from '../utils/backendConfig';
 export const useCertificateManager = (params: {
   onToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }): {
+  apiPassword: string;
   certificatePassword: string;
   showCertPassword: boolean;
   certificateError: string | null;
   isSavingCert: boolean;
   certificateFile: File | null;
+  setApiPassword: (value: string) => void;
   setCertificatePassword: (value: string) => void;
   setShowCertPassword: (value: boolean) => void;
   setCertificateError: (value: string | null) => void;
@@ -16,6 +18,7 @@ export const useCertificateManager = (params: {
   handleSaveCertificate: (nit: string, nrc: string, ambiente?: string) => Promise<void>;
   fileInputRef: React.RefObject<HTMLInputElement>;
 } => {
+  const [apiPassword, setApiPassword] = useState('');
   const [certificatePassword, setCertificatePassword] = useState('');
   const [showCertPassword, setShowCertPassword] = useState(false);
   const [certificateError, setCertificateError] = useState<string | null>(null);
@@ -79,6 +82,11 @@ export const useCertificateManager = (params: {
       setCertificateError('La contraseña del certificado es requerida.');
       return;
     }
+
+    if (!apiPassword) {
+      setCertificateError('La clave API MH (api_password) es requerida para renovar el token.');
+      return;
+    }
     
     if (!certificateFile) {
       setCertificateError('Debes seleccionar un archivo de certificado (.p12 o .pfx).');
@@ -108,9 +116,12 @@ export const useCertificateManager = (params: {
       
       const payload = {
         nit: nitConGuiones,
+        nrc,
         ambiente: ambiente || '00',
         passwordPri: certificatePassword,
-        certificadoB64: certificadoB64
+        certificadoB64: certificadoB64,
+        apiPassword: apiPassword,
+        activo: true,
       };
 
       // Logging para diagnóstico
@@ -142,6 +153,7 @@ export const useCertificateManager = (params: {
       }
 
       // Limpiar formulario después de guardar
+      setApiPassword('');
       setCertificatePassword('');
       setCertificateFile(null);
       if (fileInputRef.current) {
@@ -158,11 +170,13 @@ export const useCertificateManager = (params: {
   };
 
   return {
+    apiPassword,
     certificatePassword,
     showCertPassword,
     certificateError,
     isSavingCert,
     certificateFile,
+    setApiPassword,
     setCertificatePassword,
     setShowCertPassword,
     setCertificateError,

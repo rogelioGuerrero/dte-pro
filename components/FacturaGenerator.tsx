@@ -123,13 +123,16 @@ const FacturaGenerator: React.FC = () => {
 
   // Certificate Manager
   const {
+    apiPassword,
     certificatePassword,
     showCertPassword,
     certificateError,
     isSavingCert,
     certificateFile,
+    setApiPassword,
     setCertificatePassword,
     setShowCertPassword,
+    setCertificateError,
     handleCertFileSelect,
     handleSaveCertificate,
     fileInputRef,
