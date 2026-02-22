@@ -363,8 +363,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       ivaItem = ventaGravada > 0 ? redondear(ventaGravada * 0.13, 2) : 0;
     }
 
-    // Tributos: Requerido ['20'] si es gravado, para AMBOS tipos (01 y 03)
-    const tributos = ventaGravada > 0 ? ['20'] : null;
+    // Tributos: instrucción pide null en cada ítem
+    const tributos = null;
 
     return {
       ...item,
@@ -409,16 +409,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   // 1. Calcular IVA teórico sobre la base total redondeada.
   let totalIva = redondear(totalGravada * 0.13, 2);
   
-  // 2. Definir Tributos de Resumen (siempre que haya IVA)
+  // 2. Tributos en resumen deben ir null según instrucción
   let tributosResumen: { codigo: string; descripcion: string; valor: number }[] | null = null;
-  
-  if (totalIva > 0) {
-    tributosResumen = [{
-      codigo: '20',
-      descripcion: 'Impuesto al Valor Agregado 13%',
-      valor: totalIva
-    }];
-  }
 
   // 3. Calcular Total a Pagar
   // Total = SubTotal + IVA - Retenciones + Otros
@@ -461,6 +453,10 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const emisorCodActividad = normalizeEmisorCodActividad(datos.emisor.actividadEconomica);
   const emisorDescActividad = (datos.emisor.descActividad || '').trim();
   
+  const emisorNit = (datos.emisor.nit || '').replace(/[\s-]/g, '').trim();
+  const emisorNrc = (datos.emisor.nrc || '').replace(/[\s-]/g, '').trim();
+  const receptorNrc = (datos.receptor.nrc || '').replace(/[\s-]/g, '').trim();
+
   const dteJSON: DTEJSON = {
     identificacion: {
       version: datos.tipoDocumento === '01' ? 1 : 3,
@@ -478,8 +474,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     },
     documentoRelacionado: null,
     emisor: {
-      nit: datos.emisor.nit,
-      nrc: datos.emisor.nrc,
+      nit: emisorNit,
+      nrc: emisorNrc,
       nombre: datos.emisor.nombre,
       codActividad: emisorCodActividad,
       descActividad: emisorDescActividad,
@@ -499,8 +495,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     },
     receptor: {
       tipoDocumento: receptorSinDocumento ? null : (receptorIdDigits.length === 9 ? '13' : '36'),
-      numDocumento: receptorSinDocumento ? null : datos.receptor.nit,
-      nrc: datos.receptor.nrc || null,
+      numDocumento: receptorSinDocumento ? null : receptorIdDigits,
+      nrc: receptorNrc || null,
       nombre: (datos.receptor.name || '').trim() ? datos.receptor.name : 'Consumidor Final',
       codActividad: receptorCodActividad,
       descActividad: receptorDescActividad,
@@ -546,7 +542,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       docuEntrega: null,
       nombRecibe: null,
       docuRecibe: null,
-      observaciones: datos.observaciones || null,
+      observaciones: null,
       placaVehiculo: null,
     },
     apendice: null,
