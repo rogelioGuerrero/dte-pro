@@ -303,7 +303,11 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const cargosNoBase = 0;
   const abonos = 0;
 
-  const montoTotalOperacion = redondear(subTotal + iva + tributosAdicionales + totalNoGravado, 2);
+  // FE: precios incluyen IVA, totalGravada ya lleva IVA. No sumar IVA de nuevo.
+  const montoTotalOperacion = tipoDocumento === '01'
+    ? redondear(subTotal + tributosAdicionales + totalNoGravado, 2)
+    : redondear(subTotal + iva + tributosAdicionales + totalNoGravado, 2);
+
   const totalPagar = redondear(montoTotalOperacion - ivaRete1 - reteRenta + saldoFavor + cargosNoBase - abonos, 2);
   
   return {
@@ -327,22 +331,23 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
 
   // 1. Generar Cuerpo del Documento con redondeo a 8 decimales (Regla de la novena posición)
   const cuerpoDocumento: ItemFactura[] = datos.items.map((item, index) => {
-    // Valores iniciales (pueden incluir IVA o no según tipoDocumento)
-    let precioUni = item.precioUni;
-    let ventaGravada = item.ventaGravada;
-    let montoDescu = item.montoDescu;
-    let ventaNoSuj = item.ventaNoSuj;
-    let ventaExenta = item.ventaExenta;
-    
+    // Valores iniciales
+    let precioUni = redondear(item.precioUni, 8);
+    let ventaGravada = redondear(item.ventaGravada, 8);
+    let montoDescu = redondear(item.montoDescu, 8);
+    let ventaNoSuj = redondear(item.ventaNoSuj, 8);
+    let ventaExenta = redondear(item.ventaExenta, 8);
     let ivaItem = 0;
-    
-    // Lógica de IVA: precio se toma como base; IVA 13% sobre ventaGravada si no es exento
-    precioUni = redondear(precioUni, 8);
-    ventaGravada = redondear(ventaGravada, 8);
-    montoDescu = redondear(montoDescu, 8);
-    ventaNoSuj = redondear(ventaNoSuj, 8);
-    ventaExenta = redondear(ventaExenta, 8);
-    ivaItem = ventaGravada > 0 ? redondear(ventaGravada * 0.13, 2) : 0;
+
+    if (datos.tipoDocumento === '01') {
+      // FE: precios incluyen IVA. ventaGravada ya trae IVA incluido; ivaItem se extrae.
+      const base = ventaGravada > 0 ? redondear(ventaGravada / 1.13, 8) : 0;
+      ivaItem = ventaGravada > 0 ? redondear(ventaGravada - base, 2) : 0;
+      ventaGravada = ventaGravada; // permanece con IVA incluido
+    } else {
+      // CCF/otros: precios sin IVA
+      ivaItem = ventaGravada > 0 ? redondear(ventaGravada * 0.13, 2) : 0;
+    }
 
     // Tributos: instrucción pide null en cada ítem
     const tributos = null;
@@ -392,10 +397,11 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     let tributosResumen: { codigo: string; descripcion: string; valor: number }[] | null = null;
 
     // 3. Calcular Total a Pagar
-    // Total = SubTotal + IVA - Retenciones + Otros
     const subTotal = redondear(subTotalVentas - totalDescu, 2);
     const totalNoGravado = redondear(sumNoGravado, 2);
-    let montoTotalOperacion = redondear(subTotal + totalIva + totalNoGravado, 2);
+    let montoTotalOperacion = datos.tipoDocumento === '01'
+      ? redondear(subTotal + totalNoGravado, 2)
+      : redondear(subTotal + totalIva + totalNoGravado, 2);
 
     let totalPagar = montoTotalOperacion;
 
