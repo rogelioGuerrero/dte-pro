@@ -453,12 +453,20 @@ const FacturaGenerator: React.FC = () => {
         const cantidad8 = redondear(item.cantidad, 8);
         const precio8 = redondear(item.precioUni, 8);
         const totalLinea = redondear(cantidad8 * precio8, 8);
+
         let ventaGravada = 0;
+        let ventaExenta = 0;
+        let ivaItem = 0;
 
         if (item.esExento) {
-          ventaGravada = 0;
+          ventaExenta = totalLinea;
+        } else if (tipoDocumento === '01') {
+          const base = redondear(totalLinea / 1.13, 8);
+          ventaGravada = base;
+          ivaItem = redondear(totalLinea - base, 2);
         } else {
           ventaGravada = totalLinea;
+          ivaItem = redondear(ventaGravada * 0.13, 2);
         }
 
         return {
@@ -471,14 +479,14 @@ const FacturaGenerator: React.FC = () => {
           precioUni: precio8,
           montoDescu: 0,
           ventaNoSuj: 0,
-          ventaExenta: item.esExento ? totalLinea : 0,
-          ventaGravada: item.esExento ? 0 : ventaGravada,
+          ventaExenta,
+          ventaGravada,
           tributos: null,
           numeroDocumento: null,
           codTributo: null,
           psv: 0,
           noGravado: 0,
-          ivaItem: 0 // Se calculará dentro de generarDTE
+          ivaItem,
         };
       });
 
@@ -519,10 +527,22 @@ const FacturaGenerator: React.FC = () => {
 
       // Validar datos obligatorios de emisor/receptor
       const datosErrors: string[] = [];
-      const emisorDirOK = emisor.departamento && emisor.municipio && emisor.direccion;
-      const emisorCodsOK = emisor.codEstableMH && emisor.codPuntoVentaMH;
-      if (!emisor.nit || !emisor.nrc || !emisor.nombre || !emisor.actividadEconomica || !emisor.descActividad || !emisorDirOK || !emisor.telefono || !emisor.correo || !emisorCodsOK) {
-        datosErrors.push('Completa NIT, NRC, nombre, actividad, dirección, teléfono, correo y códigos MH del emisor');
+      const filled = (v?: string | null) => (v ?? '').toString().trim().length > 0;
+      const emisorDirOK = filled(emisor.departamento) && filled(emisor.municipio) && filled(emisor.direccion);
+      const emisorCodEst = emisor.codEstableMH ?? (emisor as any).codEstable;
+      const emisorPunto = emisor.codPuntoVentaMH ?? (emisor as any).codPuntoVenta;
+      const missingEmisor: string[] = [];
+      if (!filled(emisor.nit)) missingEmisor.push('NIT');
+      if (!filled(emisor.nrc)) missingEmisor.push('NRC');
+      if (!filled(emisor.nombre)) missingEmisor.push('nombre');
+      if (!filled(emisor.actividadEconomica)) missingEmisor.push('actividad');
+      if (!emisorDirOK) missingEmisor.push('dirección');
+      if (!filled(emisor.telefono)) missingEmisor.push('teléfono');
+      if (!filled(emisor.correo)) missingEmisor.push('correo');
+      if (!filled(emisorCodEst)) missingEmisor.push('código establecimiento MH');
+      if (!filled(emisorPunto)) missingEmisor.push('código punto de venta MH');
+      if (missingEmisor.length > 0) {
+        datosErrors.push(`Faltan datos del emisor: ${missingEmisor.join(', ')}`);
       }
 
       const receptorDirOK = selectedReceptor.departamento && selectedReceptor.municipio && selectedReceptor.direccion;
@@ -671,33 +691,43 @@ const FacturaGenerator: React.FC = () => {
 
   // Calcular totales para la UI
   const itemsParaCalculoUI: ItemFactura[] = items.map((item, idx) => {
-    const totalLinea = redondear(item.cantidad * item.precioUni, 8);
+    const cantidad8 = redondear(item.cantidad, 8);
+    const precio8 = redondear(item.precioUni, 8);
+    const totalLinea = redondear(cantidad8 * precio8, 8);
+
     let ventaGravada = 0;
-    
+    let ventaExenta = 0;
+    let ivaItem = 0;
+
     if (item.esExento) {
-      ventaGravada = 0;
+      ventaExenta = totalLinea;
+    } else if (tipoDocumento === '01') {
+      const base = redondear(totalLinea / 1.13, 8);
+      ventaGravada = base;
+      ivaItem = redondear(totalLinea - base, 2);
     } else {
       ventaGravada = totalLinea;
+      ivaItem = redondear(ventaGravada * 0.13, 2);
     }
 
     return {
       numItem: idx + 1,
       tipoItem: item.tipoItem,
-      cantidad: item.cantidad,
+      cantidad: cantidad8,
       codigo: item.codigo || null,
       uniMedida: item.uniMedida,
       descripcion: item.descripcion,
-      precioUni: item.precioUni,
+      precioUni: precio8,
       montoDescu: 0,
       ventaNoSuj: 0,
-      ventaExenta: item.esExento ? totalLinea : 0,
-      ventaGravada: item.esExento ? 0 : ventaGravada,
+      ventaExenta,
+      ventaGravada,
       tributos: null,
       numeroDocumento: null,
       codTributo: null,
       psv: 0,
       noGravado: 0,
-      ivaItem: 0
+      ivaItem,
     };
   });
 
