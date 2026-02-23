@@ -295,6 +295,11 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
     const base = tipoDocumento === '01' ? redondear(totalGravada / 1.13, 8) : totalGravada;
     iva = redondear(base * 0.13, 2);
   }
+  // En FE el IVA es informativo: recalculamos por diferencia sobre base para consistencia visual
+  if (tipoDocumento === '01' && totalGravada > 0) {
+    const base = redondear(totalGravada / 1.13, 8);
+    iva = redondear(totalGravada - base, 2);
+  }
 
   const tributosAdicionales = 0; // No se usan tributos adicionales en UI por ahora
   const ivaRete1 = 0;
@@ -303,9 +308,9 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const cargosNoBase = 0;
   const abonos = 0;
 
-  // FE: precios incluyen IVA, totalGravada ya lleva IVA. No sumar IVA de nuevo.
+  // FE: precios incluyen IVA, totalGravada ya lleva IVA. No sumar IVA de nuevo; monto total = totalGravada
   const montoTotalOperacion = tipoDocumento === '01'
-    ? redondear(subTotal + tributosAdicionales + totalNoGravado, 2)
+    ? redondear(totalGravada + tributosAdicionales + totalNoGravado, 2)
     : redondear(subTotal + iva + tributosAdicionales + totalNoGravado, 2);
 
   const totalPagar = redondear(montoTotalOperacion - ivaRete1 - reteRenta + saldoFavor + cargosNoBase - abonos, 2);
@@ -392,6 +397,10 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       const base = datos.tipoDocumento === '01' ? redondear(sumGravada / 1.13, 8) : sumGravada;
       totalIva = redondear(base * 0.13, 2);
     }
+    if (datos.tipoDocumento === '01' && sumGravada > 0) {
+      const base = redondear(sumGravada / 1.13, 8);
+      totalIva = redondear(sumGravada - base, 2);
+    }
     
     // 2. Tributos en resumen deben ir null según instrucción
     let tributosResumen: { codigo: string; descripcion: string; valor: number }[] | null = null;
@@ -400,7 +409,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     const subTotal = redondear(subTotalVentas - totalDescu, 2);
     const totalNoGravado = redondear(sumNoGravado, 2);
     let montoTotalOperacion = datos.tipoDocumento === '01'
-      ? redondear(subTotal + totalNoGravado, 2)
+      ? redondear(sumGravada + totalNoGravado, 2)
       : redondear(subTotal + totalIva + totalNoGravado, 2);
 
     let totalPagar = montoTotalOperacion;
