@@ -450,7 +450,9 @@ const FacturaGenerator: React.FC = () => {
       const correlativo = Date.now() % 100000;
       
       const itemsParaCalculo: ItemFactura[] = validItems.map((item, idx) => {
-        const totalLinea = redondear(item.cantidad * item.precioUni, 8);
+        const cantidad8 = redondear(item.cantidad, 8);
+        const precio8 = redondear(item.precioUni, 8);
+        const totalLinea = redondear(cantidad8 * precio8, 8);
         let ventaGravada = 0;
 
         if (item.esExento) {
@@ -462,11 +464,11 @@ const FacturaGenerator: React.FC = () => {
         return {
           numItem: idx + 1,
           tipoItem: item.tipoItem,
-          cantidad: item.cantidad,
+          cantidad: cantidad8,
           codigo: item.codigo || null,
           uniMedida: item.uniMedida,
           descripcion: item.descripcion,
-          precioUni: item.precioUni,
+          precioUni: precio8,
           montoDescu: 0,
           ventaNoSuj: 0,
           ventaExenta: item.esExento ? totalLinea : 0,
@@ -479,6 +481,71 @@ const FacturaGenerator: React.FC = () => {
           ivaItem: 0 // Se calculará dentro de generarDTE
         };
       });
+
+      const totalesPreview = calcularTotales(itemsParaCalculo, tipoDocumento);
+
+      // Validaciones MH: tolerancia 0.01
+      const tolerance = 0.01;
+      const itemErrors: string[] = [];
+      itemsParaCalculo.forEach((it) => {
+        const base = redondear(redondear(it.precioUni, 8) * redondear(it.cantidad, 8) - redondear(it.montoDescu, 8), 8);
+        const sumaLineas = redondear(it.ventaGravada + it.ventaExenta + it.ventaNoSuj, 8);
+        if (Math.abs(base - sumaLineas) > tolerance) {
+          itemErrors.push(`Ítem ${it.numItem}: base ${base.toFixed(2)} ≠ sumatoria ${sumaLineas.toFixed(2)}`);
+        }
+      });
+
+      const resumenErrors: string[] = [];
+      if (Math.abs(totalesPreview.totalGravada - itemsParaCalculo.reduce((s, i) => s + i.ventaGravada, 0)) > tolerance) {
+        resumenErrors.push('Total gravada no cuadra');
+      }
+      if (Math.abs(totalesPreview.totalExenta - itemsParaCalculo.reduce((s, i) => s + i.ventaExenta, 0)) > tolerance) {
+        resumenErrors.push('Total exenta no cuadra');
+      }
+      if (Math.abs(totalesPreview.totalNoSuj - itemsParaCalculo.reduce((s, i) => s + i.ventaNoSuj, 0)) > tolerance) {
+        resumenErrors.push('Total no sujeto no cuadra');
+      }
+      const ivaSum = itemsParaCalculo.reduce((s, i) => s + (i.ivaItem || 0), 0);
+      if (Math.abs(totalesPreview.iva - ivaSum) > tolerance && !(ivaSum === 0 && totalesPreview.iva > 0)) {
+        resumenErrors.push('IVA resumen no cuadra con ítems');
+      }
+      const recomputeMonto = redondear(totalesPreview.subTotal + totalesPreview.iva + totalesPreview.totalNoGravado, 2);
+      if (Math.abs(totalesPreview.montoTotalOperacion - recomputeMonto) > tolerance) {
+        resumenErrors.push('Monto total de operación no cuadra');
+      }
+      if (Math.abs(totalesPreview.totalPagar - (totalesPreview.montoTotalOperacion)) > tolerance) {
+        resumenErrors.push('Total a pagar no cuadra');
+      }
+
+      // Validar datos obligatorios de emisor/receptor
+      const datosErrors: string[] = [];
+      const emisorDirOK = emisor.departamento && emisor.municipio && emisor.direccion;
+      const emisorCodsOK = emisor.codEstableMH && emisor.codPuntoVentaMH;
+      if (!emisor.nit || !emisor.nrc || !emisor.nombre || !emisor.actividadEconomica || !emisor.descActividad || !emisorDirOK || !emisor.telefono || !emisor.correo || !emisorCodsOK) {
+        datosErrors.push('Completa NIT, NRC, nombre, actividad, dirección, teléfono, correo y códigos MH del emisor');
+      }
+
+      const receptorDirOK = selectedReceptor.departamento && selectedReceptor.municipio && selectedReceptor.direccion;
+      const receptorContactoOK = selectedReceptor.telefono || selectedReceptor.email;
+      const totalDoc = totalesPreview.totalPagar;
+      if (tipoDocumento === '01') {
+        const receptorId = (selectedReceptor.nit || '').replace(/[\s-]/g, '');
+        if (totalDoc >= 1095 && receptorId.length < 9) {
+          datosErrors.push('Factura (01) ≥ 1095 requiere documento de receptor');
+        }
+      }
+      if (tipoDocumento === '03') {
+        if (!selectedReceptor.nit || !selectedReceptor.nrc || !receptorDirOK || !receptorContactoOK) {
+          datosErrors.push('CCF (03) requiere NIT, NRC, dirección y contacto del receptor');
+        }
+      }
+
+      const allErrors = [...itemErrors, ...resumenErrors, ...datosErrors];
+      if (allErrors.length > 0) {
+        setIsGenerating(false);
+        allErrors.forEach(e => addToast(e, 'error'));
+        return;
+      }
 
       const dte = generarDTE({
         tipoDocumento,

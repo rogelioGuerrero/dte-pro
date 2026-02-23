@@ -261,54 +261,62 @@ export const obtenerHoraActual = (): string => {
 
 // Calcular totales de items
 export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '01') => {
-  const totalGravada = items.reduce((sum, item) => sum + item.ventaGravada, 0);
-  const totalExenta = items.reduce((sum, item) => sum + item.ventaExenta, 0);
-  const totalNoSuj = items.reduce((sum, item) => sum + item.ventaNoSuj, 0);
-  const totalDescu = items.reduce((sum, item) => sum + item.montoDescu, 0);
-  
-  const subTotalVentas = totalGravada + totalExenta + totalNoSuj;
-  
-  let iva = 0;
-  let montoTotal = 0;
+  // Normalizar a 8 decimales en cuerpo (regla de la 9.ª posición)
+  const normalizados = items.map((item) => ({
+    cantidad: redondear(item.cantidad || 0, 8),
+    precioUni: redondear(item.precioUni || 0, 8),
+    montoDescu: redondear(item.montoDescu || 0, 8),
+    ventaNoSuj: redondear(item.ventaNoSuj || 0, 8),
+    ventaExenta: redondear(item.ventaExenta || 0, 8),
+    ventaGravada: redondear(item.ventaGravada || 0, 8),
+    ivaItem: redondear(item.ivaItem || 0, 8),
+    noGravado: redondear(item.noGravado || 0, 8),
+  }));
 
-  if (tipoDocumento === '01') {
-    // Factura (01): Precios incluyen IVA.
-    // El IVA total es la suma de los IVAs calculados por ítem (informativo)
-    
-    // Si los items vienen de la UI, es posible que ivaItem sea 0.
-    // Debemos calcular el IVA implícito para mostrarlo en el resumen.
-    iva = items.reduce((sum, item) => {
-      // Si ya tiene IVA calculado (ej. desde DB), usarlo
-      if (item.ivaItem && item.ivaItem > 0) return sum + item.ivaItem;
-      
-      // Si no, calcularlo desde la venta gravada (que incluye IVA)
-      // Base = Incluido / 1.13 -> IVA = Incluido - Base
-      if (item.ventaGravada > 0) {
-        const base = item.ventaGravada / 1.13;
-        const itemIva = item.ventaGravada - base;
-        return sum + itemIva;
-      }
-      return sum;
-    }, 0);
+  const totalGravadaRaw = normalizados.reduce((sum, item) => sum + item.ventaGravada, 0);
+  const totalExentaRaw = normalizados.reduce((sum, item) => sum + item.ventaExenta, 0);
+  const totalNoSujRaw = normalizados.reduce((sum, item) => sum + item.ventaNoSuj, 0);
+  const totalDescuRaw = normalizados.reduce((sum, item) => sum + item.montoDescu, 0);
+  const totalNoGravadoRaw = normalizados.reduce((sum, item) => sum + item.noGravado, 0);
+  const ivaItemsRaw = normalizados.reduce((sum, item) => sum + item.ivaItem, 0);
 
-    // En Factura, el IVA ya está en el subTotalVentas
-    montoTotal = redondear(subTotalVentas - totalDescu, 2);
-  } else {
-    // CCF (03) y otros: Precios sin IVA.
-    // El IVA se calcula sobre el total gravado
-    iva = redondear(totalGravada * 0.13, 2);
-    montoTotal = redondear(subTotalVentas + iva - totalDescu, 2);
+  const totalGravada = redondear(totalGravadaRaw, 2);
+  const totalExenta = redondear(totalExentaRaw, 2);
+  const totalNoSuj = redondear(totalNoSujRaw, 2);
+  const totalDescu = redondear(totalDescuRaw, 2);
+  const totalNoGravado = redondear(totalNoGravadoRaw, 2);
+
+  const subTotalVentas = redondear(totalGravada + totalExenta + totalNoSuj, 2);
+  const subTotal = redondear(subTotalVentas - totalDescu, 2);
+
+  // IVA: preferir suma de ítems; si viene en cero, calcular 13% de la base gravada
+  let iva = redondear(ivaItemsRaw, 2);
+  if (iva === 0 && totalGravada > 0) {
+    const base = tipoDocumento === '01' ? redondear(totalGravada / 1.13, 8) : totalGravada;
+    iva = redondear(base * 0.13, 2);
   }
+
+  const tributosAdicionales = 0; // No se usan tributos adicionales en UI por ahora
+  const ivaRete1 = 0;
+  const reteRenta = 0;
+  const saldoFavor = 0;
+  const cargosNoBase = 0;
+  const abonos = 0;
+
+  const montoTotalOperacion = redondear(subTotal + iva + tributosAdicionales + totalNoGravado, 2);
+  const totalPagar = redondear(montoTotalOperacion - ivaRete1 - reteRenta + saldoFavor + cargosNoBase - abonos, 2);
   
   return {
-    totalNoSuj: redondear(totalNoSuj, 2),
-    totalExenta: redondear(totalExenta, 2),
-    totalGravada: redondear(totalGravada, 2),
-    subTotalVentas: redondear(subTotalVentas, 2),
-    totalDescu: redondear(totalDescu, 2),
-    iva: redondear(iva, 2),
-    montoTotal,
-    totalPagar: montoTotal,
+    totalNoSuj,
+    totalExenta,
+    totalGravada,
+    totalNoGravado,
+    subTotalVentas,
+    subTotal,
+    totalDescu,
+    iva,
+    montoTotalOperacion,
+    totalPagar,
   };
 };
 
@@ -396,37 +404,26 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const totalNoSuj = redondear(sumNoSuj, 2);
   const totalDescu = redondear(sumDescu, 2);
 
-  const subTotalVentas = redondear(totalGravada + totalExenta + totalNoSuj, 2);
+  const subTotalVentas = redondear(sumGravada + sumExenta + sumNoSuj, 2);
 
-  // Cálculo de IVA Global
-  // MH permite suma de IVAs de ítems o cálculo global. Usaremos cálculo global sobre totalGravada para consistencia con tributos.
-  // Sin embargo, para Factura (01), si recalculamos globalmente (BaseTotal * 0.13), podría haber diferencias de centavos 
-  // respecto a la suma original con IVA (TotalOriginal - BaseTotal).
-  // Para evitar "saltos" de precio al cliente, lo ideal es: TotalPagar = TotalOriginal.
-  // Pero el JSON se construye desde las bases.
-  
-  // Enfoque Híbrido Robusto:
-  // 1. Calcular IVA teórico sobre la base total redondeada.
-  let totalIva = redondear(totalGravada * 0.13, 2);
-  
-  // 2. Tributos en resumen deben ir null según instrucción
-  let tributosResumen: { codigo: string; descripcion: string; valor: number }[] | null = null;
+    // Cálculo de IVA Global (preferir suma de ítems)
+    const ivaItems = cuerpoDocumento.reduce((sum, item) => sum + (item.ivaItem || 0), 0);
+    let totalIva = redondear(ivaItems, 2);
+    if (totalIva === 0 && sumGravada > 0) {
+      const base = datos.tipoDocumento === '01' ? redondear(sumGravada / 1.13, 8) : sumGravada;
+      totalIva = redondear(base * 0.13, 2);
+    }
+    
+    // 2. Tributos en resumen deben ir null según instrucción
+    let tributosResumen: { codigo: string; descripcion: string; valor: number }[] | null = null;
 
-  // 3. Calcular Total a Pagar
-  // Total = SubTotal + IVA - Retenciones + Otros
-  // Nota: totalDescu ya se restó implícitamente si ventaGravada es neta, o explícitamente si no.
-  // En este modelo, asumimos que ventaGravada ya tiene descuento aplicado línea a línea si se usó precio final.
-  // Pero el campo 'montoDescu' es informativo.
-  // Ajuste: La estructura estándar es SubTotal (suma de ventas) + Tributos - Retenciones.
-  
-  let montoTotalOperacion = redondear(subTotalVentas + totalIva, 2);
-  
-  // Manejo de Descuento Global (si aplicara) - Por ahora asumimos descuento de línea ya reflejado en ventaGravada
-  // Si totalDescu se resta al final:
-  // montoTotalOperacion = redondear(montoTotalOperacion - totalDescu, 2); 
-  // (Depende de si ventaGravada es bruta o neta. Asumimos Neta según práctica común en items).
+    // 3. Calcular Total a Pagar
+    // Total = SubTotal + IVA - Retenciones + Otros
+    const subTotal = redondear(subTotalVentas - totalDescu, 2);
+    const totalNoGravado = redondear(sumNoGravado, 2);
+    let montoTotalOperacion = redondear(subTotal + totalIva + totalNoGravado, 2);
 
-  let totalPagar = montoTotalOperacion;
+    let totalPagar = montoTotalOperacion;
 
   const receptorIdDigits = (datos.receptor.nit || '').replace(/[\s-]/g, '').trim();
   const receptorSinDocumento = receptorIdDigits.length === 0;
