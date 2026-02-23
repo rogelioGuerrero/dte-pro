@@ -336,40 +336,13 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     
     let ivaItem = 0;
     
-    // Lógica de Desglose de IVA
-    if (datos.tipoDocumento === '01') {
-      // FACTURA (01): Los valores de entrada INCLUYEN IVA.
-      // El JSON debe reportar la BASE IMPONIBLE (Sin IVA).
-      
-      if (ventaGravada > 0) {
-        // Extraer IVA de la Venta Gravada
-        const gravadaConIva = ventaGravada;
-        ventaGravada = redondear(gravadaConIva / 1.13, 8);
-        
-        // Extraer IVA del Precio Unitario
-        // Nota: Si cantidad * precio != ventaGravada por decimales, esto mantiene consistencia unitaria
-        precioUni = redondear(precioUni / 1.13, 8);
-        
-        // Extraer IVA del Descuento
-        if (montoDescu > 0) {
-          montoDescu = redondear(montoDescu / 1.13, 8);
-        }
-
-        // Calcular IVA del ítem sobre la nueva base
-        ivaItem = redondear(ventaGravada * 0.13, 2);
-      }
-    } else {
-      // CCF (03) y otros: Los valores de entrada SON SIN IVA (Base).
-      // Se usan tal cual, solo asegurando redondeo.
-      precioUni = redondear(precioUni, 8);
-      ventaGravada = redondear(ventaGravada, 8);
-      montoDescu = redondear(montoDescu, 8);
-      ventaNoSuj = redondear(ventaNoSuj, 8);
-      ventaExenta = redondear(ventaExenta, 8);
-      
-      // Calcular IVA sobre la base
-      ivaItem = ventaGravada > 0 ? redondear(ventaGravada * 0.13, 2) : 0;
-    }
+    // Lógica de IVA: precio se toma como base; IVA 13% sobre ventaGravada si no es exento
+    precioUni = redondear(precioUni, 8);
+    ventaGravada = redondear(ventaGravada, 8);
+    montoDescu = redondear(montoDescu, 8);
+    ventaNoSuj = redondear(ventaNoSuj, 8);
+    ventaExenta = redondear(ventaExenta, 8);
+    ivaItem = ventaGravada > 0 ? redondear(ventaGravada * 0.13, 2) : 0;
 
     // Tributos: instrucción pide null en cada ítem
     const tributos = null;

@@ -460,10 +460,6 @@ const FacturaGenerator: React.FC = () => {
 
         if (item.esExento) {
           ventaExenta = totalLinea;
-        } else if (tipoDocumento === '01') {
-          const base = redondear(totalLinea / 1.13, 8);
-          ventaGravada = base;
-          ivaItem = redondear(totalLinea - base, 2);
         } else {
           ventaGravada = totalLinea;
           ivaItem = redondear(ventaGravada * 0.13, 2);
@@ -496,8 +492,7 @@ const FacturaGenerator: React.FC = () => {
       const tolerance = 0.01;
       const itemErrors: string[] = [];
       itemsParaCalculo.forEach((it) => {
-        const baseBruta = redondear(redondear(it.precioUni, 8) * redondear(it.cantidad, 8) - redondear(it.montoDescu, 8), 8);
-        const base = tipoDocumento === '01' ? redondear(baseBruta / 1.13, 8) : baseBruta;
+        const base = redondear(redondear(it.precioUni, 8) * redondear(it.cantidad, 8) - redondear(it.montoDescu, 8), 8);
         const sumaLineas = redondear(it.ventaGravada + it.ventaExenta + it.ventaNoSuj, 8);
         if (Math.abs(base - sumaLineas) > tolerance) {
           itemErrors.push(`Ítem ${it.numItem}: base ${base.toFixed(2)} ≠ sumatoria ${sumaLineas.toFixed(2)}`);
