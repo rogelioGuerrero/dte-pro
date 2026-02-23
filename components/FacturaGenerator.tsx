@@ -496,7 +496,8 @@ const FacturaGenerator: React.FC = () => {
       const tolerance = 0.01;
       const itemErrors: string[] = [];
       itemsParaCalculo.forEach((it) => {
-        const base = redondear(redondear(it.precioUni, 8) * redondear(it.cantidad, 8) - redondear(it.montoDescu, 8), 8);
+        const baseBruta = redondear(redondear(it.precioUni, 8) * redondear(it.cantidad, 8) - redondear(it.montoDescu, 8), 8);
+        const base = tipoDocumento === '01' ? redondear(baseBruta / 1.13, 8) : baseBruta;
         const sumaLineas = redondear(it.ventaGravada + it.ventaExenta + it.ventaNoSuj, 8);
         if (Math.abs(base - sumaLineas) > tolerance) {
           itemErrors.push(`Ítem ${it.numItem}: base ${base.toFixed(2)} ≠ sumatoria ${sumaLineas.toFixed(2)}`);
