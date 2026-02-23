@@ -289,16 +289,19 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const subTotalVentas = redondear(totalGravada + totalExenta + totalNoSuj, 2);
   const subTotal = redondear(subTotalVentas - totalDescu, 2);
 
-  // IVA: preferir suma de ítems; si viene en cero, calcular 13% de la base gravada
-  let iva = redondear(ivaItemsRaw, 2);
-  if (iva === 0 && totalGravada > 0) {
-    const base = tipoDocumento === '01' ? redondear(totalGravada / 1.13, 8) : totalGravada;
-    iva = redondear(base * 0.13, 2);
-  }
-  // En FE el IVA es informativo: recalculamos por diferencia sobre base para consistencia visual
-  if (tipoDocumento === '01' && totalGravada > 0) {
-    const base = redondear(totalGravada / 1.13, 8);
-    iva = redondear(totalGravada - base, 2);
+  let iva = 0;
+  if (tipoDocumento === '01') {
+    // FE: IVA informativo derivado de totalGravada con IVA incluido
+    if (totalGravada > 0) {
+      const base = redondear(totalGravada / 1.13, 8);
+      iva = redondear(totalGravada - base, 2);
+    }
+  } else {
+    // CCF/otros: preferir suma de ítems; fallback 13%
+    iva = redondear(ivaItemsRaw, 2);
+    if (iva === 0 && totalGravada > 0) {
+      iva = redondear(totalGravada * 0.13, 2);
+    }
   }
 
   const tributosAdicionales = 0; // No se usan tributos adicionales en UI por ahora
@@ -390,16 +393,19 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
 
   const subTotalVentas = redondear(sumGravada + sumExenta + sumNoSuj, 2);
 
-    // Cálculo de IVA Global (preferir suma de ítems)
-    const ivaItems = cuerpoDocumento.reduce((sum, item) => sum + (item.ivaItem || 0), 0);
-    let totalIva = redondear(ivaItems, 2);
-    if (totalIva === 0 && sumGravada > 0) {
-      const base = datos.tipoDocumento === '01' ? redondear(sumGravada / 1.13, 8) : sumGravada;
-      totalIva = redondear(base * 0.13, 2);
-    }
-    if (datos.tipoDocumento === '01' && sumGravada > 0) {
-      const base = redondear(sumGravada / 1.13, 8);
-      totalIva = redondear(sumGravada - base, 2);
+    // Cálculo de IVA Global: FE deriva de totalGravada con IVA incluido; otros prefieren suma ítems
+    let totalIva = 0;
+    if (datos.tipoDocumento === '01') {
+      if (sumGravada > 0) {
+        const base = redondear(sumGravada / 1.13, 8);
+        totalIva = redondear(sumGravada - base, 2);
+      }
+    } else {
+      const ivaItems = cuerpoDocumento.reduce((sum, item) => sum + (item.ivaItem || 0), 0);
+      totalIva = redondear(ivaItems, 2);
+      if (totalIva === 0 && sumGravada > 0) {
+        totalIva = redondear(sumGravada * 0.13, 2);
+      }
     }
     
     // 2. Tributos en resumen deben ir null según instrucción
