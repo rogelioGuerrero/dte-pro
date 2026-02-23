@@ -398,6 +398,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const sumExenta = cuerpoDocumento.reduce((sum, item) => sum + item.ventaExenta, 0);
   const sumNoSuj = cuerpoDocumento.reduce((sum, item) => sum + item.ventaNoSuj, 0);
   const sumDescu = cuerpoDocumento.reduce((sum, item) => sum + item.montoDescu, 0);
+  const sumNoGravado = cuerpoDocumento.reduce((sum, item) => sum + (item.noGravado || 0), 0);
   
   const totalGravada = redondear(sumGravada, 2);
   const totalExenta = redondear(sumExenta, 2);

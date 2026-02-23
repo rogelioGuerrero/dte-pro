@@ -459,7 +459,7 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
     try {
       const correlativo = Date.now() % 100000;
 
-      if (totales.montoTotal >= 25000) {
+      if (totales.montoTotalOperacion >= 25000) {
         const receptorId = (selectedClient.nit || '').replace(/[-\s]/g, '').trim();
         if (!receptorId) {
           addToast('Monto >= $25,000: debes completar los datos del receptor (documento de identificación).', 'error');
