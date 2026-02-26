@@ -32,7 +32,7 @@ export const GeneradorSimple: React.FC = () => {
     codPuntoVentaMH: 'P001'
   };
 
-  const generarJSON = () => {
+  const buildDatosFactura = () => {
     // Receptor fijo: Consumidor Final
     const receptor = {
       id: 999999,
@@ -74,7 +74,7 @@ export const GeneradorSimple: React.FC = () => {
       noGravado: 0
     };
 
-    const datosFactura = {
+    return {
       emisor,
       receptor,
       items: [item],
@@ -83,11 +83,21 @@ export const GeneradorSimple: React.FC = () => {
       formaPago: '01', // Efectivo
       condicionOperacion: 1 // Contado
     };
+  };
 
-    const dte = generarDTE(datosFactura, 1);
+  const buildAndSetDTE = () => {
+    const datosFactura = buildDatosFactura();
+    // Correlativo único basado en timestamp para evitar duplicados en MH
+    const correlativo = Date.now();
+    const dte = generarDTE(datosFactura, correlativo);
     setDteData(dte);
     setResultadoJSON(JSON.stringify(dte, null, 2));
     setRespuestaMH(null); // Limpiar respuesta anterior
+    return dte;
+  };
+
+  const generarJSON = () => {
+    buildAndSetDTE();
   };
 
   const copiarJSON = () => {
@@ -96,8 +106,9 @@ export const GeneradorSimple: React.FC = () => {
   };
 
   const transmitirMH = async () => {
-    if (!dteData) return;
-    
+    // Siempre regenerar para forzar numeroControl único en cada envío
+    const dteParaEnviar = buildAndSetDTE();
+
     setIsTransmitting(true);
     addToast('Transmitiendo a Hacienda...', 'info');
 
@@ -119,7 +130,7 @@ export const GeneradorSimple: React.FC = () => {
           'x-business-id': nitEmisor
         },
         body: JSON.stringify({
-          dte: dteData,
+          dte: dteParaEnviar,
           nit: nitEmisor,
           ambiente: '00', // Pruebas
           flowType: 'emission',
