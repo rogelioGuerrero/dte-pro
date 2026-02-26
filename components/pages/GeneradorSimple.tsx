@@ -3,6 +3,8 @@ import { generarDTE, redondear } from '../../utils/dteGenerator';
 import { useToast } from '../Toast';
 import { Copy, Send } from 'lucide-react';
 
+import { BACKEND_CONFIG, getAuthHeaders } from '../../utils/backendConfig';
+
 export const GeneradorSimple: React.FC = () => {
   const { addToast } = useToast();
   const [precio, setPrecio] = useState<number>(0);
@@ -100,13 +102,13 @@ export const GeneradorSimple: React.FC = () => {
     addToast('Transmitiendo a Hacienda...', 'info');
 
     try {
-      const response = await fetch('/api/mh/transmitir', {
+      const response = await fetch(`${BACKEND_CONFIG.URL}/api/dte/process`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
-          dteJson: dteData,
+          dte: dteData,
           ambiente: '00', // Pruebas
-          nit: emisor.nit.replace(/[\s-]/g, '')
+          business_id: import.meta.env.VITE_BUSINESS_ID || 'uuid-business-temporal',
         })
       });
 
