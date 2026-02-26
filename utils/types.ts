@@ -21,8 +21,6 @@ export interface ItemFactura {
   ivaItem?: number;
   // Monto de cargos/abonos que no afectan la base imponible (valor puede ser positivo o negativo)
   cargosNoBase?: number;
-  // Código de tributo aplicado al ítem (ej. '20' IVA 13%, 'C3' IVA 0% export)
-  tributoCodigo?: string | null;
 }
 
 export interface DatosFactura {

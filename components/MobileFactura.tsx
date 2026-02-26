@@ -60,8 +60,6 @@ interface ItemForm {
   tipoItem: number;
   esExento: boolean;
   cargosNoBase?: number;
-  tributoCodigo?: string | null;
-  uniMedida: number // Default to 'UNIDAD' or standard measure
 }
 
 interface NewClientForm {
@@ -112,9 +110,7 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
     precioUni: 0, 
     cantidad: 1, 
     tipoItem: 1, 
-    cargosNoBase: 0, 
-    tributoCodigo: null as string | null,
-    uniMedida: 59 // Default to 'UNIDAD' or standard measure
+    cargosNoBase: 0
   });
   const [tipoDoc, setTipoDoc] = useState('01');
   const [formaPago, setFormaPago] = useState('01');
@@ -311,11 +307,9 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
       tipoItem: resolvedTipoItem,
       esExento: false,
       cargosNoBase: newItem.cargosNoBase || 0,
-      tributoCodigo: newItem.tributoCodigo,
-      uniMedida: newItem.uniMedida || 59,
     };
     setItems([...items, item]);
-    setNewItem({ codigo: '', descripcion: '', precioUni: 0, cantidad: 1, tipoItem: 1, cargosNoBase: 0, tributoCodigo: null, uniMedida: 59 });
+    setNewItem({ codigo: '', descripcion: '', precioUni: 0, cantidad: 1, tipoItem: 1, cargosNoBase: 0 });
     setShowAddItem(false);
   };
 
@@ -341,26 +335,25 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
     let ventaNoSuj = 0;
     let ivaItem = 0;
 
-    const isNinguno = item.tributoCodigo === '';
-    const isIVA = item.tributoCodigo === '20';
-    const aplicaIVA = isIVA || (!isNinguno && item.tributoCodigo == null && (tipoDoc === '01' || tipoDoc === '03') && !item.esExento);
-
+    // Lógica simple: solo esExento vs gravado
     if (item.esExento) {
       ventaExenta = totalLinea;
-    } else if (!aplicaIVA) {
-      ventaNoSuj = totalLinea;
     } else if (tipoDoc === '01') {
+      // Factura: precio incluye IVA
       const base = redondear(totalLinea / 1.13, 8);
       ventaGravada = base;
       ivaItem = redondear(totalLinea - base, 2);
     } else if (tipoDoc === '03') {
+      // CCF: precio sin IVA
       ventaGravada = totalLinea;
       ivaItem = redondear(totalLinea * 0.13, 2);
     } else {
+      // Otros documentos: sin IVA
       ventaGravada = totalLinea;
     }
 
-    const finalTributoCodigo = aplicaIVA ? '20' : null;
+    // Tributos: solo IVA 13% si hay venta gravada y es FE/CCF
+    const tributos = (ventaGravada > 0 && (tipoDoc === '01' || tipoDoc === '03')) ? ['20'] : null;
 
     return {
       ...item,
@@ -371,15 +364,14 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
       ventaNoSuj,
       ventaExenta,
       ventaGravada,
-      tributos: finalTributoCodigo ? [finalTributoCodigo] : null,
+      tributos,
       numeroDocumento: null,
       codTributo: null,
       psv: 0,
       noGravado: 0,
       ivaItem,
-      tributoCodigo: finalTributoCodigo,
       cargosNoBase: item.cargosNoBase || 0,
-      uniMedida: 59, // default
+      uniMedida: 99, // default
     };
   });
 
@@ -1242,9 +1234,7 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700">
-                    {tipoDoc === '01' ? 'Precio (C/IVA)' : 'Precio (S/IVA)'}
-                  </label>
+                  <label className="text-sm font-medium text-gray-700">Precio Unitario</label>
                   <input
                     type="number"
                     step="0.01"
@@ -1252,9 +1242,16 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
                     onChange={(e) =>
                       setNewItem({ ...newItem, precioUni: parseFloat(e.target.value) || 0 })
                     }
-                    placeholder="0.00"
                     className="w-full mt-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                    placeholder={tipoDoc === '01' ? 'Precio con IVA incluido' : 'Precio sin IVA'}
                   />
+                  <p className="mt-1 text-xs text-gray-500">
+                    {tipoDoc === '01'
+                      ? '01: Ingresa precio con IVA incluido (13%).'
+                      : tipoDoc === '03'
+                        ? '03: Ingresa precio sin IVA; se calculará 13%.'
+                        : 'Ajusta precios según el tipo de documento.'}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Cantidad</label>
@@ -1281,22 +1278,6 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
                     className="w-full mt-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="text-[11px] text-gray-500 mt-1">Valores positivos suman al total, negativos restan.</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Tributo</label>
-                  <select
-                    value={newItem.tributoCodigo || ''}
-                    onChange={(e) =>
-                      setNewItem({ ...newItem, tributoCodigo: e.target.value || null })
-                    }
-                    className="w-full mt-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Ninguno</option>
-                    <option value="20">IVA 13%</option>
-                  </select>
-                  <p className="text-[11px] text-gray-500 mt-1">
-                    Para FE (01) y CCF (03) solo usamos IVA 13% (código 20).
-                  </p>
                 </div>
               </div>
               <button

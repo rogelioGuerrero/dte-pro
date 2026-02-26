@@ -31,9 +31,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     const ivaItem = redondear(item.ivaItem || 0, 2);
     const cantidad = redondear(item.cantidad, 8);
 
-    // En la UI ya determinamos si aplica tributo (null o '20')
-    const tributoCodigo = item.tributoCodigo;
-    const tributos = tributoCodigo ? [tributoCodigo] : null;
+    // Tributos: usar el valor ya determinado en la UI
+    const tributos = item.tributos;
 
     return {
       ...item,
@@ -45,7 +44,6 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       ventaExenta,
       ventaGravada,
       tributos,
-      tributoCodigo,
       numeroDocumento: item.numeroDocumento ?? null,
       codTributo: null,
       psv: item.psv ? redondear(item.psv, 2) : 0,
@@ -72,9 +70,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
 
   // Consolidar tributos: solo IVA 13% (código 20) por ahora, y solo para FE/CCF
   const aplicaIVAResumen = datos.tipoDocumento === '01' || datos.tipoDocumento === '03';
-  const tributosResumen = aplicaIVAResumen && totalIva > 0
-    ? [{ codigo: '20', descripcion: 'Impuesto al Valor Agregado 13%', valor: totalIva }]
-    : null;
+  const tributosResumen = aplicaIVAResumen && totalGravada > 0 ? [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }] : null;
 
   const receptorIdDigits = (datos.receptor.nit || '').replace(/[\s-]/g, '').trim();
   const receptorSinDocumento = receptorIdDigits.length === 0;

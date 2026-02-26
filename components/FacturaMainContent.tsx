@@ -7,17 +7,18 @@ import { FacturaTipoDocumentoSelector } from './FacturaTipoDocumentoSelector';
 import { ReceptorPicker } from './ReceptorPicker';
 
 interface ItemForm {
+  id: string;
   codigo: string;
   descripcion: string;
   cantidad: number;
-  unidadVenta: string;
-  factorConversion: number;
   precioUni: number;
   precioUniRaw?: string;
   tipoItem: number;
-  uniMedida: number;
+  uniMedida?: number;
   esExento: boolean;
   cargosNoBase: number;
+  unidadVenta: string;
+  factorConversion: number;
   tributoCodigo?: string | null;
 }
 
