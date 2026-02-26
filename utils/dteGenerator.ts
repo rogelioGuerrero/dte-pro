@@ -146,12 +146,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       codPuntoVentaMH: datos.emisor.codPuntoVentaMH || null,
     },
     receptor: {
-      tipoDocumento: datos.tipoDocumento === '03'
-        ? null
-        : (receptorSinDocumento ? null : (receptorIdDigits.length === 9 ? '13' : '36')),
-      numDocumento: datos.tipoDocumento === '03'
-        ? null
-        : (receptorSinDocumento ? null : receptorIdDigits),
+      tipoDocumento: datos.tipoDocumento === '03' ? null : (receptorSinDocumento ? null : (receptorIdDigits.length === 9 ? '13' : '36')),
+      numDocumento: datos.tipoDocumento === '03' ? null : (receptorSinDocumento ? null : receptorIdDigits),
       nit: datos.tipoDocumento === '03' ? receptorIdDigits || null : undefined,
       nrc: receptorNrc || null,
       nombre: (datos.receptor.name || '').trim() ? datos.receptor.name : 'Consumidor Final',

@@ -72,13 +72,13 @@ export interface DTEJSON {
   };
   receptor: {
     nit?: string | null;
-    tipoDocumento: string | null;
-    numDocumento: string | null;
+    tipoDocumento?: string | null;
+    numDocumento?: string | null;
     nrc: string | null;
     nombre: string;
     nombreComercial?: string | null;
-    codActividad: string | null;
-    descActividad: string | null;
+    codActividad?: string | null;
+    descActividad?: string | null;
     direccion: {
       departamento: string;
       municipio: string;

@@ -39,7 +39,7 @@ export const GeneradorSimpleCCF: React.FC = () => {
       nit: '22222222222211', // NIT válido de ejemplo
       nrc: '123456-8',
       actividadEconomica: '96092',
-      descActividad: '',
+      descActividad: 'Servicios n.c.p.',
       departamento: '06',
       municipio: '15',
       direccion: 'direccion cliente',
