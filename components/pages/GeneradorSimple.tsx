@@ -1,24 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { getEmisor, EmisorData } from '../../utils/emisorDb';
+import React, { useState } from 'react';
 import { generarDTE, redondear } from '../../utils/dteGenerator';
 
 export const GeneradorSimple: React.FC = () => {
-  const [emisor, setEmisor] = useState<EmisorData | null>(null);
   const [precio, setPrecio] = useState<number>(0);
   const [cantidad, setCantidad] = useState<number>(1);
   const [descripcion, setDescripcion] = useState<string>('limpi');
   const [resultadoJSON, setResultadoJSON] = useState<string>('');
 
-  useEffect(() => {
-    getEmisor().then(setEmisor);
-  }, []);
-
   const generarJSON = () => {
-    if (!emisor) return;
+    const emisor = {
+      nit: '14012805761025',
+      nrc: '1571266',
+      nombre: 'rogelio guerrero',
+      nombreComercial: 'na',
+      actividadEconomica: '96092', // codActividad en el JSON
+      descActividad: 'Servicios n.c.p.',
+      tipoEstablecimiento: '01',
+      departamento: '06',
+      municipio: '15',
+      direccion: 'av maraai',
+      telefono: '7929-3710',
+      correo: 'rogelio.guerrero@agtisa.com',
+      codEstableMH: 'M001',
+      codPuntoVentaMH: 'P001'
+    };
 
     // Receptor fijo: Consumidor Final
     const receptor = {
-      id: 999999, // Fake ID as number
+      id: 999999,
       name: 'Consumidor Final',
       nit: '',
       nrc: '',
@@ -33,7 +42,7 @@ export const GeneradorSimple: React.FC = () => {
       timestamp: Date.now()
     };
 
-    // Item simple calculado aquí mismo para evitar lógica compleja
+    // Item simple calculado aquí mismo
     const totalLinea = redondear(precio * cantidad, 8);
     const base = redondear(totalLinea / 1.13, 8);
     const iva = redondear(totalLinea - base, 2);
@@ -109,8 +118,7 @@ export const GeneradorSimple: React.FC = () => {
 
       <button 
         onClick={generarJSON}
-        disabled={!emisor}
-        className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold disabled:opacity-50"
+        className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold"
       >
         Generar JSON
       </button>
