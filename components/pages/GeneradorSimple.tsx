@@ -13,7 +13,6 @@ export const GeneradorSimple: React.FC = () => {
   const [resultadoJSON, setResultadoJSON] = useState<string>('');
   const [respuestaMH, setRespuestaMH] = useState<any>(null);
   const [isTransmitting, setIsTransmitting] = useState(false);
-  const [dteData, setDteData] = useState<any>(null);
 
   const emisor = {
     nit: '14012805761025',
@@ -90,7 +89,6 @@ export const GeneradorSimple: React.FC = () => {
     // Correlativo único basado en timestamp para evitar duplicados en MH
     const correlativo = Date.now();
     const dte = generarDTE(datosFactura, correlativo);
-    setDteData(dte);
     setResultadoJSON(JSON.stringify(dte, null, 2));
     setRespuestaMH(null); // Limpiar respuesta anterior
     return dte;
