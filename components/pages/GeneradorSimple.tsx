@@ -43,7 +43,7 @@ export const GeneradorSimple: React.FC = () => {
       municipio: '',
       direccion: '',
       telefono: '',
-      email: '',
+      email: 'guerrero_vi@yahoo.com',
       esConsumidorFinal: true,
       nombreComercial: '',
       timestamp: Date.now()
