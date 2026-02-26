@@ -101,3 +101,25 @@ export const formatPhoneInput = (value: string): string => {
   if (digits.length <= 4) return digits;
   return `${digits.slice(0, 4)}-${digits.slice(4)}`;
 };
+
+// Validaciones de catálogos DTE
+export const isCodActividad = (value: string | null | undefined): boolean => {
+  if (!value) return false;
+  return /^\d{5,6}$/.test(value.trim());
+};
+
+export const isCodDepartamento = (value: string | null | undefined): boolean => {
+  if (!value) return false;
+  return /^(0[1-9]|1[0-4])$/.test(value.trim());
+};
+
+export const isCodMunicipio = (value: string | null | undefined): boolean => {
+  if (!value) return false;
+  return /^(0[1-9]|[1-5]\d|6[0-8])$/.test(value.trim());
+};
+
+export const normalizeEmisorCodActividad = (value: string | null | undefined): string => {
+  const digits = (value || '').replace(/\D/g, '');
+  if (digits === '96099') return '96090';
+  return digits;
+};

@@ -8,6 +8,7 @@ interface TotalesResumen {
   totalExenta: number;
   subTotalVentas: number;
   iva: number;
+  totalCargosNoBase?: number;
   totalPagar: number;
 }
 
@@ -55,6 +56,13 @@ export const FacturaRightPanel: React.FC<FacturaRightPanelProps> = ({
             <span className="text-gray-500">Subtotal:</span>
             <span className="font-mono">${totales.subTotalVentas.toFixed(2)}</span>
           </div>
+
+          {typeof totales.totalCargosNoBase === 'number' && totales.totalCargosNoBase !== 0 && (
+            <div className="flex justify-between text-blue-700">
+              <span>Cargos/Abonos (no base):</span>
+              <span className="font-mono">${totales.totalCargosNoBase.toFixed(2)}</span>
+            </div>
+          )}
           
           {/* En Factura (01) el IVA va incluido, lo mostramos informativo */}
           {isFactura ? (
