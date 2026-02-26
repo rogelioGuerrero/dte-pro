@@ -45,8 +45,9 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const saldoFavor = 0;
   const ivaPerci1 = 0;
 
+  // MH Validación: montoTotalOperacion debe ser igual a (totalGravada + totalExenta + totalNoSuj) para FE 01
   const montoTotalOperacion = tipoDocumento === '01'
-    ? redondear(totalGravada + tributosAdicionales + totalNoGravado, 2)
+    ? redondear(totalGravada + totalExenta + totalNoSuj + totalNoGravado, 2)
     : redondear(subTotal + iva + tributosAdicionales + totalNoGravado, 2);
 
   const totalPagar = redondear(
