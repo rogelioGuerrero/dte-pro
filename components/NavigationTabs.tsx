@@ -2,7 +2,7 @@ import React from 'react';
 import { LayoutDashboard, Users, FileText, History, Boxes, PieChart, Zap } from 'lucide-react';
 import { isTabAllowed } from '../utils/userMode';
 
-type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta' | 'simple' | 'simple-ccf';
+type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta' | 'simple';
 
 interface NavigationTabsProps {
   activeTab: string;
@@ -17,8 +17,7 @@ const TABS_CONFIG = [
   { key: 'inventory', label: 'Inventario', icon: Boxes, color: 'amber' },
   { key: 'factura', label: 'Facturar', icon: FileText, color: 'green' },
   { key: 'historial', label: 'Historial', icon: History, color: 'purple' },
-  { key: 'simple', label: 'Test DTE', icon: Zap, color: 'pink' },
-  { key: 'simple-ccf', label: 'Test CCF', icon: Zap, color: 'orange' }
+  { key: 'simple', label: 'Test DTE', icon: Zap, color: 'pink' }
 ];
 
 export const NavigationTabs: React.FC<NavigationTabsProps> = ({ 

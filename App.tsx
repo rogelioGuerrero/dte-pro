@@ -22,7 +22,7 @@ import ForceUpdateModal from './components/ForceUpdateModal';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import MiCuenta from './components/MiCuenta';
 
-type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta' | 'simple' | 'simple-ccf';
+type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta' | 'simple';
 
 // Detectar si estamos en la pagina publica del cliente
 const isClientFormPage = (): boolean => {
@@ -251,11 +251,6 @@ const App: React.FC = () => {
         {activeTab === 'simple' && (
           <React.Suspense fallback={<div>Cargando...</div>}>
             {React.createElement(React.lazy(() => import('./components/pages/GeneradorSimple')))}
-          </React.Suspense>
-        )}
-        {activeTab === 'simple-ccf' && (
-          <React.Suspense fallback={<div>Cargando...</div>}>
-            {React.createElement(React.lazy(() => import('./components/pages/GeneradorSimpleCCF')))}
           </React.Suspense>
         )}
       </main>
