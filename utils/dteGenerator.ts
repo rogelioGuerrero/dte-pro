@@ -28,8 +28,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     const montoDescu = redondear(item.montoDescu, 8);
     const ventaNoSuj = redondear(item.ventaNoSuj, 8);
     const ventaExenta = redondear(item.ventaExenta, 8);
-    // Para FE (01) NO debe ir ivaItem en el cuerpo según el manual (solo CCF y otros)
-    const ivaItem = datos.tipoDocumento !== '01' ? redondear(item.ivaItem || 0, 2) : undefined;
+    // Para FE (01) y CCF (03) no enviar ivaItem en cuerpo; otros documentos sí podrían usarlo
+    const ivaItem = datos.tipoDocumento === '01' || datos.tipoDocumento === '03' ? undefined : redondear(item.ivaItem || 0, 2);
     const cantidad = redondear(item.cantidad, 8);
 
     // Tributos: solo si hay venta gravada > 0, evitar filtrar valores cuando el precio es 0
@@ -79,15 +79,19 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const receptorIdDigits = (datos.receptor.nit || '').replace(/[\s-]/g, '').trim();
   const receptorSinDocumento = receptorIdDigits.length === 0;
 
-  const receptorCodActividad = isCodActividad(datos.receptor.actividadEconomica)
-    ? datos.receptor.actividadEconomica.trim()
-    : null;
-
-  const receptorDescActividad = datos.receptor.descActividad?.trim()
-    ? datos.receptor.descActividad.trim()
-    : (!isCodActividad(datos.receptor.actividadEconomica) && (datos.receptor.actividadEconomica || '').trim()
-        ? (datos.receptor.actividadEconomica || '').trim()
+  const receptorCodActividad = datos.tipoDocumento === '03'
+    ? null
+    : (isCodActividad(datos.receptor.actividadEconomica)
+        ? datos.receptor.actividadEconomica.trim()
         : null);
+
+  const receptorDescActividad = datos.tipoDocumento === '03'
+    ? null
+    : (datos.receptor.descActividad?.trim()
+        ? datos.receptor.descActividad.trim()
+        : (!isCodActividad(datos.receptor.actividadEconomica) && (datos.receptor.actividadEconomica || '').trim()
+            ? (datos.receptor.actividadEconomica || '').trim()
+            : null));
 
   const receptorDireccion =
     isCodDepartamento(datos.receptor.departamento) && isCodMunicipio(datos.receptor.municipio)
@@ -142,8 +146,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       codPuntoVentaMH: datos.emisor.codPuntoVentaMH || null,
     },
     receptor: {
-      tipoDocumento: receptorSinDocumento ? null : (receptorIdDigits.length === 9 ? '13' : '36'),
-      numDocumento: receptorSinDocumento ? null : receptorIdDigits,
+      tipoDocumento: datos.tipoDocumento === '03' ? null : (receptorSinDocumento ? null : (receptorIdDigits.length === 9 ? '13' : '36')),
+      numDocumento: datos.tipoDocumento === '03' ? null : (receptorSinDocumento ? null : receptorIdDigits),
       nrc: receptorNrc || null,
       nombre: (datos.receptor.name || '').trim() ? datos.receptor.name : 'Consumidor Final',
       codActividad: receptorCodActividad,
@@ -165,7 +169,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       descuGravada: totalDescu,
       porcentajeDescuento: 0,
       totalDescu: totalDescu,
-      totalIva,
+      totalIva: datos.tipoDocumento === '03' ? undefined as any : totalIva,
       tributos: tributosResumen,
       subTotal,
       ivaRete1: 0,
@@ -173,7 +177,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       montoTotalOperacion,
       totalNoGravado,
       totalCargosNoBase,
-      ivaPerci1,
+      ivaPerci1: datos.tipoDocumento === '03' ? 0 : ivaPerci1,
       totalPagar,
       totalLetras: numeroALetras(totalPagar),
       saldoFavor: 0,

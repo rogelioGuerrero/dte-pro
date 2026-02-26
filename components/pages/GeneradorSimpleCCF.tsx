@@ -34,18 +34,19 @@ export const GeneradorSimpleCCF: React.FC = () => {
   const buildDatosFactura = () => {
     // Receptor requerido para CCF (no puede ser Consumidor Final)
     const receptor = {
-      id: 999999,
+      id: 999998,
       name: 'Cliente Con NIT',
-      nit: '12345678-9', // NIT válido de ejemplo
+      nit: '22222222222211', // NIT válido de ejemplo
       nrc: '123456-8',
-      actividadEconomica: '96092',
+      actividadEconomica: '', // enviar null en descActividad y codActividad no válido
+      descActividad: '',
       departamento: '06',
       municipio: '15',
       direccion: 'direccion cliente',
       telefono: '2222-2222',
       email: 'cliente@ejemplo.com',
       esConsumidorFinal: false,
-      nombreComercial: '',
+      nombreComercial: 'Cliente Con NIT',
       timestamp: Date.now()
     };
 
@@ -53,9 +54,6 @@ export const GeneradorSimpleCCF: React.FC = () => {
     const precioNum = Number(precio);
     const cantidadNum = Number(cantidad);
     const totalLinea = redondear(precioNum * cantidadNum, 8);
-
-    // Para CCF (03): precio SIN IVA, ivaItem se calcula y va en cuerpo
-    const ivaItem = precioNum > 0 ? redondear(totalLinea * 0.13, 2) : 0;
 
     const item = {
       numItem: 1,
@@ -73,8 +71,7 @@ export const GeneradorSimpleCCF: React.FC = () => {
       numeroDocumento: null,
       codTributo: null,
       psv: 0,
-      noGravado: 0,
-      ivaItem // Para CCF sí va ivaItem en el cuerpo
+      noGravado: 0
     };
 
     return {
