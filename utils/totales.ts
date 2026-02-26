@@ -30,10 +30,14 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const totalCargosNoBase = redondear(totalCargosNoBaseRaw, 2);
 
   const subTotalVentas = redondear(totalGravada + totalExenta + totalNoSuj, 2);
-  const subTotal = redondear(subTotalVentas - totalDescu, 2);
-
+  
   // El IVA ahora se pre-calcula por ítem en la UI, solo sumamos (redondeado a 2)
   const iva = redondear(ivaItemsRaw, 2);
+
+  // Según manual MH, para FE (01) el subTotal es ventas menos IVA (sin incluir descuentos en este punto)
+  const subTotal = tipoDocumento === '01' 
+    ? redondear(subTotalVentas - totalDescu - iva, 2)
+    : redondear(subTotalVentas - totalDescu, 2);
 
   const tributosAdicionales = 0;
   const ivaRete1 = 0;

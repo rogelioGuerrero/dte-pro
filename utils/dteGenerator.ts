@@ -1,4 +1,4 @@
-import { DatosFactura, DTEJSON, ItemFactura } from './types';
+import { DatosFactura, DTEJSON } from './types';
 import {
   obtenerFechaActual,
   obtenerHoraActual,
@@ -21,14 +21,15 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const numeroControl = generarNumeroControl(datos.tipoDocumento, correlativo, datos.emisor.codEstableMH, datos.emisor.codPuntoVentaMH);
 
   // 1. Generar Cuerpo del Documento con redondeo a 8 decimales (Regla de la novena posición)
-  const cuerpoDocumento: ItemFactura[] = datos.items.map((item, index) => {
+  const cuerpoDocumento = datos.items.map((item, index) => {
     // Valores pre-calculados en la UI (FacturaGenerator / MobileFactura)
     const precioUni = redondear(item.precioUni, 8);
     const ventaGravada = redondear(item.ventaGravada, 8);
     const montoDescu = redondear(item.montoDescu, 8);
     const ventaNoSuj = redondear(item.ventaNoSuj, 8);
     const ventaExenta = redondear(item.ventaExenta, 8);
-    const ivaItem = redondear(item.ivaItem || 0, 2);
+    // Para FE (01) NO debe ir ivaItem en el cuerpo según el manual (solo CCF y otros)
+    const ivaItem = datos.tipoDocumento !== '01' ? redondear(item.ivaItem || 0, 2) : undefined;
     const cantidad = redondear(item.cantidad, 8);
 
     // Tributos: solo si hay venta gravada > 0, evitar filtrar valores cuando el precio es 0
@@ -51,7 +52,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       codTributo: null,
       psv: item.psv ? redondear(item.psv, 2) : 0,
       noGravado: item.noGravado ? redondear(item.noGravado, 2) : 0,
-      ivaItem,
+      ...(ivaItem !== undefined && { ivaItem }),
     };
   });
 

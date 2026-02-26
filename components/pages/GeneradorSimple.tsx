@@ -43,24 +43,26 @@ export const GeneradorSimple: React.FC = () => {
     };
 
     // Item simple calculado aquí mismo
-    const totalLinea = redondear(precio * cantidad, 8);
-    const base = redondear(totalLinea / 1.13, 8);
-    const iva = redondear(totalLinea - base, 2);
+    const precioNum = Number(precio);
+    const cantidadNum = Number(cantidad);
+    const totalLinea = redondear(precioNum * cantidadNum, 8);
+    // const base = redondear(totalLinea / 1.13, 8); // No se usa en el generador simple porque la UI pasa el ivaItem si aplica (pero aquí es FE 01 y no va)
+    // const iva = redondear(totalLinea - base, 2);
 
     const item = {
       numItem: 1,
       tipoItem: 2, // Servicio
-      cantidad: cantidad,
+      cantidad: cantidadNum,
       codigo: null,
       uniMedida: 99,
       descripcion: descripcion,
-      precioUni: precio,
+      precioUni: precioNum,
       montoDescu: 0,
       ventaNoSuj: 0,
       ventaExenta: 0,
-      ventaGravada: precio > 0 ? totalLinea : 0,
-      tributos: precio > 0 ? ['20'] : null,
-      ivaItem: precio > 0 ? iva : 0,
+      ventaGravada: precioNum > 0 ? totalLinea : 0,
+      tributos: precioNum > 0 ? ['20'] : null,
+      ivaItem: 0, // DTE generator lo filtrará para FE (01)
       numeroDocumento: null,
       codTributo: null,
       psv: 0,
