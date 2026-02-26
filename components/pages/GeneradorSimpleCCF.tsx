@@ -39,14 +39,13 @@ export const GeneradorSimpleCCF: React.FC = () => {
       nit: '22222222222211', // NIT válido de ejemplo
       nrc: '123456-8',
       actividadEconomica: '96092',
-      descActividad: 'Servicios n.c.p.',
       departamento: '06',
       municipio: '15',
       direccion: 'direccion cliente',
       telefono: '2222-2222',
-      email: 'guerrero_vi@yahoo.com',
+      email: 'cliente@ejemplo.com',
       esConsumidorFinal: false,
-      nombreComercial: 'Cliente Con NIT',
+      nombreComercial: '',
       timestamp: Date.now()
     };
 
@@ -54,6 +53,9 @@ export const GeneradorSimpleCCF: React.FC = () => {
     const precioNum = Number(precio);
     const cantidadNum = Number(cantidad);
     const totalLinea = redondear(precioNum * cantidadNum, 8);
+
+    // Para CCF (03): precio SIN IVA, ivaItem se calcula y va en cuerpo
+    const ivaItem = precioNum > 0 ? redondear(totalLinea * 0.13, 2) : 0;
 
     const item = {
       numItem: 1,
@@ -71,7 +73,8 @@ export const GeneradorSimpleCCF: React.FC = () => {
       numeroDocumento: null,
       codTributo: null,
       psv: 0,
-      noGravado: 0
+      noGravado: 0,
+      ivaItem // Para CCF sí va ivaItem en el cuerpo
     };
 
     return {

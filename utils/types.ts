@@ -71,14 +71,12 @@ export interface DTEJSON {
     codPuntoVentaMH: string | null;
   };
   receptor: {
-    nit?: string | null;
-    tipoDocumento?: string | null;
-    numDocumento?: string | null;
+    tipoDocumento: string | null;
+    numDocumento: string | null;
     nrc: string | null;
     nombre: string;
-    nombreComercial?: string | null;
-    codActividad?: string | null;
-    descActividad?: string | null;
+    codActividad: string | null;
+    descActividad: string | null;
     direccion: {
       departamento: string;
       municipio: string;
@@ -100,7 +98,7 @@ export interface DTEJSON {
     descuGravada: number;
     porcentajeDescuento: number;
     totalDescu: number;
-    totalIva?: number;
+    totalIva: number;
     tributos: Array<{
       codigo: string;
       descripcion: string;
