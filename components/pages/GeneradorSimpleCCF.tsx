@@ -38,13 +38,13 @@ export const GeneradorSimpleCCF: React.FC = () => {
       name: 'Cliente Con NIT',
       nit: '22222222222211', // NIT válido de ejemplo
       nrc: '123456-8',
-      actividadEconomica: '',
+      actividadEconomica: '96092',
       descActividad: '',
       departamento: '06',
       municipio: '15',
       direccion: 'direccion cliente',
       telefono: '2222-2222',
-      email: 'cliente@ejemplo.com',
+      email: 'guerrero_vi@yahoo.com',
       esConsumidorFinal: false,
       nombreComercial: 'Cliente Con NIT',
       timestamp: Date.now()
