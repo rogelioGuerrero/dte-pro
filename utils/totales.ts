@@ -32,18 +32,8 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const subTotalVentas = redondear(totalGravada + totalExenta + totalNoSuj, 2);
   const subTotal = redondear(subTotalVentas - totalDescu, 2);
 
-  let iva = 0;
-  if (tipoDocumento === '01') {
-    if (totalGravada > 0) {
-      const base = redondear(totalGravada / 1.13, 8);
-      iva = redondear(totalGravada - base, 2);
-    }
-  } else {
-    iva = redondear(ivaItemsRaw, 2);
-    if (iva === 0 && totalGravada > 0) {
-      iva = redondear(totalGravada * 0.13, 2);
-    }
-  }
+  // El IVA ahora se pre-calcula por ítem en la UI, solo sumamos (redondeado a 2)
+  const iva = redondear(ivaItemsRaw, 2);
 
   const tributosAdicionales = 0;
   const ivaRete1 = 0;

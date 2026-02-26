@@ -22,40 +22,29 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
 
   // 1. Generar Cuerpo del Documento con redondeo a 8 decimales (Regla de la novena posición)
   const cuerpoDocumento: ItemFactura[] = datos.items.map((item, index) => {
-    // Valores iniciales
-    let precioUni = redondear(item.precioUni, 8);
-    let ventaGravada = redondear(item.ventaGravada, 8);
-    let montoDescu = redondear(item.montoDescu, 8);
-    let ventaNoSuj = redondear(item.ventaNoSuj, 8);
-    let ventaExenta = redondear(item.ventaExenta, 8);
-    let ivaItem = 0;
+    // Valores pre-calculados en la UI (FacturaGenerator / MobileFactura)
+    const precioUni = redondear(item.precioUni, 8);
+    const ventaGravada = redondear(item.ventaGravada, 8);
+    const montoDescu = redondear(item.montoDescu, 8);
+    const ventaNoSuj = redondear(item.ventaNoSuj, 8);
+    const ventaExenta = redondear(item.ventaExenta, 8);
+    const ivaItem = redondear(item.ivaItem || 0, 2);
+    const cantidad = redondear(item.cantidad, 8);
 
-    // Tributos: usar el código elegido en el ítem (tributoCodigo); default 20 solo en FE/CCF gravado
-    const tributoCodigo = item.tributoCodigo ?? ((datos.tipoDocumento === '01' || datos.tipoDocumento === '03') && item.ventaGravada > 0 ? '20' : null);
-    const aplicaIVA13 = (datos.tipoDocumento === '01' || datos.tipoDocumento === '03') && tributoCodigo === '20';
-
-    if (datos.tipoDocumento === '01') {
-      // FE: precios incluyen IVA. ventaGravada ya trae IVA incluido; ivaItem se extrae solo si aplica IVA 13%
-      const base = ventaGravada > 0 ? redondear(ventaGravada / 1.13, 8) : 0;
-      ivaItem = aplicaIVA13 && ventaGravada > 0 ? redondear(ventaGravada - base, 2) : 0;
-      ventaGravada = ventaGravada; // permanece con IVA incluido
-    } else {
-      // CCF/otros: precios sin IVA
-      ivaItem = aplicaIVA13 && ventaGravada > 0 ? redondear(ventaGravada * 0.13, 2) : 0;
-    }
-
+    // En la UI ya determinamos si aplica tributo (null o '20')
+    const tributoCodigo = item.tributoCodigo;
     const tributos = tributoCodigo ? [tributoCodigo] : null;
 
     return {
       ...item,
       numItem: index + 1,
-      cantidad: redondear(item.cantidad, 8),
-      precioUni: precioUni,
-      montoDescu: montoDescu,
-      ventaNoSuj: ventaNoSuj,
-      ventaExenta: ventaExenta,
-      ventaGravada: ventaGravada,
-      tributos: tributos,
+      cantidad,
+      precioUni,
+      montoDescu,
+      ventaNoSuj,
+      ventaExenta,
+      ventaGravada,
+      tributos,
       tributoCodigo,
       numeroDocumento: item.numeroDocumento ?? null,
       codTributo: null,

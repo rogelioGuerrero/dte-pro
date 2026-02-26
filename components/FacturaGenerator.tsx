@@ -460,14 +460,35 @@ const FacturaGenerator: React.FC = () => {
 
         let ventaGravada = 0;
         let ventaExenta = 0;
+        let ventaNoSuj = 0;
         let ivaItem = 0;
+
+        // Reglas estrictas MH para Tributo: Ninguno vs IVA 13%
+        const isNinguno = item.tributoCodigo === ''; // En el select 'Ninguno' tiene value ''
+        const isIVA = item.tributoCodigo === '20';
+        // Por defecto: si no eligió nada (null), asume IVA en 01/03 si no es exento
+        const aplicaIVA = isIVA || (!isNinguno && item.tributoCodigo == null && (tipoDocumento === '01' || tipoDocumento === '03') && !item.esExento);
 
         if (item.esExento) {
           ventaExenta = totalLinea;
-        } else {
+        } else if (!aplicaIVA) {
+          // Si explícitamente eligió "Ninguno" o no aplica IVA
+          ventaNoSuj = totalLinea;
+        } else if (tipoDocumento === '01') {
+          // Factura 01: precio incluye IVA. MH valida sumatoria total = ventaGravada
           ventaGravada = totalLinea;
-          ivaItem = redondear(ventaGravada * 0.13, 2);
+          const base = redondear(totalLinea / 1.13, 8);
+          ivaItem = redondear(totalLinea - base, 2);
+        } else if (tipoDocumento === '03') {
+          // CCF 03: precio NO incluye IVA
+          ventaGravada = totalLinea;
+          ivaItem = redondear(totalLinea * 0.13, 2);
+        } else {
+          // Otros documentos (FSE, etc): gravado normal, sin IVA
+          ventaGravada = totalLinea;
         }
+
+        const finalTributoCodigo = aplicaIVA ? '20' : null;
 
         return {
           numItem: idx + 1,
@@ -478,15 +499,16 @@ const FacturaGenerator: React.FC = () => {
           descripcion: item.descripcion,
           precioUni: precio8,
           montoDescu: 0,
-          ventaNoSuj: 0,
+          ventaNoSuj,
           ventaExenta,
           ventaGravada,
-          tributos: null,
+          tributos: finalTributoCodigo ? [finalTributoCodigo] : null,
           numeroDocumento: null,
           codTributo: null,
           psv: 0,
           noGravado: 0,
           ivaItem,
+          tributoCodigo: finalTributoCodigo,
         };
       });
 
@@ -697,21 +719,29 @@ const FacturaGenerator: React.FC = () => {
 
     let ventaGravada = 0;
     let ventaExenta = 0;
+    let ventaNoSuj = 0;
     let ivaItem = 0;
+
+    const isNinguno = item.tributoCodigo === ''; // En el select 'Ninguno' tiene value ''
+    const isIVA = item.tributoCodigo === '20';
+    const aplicaIVA = isIVA || (!isNinguno && item.tributoCodigo == null && (tipoDocumento === '01' || tipoDocumento === '03') && !item.esExento);
 
     if (item.esExento) {
       ventaExenta = totalLinea;
+    } else if (!aplicaIVA) {
+      ventaNoSuj = totalLinea;
     } else if (tipoDocumento === '01') {
       const base = redondear(totalLinea / 1.13, 8);
-      ventaGravada = base;
+      ventaGravada = base; // UI shows base
       ivaItem = redondear(totalLinea - base, 2);
+    } else if (tipoDocumento === '03') {
+      ventaGravada = totalLinea;
+      ivaItem = redondear(totalLinea * 0.13, 2);
     } else {
       ventaGravada = totalLinea;
-      ivaItem = redondear(ventaGravada * 0.13, 2);
     }
 
-    // Tributo seleccionado o default: 20 para FE/CCF gravado, ninguno para exento
-    const tributoCodigo = item.tributoCodigo ?? ((tipoDocumento === '01' || tipoDocumento === '03') && !item.esExento ? '20' : null);
+    const finalTributoCodigo = aplicaIVA ? '20' : null;
 
     return {
       numItem: idx + 1,
@@ -722,16 +752,16 @@ const FacturaGenerator: React.FC = () => {
       descripcion: item.descripcion,
       precioUni: precio8,
       montoDescu: 0,
-      ventaNoSuj: 0,
+      ventaNoSuj,
       ventaExenta,
       ventaGravada,
-      tributos: null,
+      tributos: finalTributoCodigo ? [finalTributoCodigo] : null,
       numeroDocumento: null,
       codTributo: null,
       psv: 0,
       noGravado: 0,
       ivaItem,
-      tributoCodigo,
+      tributoCodigo: finalTributoCodigo,
       cargosNoBase: item.cargosNoBase || 0,
     };
   });

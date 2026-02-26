@@ -59,7 +59,9 @@ interface ItemForm {
   precioUni: number;
   tipoItem: number;
   esExento: boolean;
-  cargosNoBase: number; // cargo/abono que no afecta base imponible
+  cargosNoBase?: number;
+  tributoCodigo?: string | null;
+  uniMedida: number // Default to 'UNIDAD' or standard measure
 }
 
 interface NewClientForm {
@@ -104,7 +106,16 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
   const [clientSearch, setClientSearch] = useState('');
   const [items, setItems] = useState<ItemForm[]>([]);
   const [showAddItem, setShowAddItem] = useState(false);
-  const [newItem, setNewItem] = useState({ codigo: '', descripcion: '', precioUni: 0, cantidad: 1, tipoItem: 1, cargosNoBase: 0, tributoCodigo: null as string | null });
+  const [newItem, setNewItem] = useState({ 
+    codigo: '', 
+    descripcion: '', 
+    precioUni: 0, 
+    cantidad: 1, 
+    tipoItem: 1, 
+    cargosNoBase: 0, 
+    tributoCodigo: null as string | null,
+    uniMedida: 59 // Default to 'UNIDAD' or standard measure
+  });
   const [tipoDoc, setTipoDoc] = useState('01');
   const [formaPago, setFormaPago] = useState('01');
 
@@ -300,9 +311,11 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
       tipoItem: resolvedTipoItem,
       esExento: false,
       cargosNoBase: newItem.cargosNoBase || 0,
+      tributoCodigo: newItem.tributoCodigo,
+      uniMedida: newItem.uniMedida || 59,
     };
     setItems([...items, item]);
-    setNewItem({ codigo: '', descripcion: '', precioUni: 0, cantidad: 1, tipoItem: 1, cargosNoBase: 0, tributoCodigo: null });
+    setNewItem({ codigo: '', descripcion: '', precioUni: 0, cantidad: 1, tipoItem: 1, cargosNoBase: 0, tributoCodigo: null, uniMedida: 59 });
     setShowAddItem(false);
   };
 
@@ -324,51 +337,49 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
     const totalLinea = redondear(cantidad * precio, 8);
     
     let ventaGravada = 0;
+    let ventaExenta = 0;
+    let ventaNoSuj = 0;
     let ivaItem = 0;
-    let codTributo: string | null = null;
+
+    const isNinguno = item.tributoCodigo === '';
+    const isIVA = item.tributoCodigo === '20';
+    const aplicaIVA = isIVA || (!isNinguno && item.tributoCodigo == null && (tipoDoc === '01' || tipoDoc === '03') && !item.esExento);
 
     if (item.esExento) {
-      ventaGravada = 0;
-      ivaItem = 0;
-      codTributo = null;
+      ventaExenta = totalLinea;
+    } else if (!aplicaIVA) {
+      ventaNoSuj = totalLinea;
+    } else if (tipoDoc === '01') {
+      const base = redondear(totalLinea / 1.13, 8);
+      ventaGravada = base;
+      ivaItem = redondear(totalLinea - base, 2);
+    } else if (tipoDoc === '03') {
+      ventaGravada = totalLinea;
+      ivaItem = redondear(totalLinea * 0.13, 2);
     } else {
       ventaGravada = totalLinea;
-      if (tipoDoc === '01') {
-        // Factura: El precio YA incluye IVA.
-        // IVA = Total - (Total / 1.13)
-        ivaItem = redondear(ventaGravada - (ventaGravada / 1.13), 2);
-        codTributo = null;
-      } else if (tipoDoc === '03') {
-        // CCF: El precio NO incluye IVA.
-        // IVA = Total * 0.13
-        ivaItem = redondear(ventaGravada * 0.13, 2);
-        codTributo = '20';
-      } else {
-        // Otros tipos de documentos
-        ivaItem = 0;
-        codTributo = null;
-      }
     }
 
+    const finalTributoCodigo = aplicaIVA ? '20' : null;
+
     return {
+      ...item,
       numItem: idx + 1,
-      tipoItem: item.tipoItem,
-      cantidad: cantidad,
-      codigo: item.codigo?.trim() ? item.codigo.trim() : null,
-      uniMedida: 99,
-      descripcion: item.descripcion,
+      cantidad,
       precioUni: precio,
       montoDescu: 0,
-      ventaNoSuj: 0,
-      ventaExenta: item.esExento ? totalLinea : 0,
-      ventaGravada: item.esExento ? 0 : ventaGravada,
-      tributos: null,
+      ventaNoSuj,
+      ventaExenta,
+      ventaGravada,
+      tributos: finalTributoCodigo ? [finalTributoCodigo] : null,
       numeroDocumento: null,
-      codTributo: codTributo,
+      codTributo: null,
       psv: 0,
       noGravado: 0,
-      ivaItem: ivaItem,
+      ivaItem,
+      tributoCodigo: finalTributoCodigo,
       cargosNoBase: item.cargosNoBase || 0,
+      uniMedida: 59, // default
     };
   });
 
@@ -634,7 +645,7 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
                       <p className="text-sm text-gray-500">
                         ${Number.isInteger(item.precioUni * 100) ? item.precioUni.toFixed(2) : parseFloat(item.precioUni.toFixed(6)).toString()} c/u
                       </p>
-                      {item.cargosNoBase !== 0 && (
+                      {item.cargosNoBase !== undefined && item.cargosNoBase !== 0 && (
                         <p className="text-xs text-blue-600 mt-1">Cargo/Abono (no base): ${item.cargosNoBase.toFixed(2)}</p>
                       )}
                     </div>
