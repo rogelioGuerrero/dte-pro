@@ -10,11 +10,7 @@ import { ToastContainer, useToast } from './Toast';
 import { useCertificateManager } from '../hooks/useCertificateManager';
 import { FacturaMainContent } from './FacturaMainContent';
 import { FacturaModals } from './FacturaModals';
-import TransmisionModal from './TransmisionModal';
-import QRClientCapture from './QRClientCapture';
 import { FacturaHeader } from './FacturaHeader';
-import MobileFactura from './MobileFactura';
-import MobileEmisorModal from './MobileEmisorModal';
 import { applySalesFromDTE, validateStockForSale } from '../utils/inventoryDb';
 import { revertSalesFromDTE } from '../utils/inventoryDb';
 import { inventarioService } from '../utils/inventario/inventarioService';
@@ -22,7 +18,6 @@ import { getUserModeConfig, hasFeature } from '../utils/userMode';
 import { resolveProductForDescription } from '../utils/facturaGeneratorHelpers';
 import { useStockByCode } from '../hooks/useStockByCode';
 import { requiereStripe } from '../catalogos/pagos';
-import { useMobile } from '../hooks/useMobile';
 import { mergeProducts } from '../utils/inventoryAdapter';
 import { 
   getPresentacionesForCodigo as getPresentacionesForCodigoHelper,
@@ -48,6 +43,8 @@ interface ItemForm {
   tipoItem: number;
   uniMedida: number;
   esExento: boolean;
+  cargosNoBase: number; // cargos/abonos que no afectan base imponible
+  tributoCodigo?: string | null;
 }
 
 const emptyItem: ItemForm = {
@@ -60,6 +57,8 @@ const emptyItem: ItemForm = {
   tipoItem: 1,
   uniMedida: 99,
   esExento: false,
+  cargosNoBase: 0,
+  tributoCodigo: null,
 };
 
 
@@ -67,7 +66,6 @@ const FacturaGenerator: React.FC = () => {
   const isModoProfesional = getUserModeConfig().mode === 'profesional';
   const defaultItem: ItemForm = isModoProfesional ? { ...emptyItem, tipoItem: 2 } : { ...emptyItem };
   const canUseCatalogoProductos = hasFeature('productos');
-  const isMobile = useMobile();
   const { toasts, addToast, removeToast } = useToast();
 
   const [showTransmision, setShowTransmision] = useState(false);
@@ -169,6 +167,12 @@ const FacturaGenerator: React.FC = () => {
   };
 
   const receptorEsConsumidorFinal = selectedReceptor ? !selectedReceptor.nit.trim() : false;
+
+  const tipoDocumentoHint = tipoDocumento === '01'
+    ? '01: Ingresa precio con IVA incluido (13%).'
+    : tipoDocumento === '03'
+      ? '03: Ingresa precio sin IVA; se calculará 13%.'
+      : 'Ajusta precios según el tipo de documento.';
 
   const filteredClients = useMemo(() => {
     if (!clientSearch) return clients.slice(0, 10);
@@ -706,6 +710,9 @@ const FacturaGenerator: React.FC = () => {
       ivaItem = redondear(ventaGravada * 0.13, 2);
     }
 
+    // Tributo seleccionado o default: 20 para FE/CCF gravado, ninguno para exento
+    const tributoCodigo = item.tributoCodigo ?? ((tipoDocumento === '01' || tipoDocumento === '03') && !item.esExento ? '20' : null);
+
     return {
       numItem: idx + 1,
       tipoItem: item.tipoItem,
@@ -724,69 +731,18 @@ const FacturaGenerator: React.FC = () => {
       psv: 0,
       noGravado: 0,
       ivaItem,
+      tributoCodigo,
+      cargosNoBase: item.cargosNoBase || 0,
     };
   });
 
   const totales = calcularTotales(itemsParaCalculoUI, tipoDocumento);
-
-  if (isMobile) {
-    return (
-      <>
-        <ToastContainer toasts={toasts} removeToast={removeToast} />
-        
-        {showTransmision && generatedDTE && (
-          <TransmisionModal
-            dte={generatedDTE}
-            onClose={() => setShowTransmision(false)}
-            onSuccess={(sello) => {
-              addToast(`DTE transmitido. Sello: ${sello.substring(0, 8)}...`, 'success');
-            }}
-            ambiente="00"
-            logoUrl={emisor?.logo}
-          />
-        )}
-
-        {showQRCapture && (
-          <QRClientCapture
-            onClose={() => setShowQRCapture(false)}
-            onClientImported={(client) => {
-              setSelectedReceptor(client);
-              setShowQRCapture(false);
-              addToast(`Cliente "${client.name}" importado`, 'success');
-              loadData();
-            }}
-          />
-        )}
-
-        <MobileFactura
-          emisor={emisor}
-          onShowEmisorConfig={() => setShowEmisorConfig(true)}
-          onShowTransmision={(dte) => {
-            setGeneratedDTE(dte);
-            setShowTransmision(true);
-          }}
-        />
-
-        {/* Modal Emisor Config para móvil - Completo con validación */}
-        {showEmisorConfig && (
-          <MobileEmisorModal
-            emisorForm={emisorForm}
-            setEmisorForm={setEmisorForm}
-            onSave={handleSaveEmisor}
-            onClose={() => setShowEmisorConfig(false)}
-            isSaving={isSavingEmisor}
-          />
-        )}
-      </>
-    );
-  }
 
   return (
     <div className="h-[calc(100vh-180px)] flex flex-col md:h-auto">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 
       <FacturaModals
-        // ResolveNoCodeModal
         showResolveModal={showResolveModal}
         setShowResolveModal={setShowResolveModal}
         resolverItems={resolverItems}
@@ -794,22 +750,18 @@ const FacturaGenerator: React.FC = () => {
         inventarioService={inventarioService}
         addToast={addToast}
         confirmarResolucion={confirmarResolucion}
-        // TransmisionModal
         showTransmision={showTransmision}
         generatedDTE={generatedDTE}
         emisor={emisor}
         setShowTransmision={setShowTransmision}
-        // DTEPreviewModal
         showDTEPreview={showDTEPreview}
         setShowDTEPreview={setShowDTEPreview}
         handleCopyJSON={handleCopyJSON}
         handleDownloadJSON={handleDownloadJSON}
-        // QRClientCapture
         showQRCapture={showQRCapture}
         setShowQRCapture={setShowQRCapture}
         setSelectedReceptor={setSelectedReceptor}
         loadData={loadData}
-        // EmisorConfigModal
         showEmisorConfig={showEmisorConfig}
         setShowEmisorConfig={setShowEmisorConfig}
         emisorForm={emisorForm}
@@ -834,7 +786,6 @@ const FacturaGenerator: React.FC = () => {
         handleCertFileSelect={handleCertFileSelect}
         handleSaveCertificate={() => handleSaveCertificate(emisorForm.nit, emisorForm.nrc)}
         fileInputRef={fileInputRef}
-        // ProductPickerModal
         canUseCatalogoProductos={canUseCatalogoProductos}
         showProductPicker={showProductPicker}
         productSearch={productSearch}
@@ -843,22 +794,17 @@ const FacturaGenerator: React.FC = () => {
         productPickerIndex={productPickerIndex}
         applyProductToItem={applyProductToItem}
         setShowProductPicker={setShowProductPicker}
-        // QRPaymentModal
         showQRPayment={showQRPayment}
         setShowQRPayment={setShowQRPayment}
-        // StripeConnectModal
         showStripeConnect={showStripeConnect}
         setShowStripeConnect={setShowStripeConnect}
         handleStripeConnectSuccess={handleStripeConnectSuccess}
         totales={totales}
       />
 
-      {/* Header */}
       <FacturaHeader emisor={emisor} onOpenEmisorConfig={() => setShowEmisorConfig(true)} />
 
-      {/* Main Content */}
       <FacturaMainContent
-        // Left column
         selectedReceptor={selectedReceptor}
         showClientSearch={showClientSearch}
         setShowClientSearch={setShowClientSearch}
@@ -895,12 +841,12 @@ const FacturaGenerator: React.FC = () => {
         generatedDTE={generatedDTE}
         onGenerateDTE={handleGenerateDTE}
         onNuevaFactura={handleNuevaFactura}
-        // Right column
         totales={totales}
         requiereStripe={requiereStripe}
         onOpenDTEPreview={() => setShowDTEPreview(true)}
         onTransmit={handleTransmitir}
         onDeleteDTE={handleDeleteGeneratedDTE}
+        tipoDocumentoHint={tipoDocumentoHint}
       />
     </div>
   );

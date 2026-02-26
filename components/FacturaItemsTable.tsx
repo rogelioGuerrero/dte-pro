@@ -14,7 +14,11 @@ interface FacturaItemRow {
   factorConversion: number;
   precioUni: number;
   precioUniRaw?: string;
+  tipoItem?: number;
+  uniMedida?: number;
   esExento: boolean;
+  cargosNoBase: number;
+  tributoCodigo?: string | null;
 }
 
 interface FacturaItemsTableProps {
@@ -71,6 +75,8 @@ export const FacturaItemsTable: React.FC<FacturaItemsTableProps> = ({
               <th className="px-2 py-2 text-center w-20">Cant.</th>
               <th className="px-2 py-2 text-right w-24">{precioHeaderLabel}</th>
               <th className="px-2 py-2 text-right w-24">Subtotal</th>
+              <th className="px-2 py-2 text-right w-28">Cargo/Abono<br/><span className="text-[10px] text-gray-400">No base</span></th>
+              <th className="px-2 py-2 text-center w-28">Tributo</th>
               <th className="px-2 py-2 text-center w-16">Exento</th>
               <th className="px-2 py-2 w-8"></th>
             </tr>
@@ -152,6 +158,26 @@ export const FacturaItemsTable: React.FC<FacturaItemsTableProps> = ({
                 </td>
                 <td className="px-2 py-2 text-right font-mono text-gray-700">
                   ${redondear(item.cantidad * item.precioUni, 2).toFixed(2)}
+                </td>
+                <td className="px-2 py-2">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={item.cargosNoBase}
+                    onChange={(e) => onItemChange(idx, 'cargosNoBase', parseFloat(e.target.value) || 0)}
+                    className="w-full px-2 py-1 border border-gray-200 rounded text-sm text-right focus:ring-1 focus:ring-blue-500 outline-none"
+                    step="0.01"
+                  />
+                </td>
+                <td className="px-2 py-2 text-center">
+                  <select
+                    value={item.tributoCodigo || ''}
+                    onChange={(e) => onItemChange(idx, 'tributoCodigo', e.target.value || null)}
+                    className="px-2 py-1 border border-gray-200 rounded text-sm bg-white focus:ring-1 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="">Ninguno</option>
+                    <option value="20">IVA 13%</option>
+                  </select>
                 </td>
                 <td className="px-2 py-2 text-center">
                   <input

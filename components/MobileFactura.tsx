@@ -59,6 +59,7 @@ interface ItemForm {
   precioUni: number;
   tipoItem: number;
   esExento: boolean;
+  cargosNoBase: number; // cargo/abono que no afecta base imponible
 }
 
 interface NewClientForm {
@@ -103,7 +104,7 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
   const [clientSearch, setClientSearch] = useState('');
   const [items, setItems] = useState<ItemForm[]>([]);
   const [showAddItem, setShowAddItem] = useState(false);
-  const [newItem, setNewItem] = useState({ codigo: '', descripcion: '', precioUni: 0, cantidad: 1, tipoItem: 1 });
+  const [newItem, setNewItem] = useState({ codigo: '', descripcion: '', precioUni: 0, cantidad: 1, tipoItem: 1, cargosNoBase: 0, tributoCodigo: null as string | null });
   const [tipoDoc, setTipoDoc] = useState('01');
   const [formaPago, setFormaPago] = useState('01');
 
@@ -298,9 +299,10 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
       precioUni: precioFinal,
       tipoItem: resolvedTipoItem,
       esExento: false,
+      cargosNoBase: newItem.cargosNoBase || 0,
     };
     setItems([...items, item]);
-    setNewItem({ codigo: '', descripcion: '', precioUni: 0, cantidad: 1, tipoItem: 1 });
+    setNewItem({ codigo: '', descripcion: '', precioUni: 0, cantidad: 1, tipoItem: 1, cargosNoBase: 0, tributoCodigo: null });
     setShowAddItem(false);
   };
 
@@ -366,6 +368,7 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
       psv: 0,
       noGravado: 0,
       ivaItem: ivaItem,
+      cargosNoBase: item.cargosNoBase || 0,
     };
   });
 
@@ -550,6 +553,13 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
               </option>
             ))}
           </select>
+          <p className="mt-1 text-xs text-gray-500">
+            {tipoDoc === '01'
+              ? '01: Ingresa precio con IVA incluido (13%).'
+              : tipoDoc === '03'
+                ? '03: Ingresa precio sin IVA; se calculará 13%.'
+                : 'Ajusta precios según el tipo de documento.'}
+          </p>
         </div>
 
         {/* Selector de cliente */}
@@ -624,6 +634,9 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
                       <p className="text-sm text-gray-500">
                         ${Number.isInteger(item.precioUni * 100) ? item.precioUni.toFixed(2) : parseFloat(item.precioUni.toFixed(6)).toString()} c/u
                       </p>
+                      {item.cargosNoBase !== 0 && (
+                        <p className="text-xs text-blue-600 mt-1">Cargo/Abono (no base): ${item.cargosNoBase.toFixed(2)}</p>
+                      )}
                     </div>
                     <button
                       onClick={() => removeItem(item.id)}
@@ -771,6 +784,13 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
             </div>
           )}
           
+          {typeof totales.totalCargosNoBase === 'number' && totales.totalCargosNoBase !== 0 && (
+            <div className="text-right">
+              <p className="text-[10px] text-blue-600 uppercase">Cargos/Abonos (no base)</p>
+              <p className="text-xs text-blue-700 font-medium">${totales.totalCargosNoBase.toFixed(2)}</p>
+            </div>
+          )}
+
           <div className="text-right">
             <p className="text-xs text-gray-500">Total</p>
             <p className="text-xl font-bold text-green-600">${totales.totalPagar.toFixed(2)}</p>
@@ -1236,6 +1256,36 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
                     }
                     className="w-full mt-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
                   />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Cargo/Abono (no base)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newItem.cargosNoBase}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, cargosNoBase: parseFloat(e.target.value) || 0 })
+                    }
+                    placeholder="0.00 (puede ser negativo)"
+                    className="w-full mt-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">Valores positivos suman al total, negativos restan.</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Tributo</label>
+                  <select
+                    value={newItem.tributoCodigo || ''}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, tributoCodigo: e.target.value || null })
+                    }
+                    className="w-full mt-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Ninguno</option>
+                    <option value="20">IVA 13%</option>
+                  </select>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Para FE (01) y CCF (03) solo usamos IVA 13% (código 20).
+                  </p>
                 </div>
               </div>
               <button

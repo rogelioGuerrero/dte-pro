@@ -17,6 +17,8 @@ interface ItemForm {
   tipoItem: number;
   uniMedida: number;
   esExento: boolean;
+  cargosNoBase: number;
+  tributoCodigo?: string | null;
 }
 
 interface FacturaMainContentProps {
@@ -30,6 +32,7 @@ interface FacturaMainContentProps {
   onSelectReceptor: (client: any) => void;
   tipoDocumento: string;
   setTipoDocumento: (value: string) => void;
+  tipoDocumentoHint?: string;
   receptorEsConsumidorFinal: boolean;
   tiposDocumentoFiltrados: Array<{ codigo: string; descripcion: string }>;
   items: ItemForm[];
@@ -109,6 +112,7 @@ export const FacturaMainContent: React.FC<FacturaMainContentProps> = ({
   onOpenDTEPreview,
   onTransmit,
   onDeleteDTE,
+  tipoDocumentoHint,
 }) => {
   return (
     <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
@@ -135,6 +139,10 @@ export const FacturaMainContent: React.FC<FacturaMainContentProps> = ({
               tiposDocumentoFiltrados={tiposDocumentoFiltrados}
             />
           </div>
+
+          {tipoDocumentoHint && (
+            <p className="text-xs text-gray-500 mt-1">{tipoDocumentoHint}</p>
+          )}
 
           {/* Items */}
           <FacturaItemsTable
