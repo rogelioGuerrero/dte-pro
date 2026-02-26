@@ -31,13 +31,16 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     const ivaItem = redondear(item.ivaItem || 0, 2);
     const cantidad = redondear(item.cantidad, 8);
 
-    // Tributos: usar el valor ya determinado en la UI
-    const tributos = item.tributos;
+    // Tributos: solo si hay venta gravada > 0, evitar filtrar valores cuando el precio es 0
+    const tributos = ventaGravada > 0 ? item.tributos : null;
 
     return {
-      ...item,
       numItem: index + 1,
+      tipoItem: item.tipoItem,
       cantidad,
+      codigo: item.codigo ?? null,
+      uniMedida: item.uniMedida ?? 99,
+      descripcion: item.descripcion,
       precioUni,
       montoDescu,
       ventaNoSuj,
