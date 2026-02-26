@@ -101,24 +101,39 @@ export const GeneradorSimple: React.FC = () => {
     setIsTransmitting(true);
     addToast('Transmitiendo a Hacienda...', 'info');
 
+    const formatNitConGuiones = (rawNit: string) => {
+      const clean = rawNit.replace(/[\s-]/g, '');
+      if (clean.length === 14) {
+        return `${clean.substring(0, 4)}-${clean.substring(4, 10)}-${clean.substring(10, 13)}-${clean.substring(13, 14)}`;
+      }
+      return rawNit;
+    };
+    
+    const nitEmisor = formatNitConGuiones(emisor.nit);
+
     try {
       const response = await fetch(`${BACKEND_CONFIG.URL}/api/dte/process`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: {
+          ...getAuthHeaders(),
+          'x-business-id': nitEmisor
+        },
         body: JSON.stringify({
           dte: dteData,
+          nit: nitEmisor,
           ambiente: '00', // Pruebas
-          business_id: import.meta.env.VITE_BUSINESS_ID || 'uuid-business-temporal',
+          flowType: 'emission',
+          business_id: nitEmisor, // Enviar también en el body por compatibilidad
         })
       });
 
       const result = await response.json();
       setRespuestaMH(result);
 
-      if (response.ok && result.estado === 'PROCESADO') {
+      if (response.ok && result.success && result.data?.transmisionResult?.estado === 'PROCESADO') {
         addToast('DTE Procesado exitosamente', 'success');
       } else {
-        addToast(result.descripcionMsg || 'Error en la transmisión', 'error');
+        addToast(result.error?.userMessage || result.data?.transmisionResult?.descripcionMsg || 'Error en la transmisión', 'error');
       }
     } catch (error: any) {
       setRespuestaMH({ error: error.message });
