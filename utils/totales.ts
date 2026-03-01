@@ -31,8 +31,10 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
 
   const subTotalVentas = redondear(totalGravada + totalExenta + totalNoSuj, 2);
   
-  // El IVA ahora se pre-calcula por ítem en la UI, solo sumamos (redondeado a 2)
-  const iva = redondear(ivaItemsRaw, 2);
+  // IVA: FE (01) no lleva ivaItem en cuerpo, se calcula 13% sobre base gravada
+  const iva = tipoDocumento === '01'
+    ? redondear(totalGravada * 0.13, 2)
+    : redondear(ivaItemsRaw, 2);
 
   // Según manual MH, para FE (01) el subTotal es ventas menos IVA (sin incluir descuentos en este punto)
   const subTotal = tipoDocumento === '01' 
@@ -45,9 +47,9 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const saldoFavor = 0;
   const ivaPerci1 = 0;
 
-  // MH Validación: montoTotalOperacion debe ser igual a (totalGravada + totalExenta + totalNoSuj) para FE 01
+  // Para FE (01) incluimos IVA calculado cuando aplica
   const montoTotalOperacion = tipoDocumento === '01'
-    ? redondear(totalGravada + totalExenta + totalNoSuj + totalNoGravado, 2)
+    ? redondear(totalGravada + totalExenta + totalNoSuj + totalNoGravado + iva, 2)
     : redondear(subTotal + iva + tributosAdicionales + totalNoGravado, 2);
 
   const totalPagar = redondear(
