@@ -179,7 +179,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       saldoFavor: 0,
       condicionOperacion: datos.condicionOperacion,
       pagos: datos.condicionOperacion === 1 ? [{
-        codigo: datos.formaPago,
+        codigo: String(datos.formaPago).padStart(2, '0'),
         montoPago: totalPagar,
         referencia: null,
         plazo: null,
