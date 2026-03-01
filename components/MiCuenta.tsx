@@ -375,7 +375,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
           setCertificatePassword={setCertificatePassword}
           setShowCertPassword={setShowCertPassword}
           handleCertFileSelect={handleCertFileSelect}
-          handleSaveCertificate={() => handleSaveCertificate(emisorForm.nit, emisorForm.nrc)}
+          handleSaveCertificate={() => handleSaveCertificate(emisorForm, businessData.ambiente)}
           fileInputRef={fileInputRef}
         />
       )}

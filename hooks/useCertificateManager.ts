@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { getAuthHeaders } from '../utils/backendConfig';
+import { EmisorData } from '../utils/emisorDb';
 
 export const useCertificateManager = (params: {
   onToast?: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -15,7 +16,7 @@ export const useCertificateManager = (params: {
   setShowCertPassword: (value: boolean) => void;
   setCertificateError: (value: string | null) => void;
   handleCertFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleSaveCertificate: (nit: string, nrc: string, ambiente?: string) => Promise<void>;
+  handleSaveCertificate: (emisor: Partial<EmisorData>, ambiente?: string) => Promise<void>;
   fileInputRef: React.RefObject<HTMLInputElement>;
 } => {
   const [apiPassword, setApiPassword] = useState('');
@@ -77,7 +78,8 @@ export const useCertificateManager = (params: {
     });
   };
 
-  const handleSaveCertificate = async (nit: string, nrc: string, ambiente: string = '00') => {
+  const handleSaveCertificate = async (emisor: Partial<EmisorData>, ambiente: string = '00') => {
+    const nit = emisor.nit || '';
     if (!certificatePassword) {
       setCertificateError('La contraseña del certificado es requerida.');
       return;
@@ -93,8 +95,14 @@ export const useCertificateManager = (params: {
       return;
     }
     
-    if (!nit || !nrc) {
-      setCertificateError('NIT y NRC son requeridos para guardar el certificado en el servidor.');
+    if (!nit) {
+      setCertificateError('NIT es requerido para guardar el certificado en el servidor.');
+      return;
+    }
+
+    const nitSinGuiones = nit.replace(/[\s-]/g, '');
+    if (!(nitSinGuiones.length === 9 || nitSinGuiones.length === 14)) {
+      setCertificateError('NIT debe tener 9 o 14 dígitos (sin guiones).');
       return;
     }
 
@@ -103,20 +111,8 @@ export const useCertificateManager = (params: {
       // Convertir archivo a Base64
       const certificadoB64 = await readFileAsBase64(certificateFile);
 
-      // Garantizar que el NIT siempre se envíe CON GUIONES (formato: XXXX-XXXXXX-XXX-X)
-      const formatNitConGuiones = (rawNit: string) => {
-        const clean = rawNit.replace(/[\s-]/g, '');
-        if (clean.length === 14) {
-          return `${clean.substring(0, 4)}-${clean.substring(4, 10)}-${clean.substring(10, 13)}-${clean.substring(13, 14)}`;
-        }
-        return rawNit;
-      };
-
-      const nitConGuiones = formatNitConGuiones(nit);
-      
-      const payload = {
-        nit: nitConGuiones,
-        nrc,
+      const payload: Record<string, unknown> = {
+        nit: nitSinGuiones,
         ambiente: ambiente || '00',
         passwordPri: certificatePassword,
         certificadoB64: certificadoB64,
@@ -124,9 +120,24 @@ export const useCertificateManager = (params: {
         activo: true,
       };
 
+      // Campos opcionales del emisor (solo si vienen)
+      if (emisor.nrc) payload.nrc = emisor.nrc;
+      if (emisor.nombre) payload.nombre = emisor.nombre;
+      if (emisor.nombreComercial) payload.nombreComercial = emisor.nombreComercial;
+      if (emisor.actividadEconomica) payload.codActividad = emisor.actividadEconomica;
+      if (emisor.descActividad) payload.descActividad = emisor.descActividad;
+      if (emisor.tipoEstablecimiento) payload.tipoEstablecimiento = emisor.tipoEstablecimiento;
+      if (emisor.codEstableMH !== undefined) payload.codEstableMH = emisor.codEstableMH;
+      if (emisor.codPuntoVentaMH !== undefined) payload.codPuntoVentaMH = emisor.codPuntoVentaMH;
+      if (emisor.departamento) payload.dir_departamento = emisor.departamento;
+      if (emisor.municipio) payload.dir_municipio = emisor.municipio;
+      if (emisor.direccion) payload.dir_complemento = emisor.direccion;
+      if (emisor.telefono) payload.telefono = emisor.telefono;
+      if (emisor.correo) payload.correo = emisor.correo;
+
       // Logging para diagnóstico
       console.log('Enviando credenciales MH:', {
-        nit: nitConGuiones,
+        nit: nitSinGuiones,
         ambiente: ambiente || '00',
         hasCert: !!certificadoB64,
         certLength: certificadoB64?.length || 0,
@@ -148,8 +159,11 @@ export const useCertificateManager = (params: {
       const result = await response.json();
 
       // Validar explícitamente que el backend retorne hasCert: true
-      if (!result.success || !result.data?.hasCert) {
-        throw new Error(result.error?.userMessage || 'El servidor no confirmó el guardado del certificado (hasCert: false)');
+      if (!result.success || !result.data?.hasCert || !result.data?.hasPassword) {
+        throw new Error(
+          result.error?.userMessage ||
+            'El servidor no confirmó el guardado del certificado y contraseña (hasCert/hasPassword).'
+        );
       }
 
       // Limpiar formulario después de guardar
