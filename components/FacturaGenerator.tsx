@@ -116,6 +116,8 @@ const FacturaGenerator: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedDTE, setGeneratedDTE] = useState<DTEJSON | null>(null);
 
+  const ambiente = useMemo(() => localStorage.getItem('dte_ambiente') || '00', []);
+
   // Resolve Modal State
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolverItems, setResolverItems] = useState<ResolverItem[]>([]);
@@ -805,7 +807,7 @@ const FacturaGenerator: React.FC = () => {
         setShowCertPassword={setShowCertPassword}
         certificateFile={certificateFile}
         handleCertFileSelect={handleCertFileSelect}
-        handleSaveCertificate={() => handleSaveCertificate(emisorForm.nit, emisorForm.nrc)}
+        handleSaveCertificate={() => handleSaveCertificate(emisorForm, ambiente)}
         fileInputRef={fileInputRef}
         canUseCatalogoProductos={canUseCatalogoProductos}
         showProductPicker={showProductPicker}
