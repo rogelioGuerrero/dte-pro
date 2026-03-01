@@ -63,18 +63,43 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     totalGravada,
     totalNoGravado,
     subTotalVentas,
-    subTotal,
     totalDescu,
     iva: totalIva,
-    montoTotalOperacion,
     totalCargosNoBase,
     ivaPerci1,
-    totalPagar,
   } = calcularTotales(cuerpoDocumento, datos.tipoDocumento);
 
   // Consolidar tributos: solo IVA 13% (código 20) por ahora, y solo para FE/CCF
   const aplicaIVAResumen = datos.tipoDocumento === '01' || datos.tipoDocumento === '03';
-  const tributosResumen = aplicaIVAResumen && totalGravada > 0 ? [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }] : null;
+  const tieneTributo20 = cuerpoDocumento.some((item) => item.tributos?.includes('20'));
+
+  // Rete/perc/saldo: aún no se manejan en FE; se dejan en cero
+  const ivaRete1 = 0;
+  const reteRenta = 0;
+  const saldoFavor = 0;
+
+  // Defensa: si llega IVA 0 pero hay base gravada con tributo 20, recalculamos para evitar payloads viejos
+  const debeRecalcularIva = aplicaIVAResumen && totalGravada > 0 && tieneTributo20 && totalIva === 0;
+  const ivaCalculado = debeRecalcularIva && datos.tipoDocumento === '01'
+    ? redondear(totalGravada * 0.13, 2)
+    : totalIva;
+
+  const resumenSubTotal = datos.tipoDocumento === '01'
+    ? redondear(subTotalVentas - totalDescu - ivaCalculado, 2)
+    : redondear(subTotalVentas - totalDescu, 2);
+
+  const resumenMontoTotal = datos.tipoDocumento === '01'
+    ? redondear(totalGravada + totalExenta + totalNoSuj + totalNoGravado + ivaCalculado, 2)
+    : redondear(resumenSubTotal + ivaCalculado + totalNoGravado, 2);
+
+  const resumenTotalPagar = redondear(
+    resumenMontoTotal - ivaRete1 - reteRenta + saldoFavor + totalCargosNoBase,
+    2
+  );
+
+  const tributosResumen = aplicaIVAResumen && totalGravada > 0
+    ? [{ codigo: '20', descripcion: 'IVA 13%', valor: ivaCalculado }]
+    : null;
 
   const receptorIdDigits = (datos.receptor.nit || '').replace(/[\s-]/g, '').trim();
   const receptorSinDocumento = receptorIdDigits.length === 0;
@@ -165,22 +190,22 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       descuGravada: totalDescu,
       porcentajeDescuento: 0,
       totalDescu: totalDescu,
-      totalIva,
+      totalIva: ivaCalculado,
       tributos: tributosResumen,
-      subTotal,
+      subTotal: resumenSubTotal,
       ivaRete1: 0,
       reteRenta: 0,
-      montoTotalOperacion,
+      montoTotalOperacion: resumenMontoTotal,
       totalNoGravado,
       totalCargosNoBase,
       ivaPerci1,
-      totalPagar,
-      totalLetras: numeroALetras(totalPagar),
+      totalPagar: resumenTotalPagar,
+      totalLetras: numeroALetras(resumenTotalPagar),
       saldoFavor: 0,
       condicionOperacion: datos.condicionOperacion,
       pagos: datos.condicionOperacion === 1 ? [{
         codigo: String(datos.formaPago).padStart(2, '0'),
-        montoPago: totalPagar,
+        montoPago: resumenTotalPagar,
         referencia: null,
         plazo: null,
         periodo: null,
