@@ -3,17 +3,16 @@ import { getClients, ClientData } from '../utils/clientDb';
 import { ProductData, getProducts } from '../utils/productDb';
 import { getEmisor, saveEmisor, EmisorData } from '../utils/emisorDb';
 import { 
-  generarDTE, ItemFactura, tiposDocumento, formasPago,
-  calcularTotales, redondear, DTEJSON
+  ItemFactura, tiposDocumento, formasPago,
+  calcularTotales, redondear
 } from '../utils/dteGenerator';
 import { ToastContainer, useToast } from './Toast';
 import { useCertificateManager } from '../hooks/useCertificateManager';
 import { useFacturaItems, ItemForm } from '../hooks/useFacturaItems';
+import { useDTEWorkflow } from '../hooks/useDTEWorkflow';
 import { FacturaMainContent } from './FacturaMainContent';
 import { FacturaModals } from './FacturaModals';
 import { FacturaHeader } from './FacturaHeader';
-import { applySalesFromDTE, validateStockForSale } from '../utils/inventoryDb';
-import { revertSalesFromDTE } from '../utils/inventoryDb';
 import { inventarioService } from '../utils/inventario/inventarioService';
 import { getUserModeConfig, hasFeature } from '../utils/userMode';
 import { useStockByCode } from '../hooks/useStockByCode';
@@ -53,9 +52,7 @@ const FacturaGenerator: React.FC = () => {
   const canUseCatalogoProductos = hasFeature('productos');
   const { toasts, addToast, removeToast } = useToast();
 
-  const [showTransmision, setShowTransmision] = useState(false);
   const [showQRCapture, setShowQRCapture] = useState(false);
-  const [showDTEPreview, setShowDTEPreview] = useState(false);
   const [showStripeConnect, setShowStripeConnect] = useState(false);
   const [showQRPayment, setShowQRPayment] = useState(false);
   
@@ -96,9 +93,6 @@ const FacturaGenerator: React.FC = () => {
   const [condicionOperacion, setCondicionOperacion] = useState(1);
   const [observaciones, setObservaciones] = useState('');
 
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedDTE, setGeneratedDTE] = useState<DTEJSON | null>(null);
-
   const ambiente = useMemo(() => localStorage.getItem('dte_ambiente') || '00', []);
 
   const {
@@ -112,6 +106,79 @@ const FacturaGenerator: React.FC = () => {
     handlePrecioUniChange,
     handlePrecioUniBlur,
   } = useFacturaItems({ defaultItem, tipoDocumento, products });
+
+  // Recalcular precios al cambiar tipo de documento
+  const handleSetTipoDocumento = (nuevoTipo: string) => {
+    const tipoAnterior = tipoDocumento;
+    setTipoDocumento(nuevoTipo);
+
+    if (tipoAnterior === nuevoTipo) return;
+
+    // Si no hay items o solo el default vacío, no hacer nada
+    if (items.length === 0 || (items.length === 1 && !items[0].codigo && items[0].precioUni === 0)) return;
+
+    const newItems = items.map(item => {
+      // Si es exento, no se toca el precio
+      if (item.esExento) return item;
+
+      let nuevoPrecio = item.precioUni;
+
+      // De Sin IVA (03) a Con IVA (01) -> Sumar IVA
+      if (tipoAnterior !== '01' && nuevoTipo === '01') {
+        nuevoPrecio = redondear(item.precioUni * 1.13, 8);
+      }
+      // De Con IVA (01) a Sin IVA (03) -> Restar IVA
+      else if (tipoAnterior === '01' && nuevoTipo !== '01') {
+        nuevoPrecio = redondear(item.precioUni / 1.13, 8);
+      }
+
+      return {
+        ...item,
+        precioUni: nuevoPrecio
+      };
+    });
+
+    setItems(newItems);
+    addToast(
+      nuevoTipo === '01' 
+        ? 'Precios actualizados a IVA incluido' 
+        : 'Precios actualizados a Sin IVA',
+      'info'
+    );
+  };
+
+  const {
+    isGenerating,
+    generatedDTE,
+    showDTEPreview,
+    setShowDTEPreview,
+    showTransmision,
+    setShowTransmision,
+    handleGenerateDTE,
+    handleNuevaFactura,
+    handleTransmitir,
+    handleDeleteGeneratedDTE,
+    handleCopyJSON,
+    handleDownloadJSON,
+  } = useDTEWorkflow({
+    emisor,
+    selectedReceptor,
+    setSelectedReceptor,
+    items,
+    setItems,
+    defaultItem,
+    tipoDocumento,
+    setTipoDocumento: handleSetTipoDocumento,
+    setFormaPago,
+    setCondicionOperacion,
+    setObservaciones,
+    formaPago,
+    condicionOperacion,
+    observaciones,
+    addToast: (msg, type) => addToast(msg, type as any),
+    setStockError,
+    ambiente,
+  });
 
   // Resolve Modal State
   const [showResolveModal, setShowResolveModal] = useState(false);
@@ -201,46 +268,6 @@ const FacturaGenerator: React.FC = () => {
     ).slice(0, 20);
   }, [products, productSearch]);
 
-  // Recalcular precios al cambiar tipo de documento
-  const handleSetTipoDocumento = (nuevoTipo: string) => {
-    const tipoAnterior = tipoDocumento;
-    setTipoDocumento(nuevoTipo);
-
-    if (tipoAnterior === nuevoTipo) return;
-
-    // Si no hay items o solo el default vacío, no hacer nada
-    if (items.length === 0 || (items.length === 1 && !items[0].codigo && items[0].precioUni === 0)) return;
-
-    const newItems = items.map(item => {
-      // Si es exento, no se toca el precio
-      if (item.esExento) return item;
-
-      let nuevoPrecio = item.precioUni;
-
-      // De Sin IVA (03) a Con IVA (01) -> Sumar IVA
-      if (tipoAnterior !== '01' && nuevoTipo === '01') {
-        nuevoPrecio = redondear(item.precioUni * 1.13, 8);
-      }
-      // De Con IVA (01) a Sin IVA (03) -> Restar IVA
-      else if (tipoAnterior === '01' && nuevoTipo !== '01') {
-        nuevoPrecio = redondear(item.precioUni / 1.13, 8);
-      }
-
-      return {
-        ...item,
-        precioUni: nuevoPrecio
-      };
-    });
-
-    setItems(newItems);
-    addToast(
-      nuevoTipo === '01' 
-        ? 'Precios actualizados a IVA incluido' 
-        : 'Precios actualizados a Sin IVA',
-      'info'
-    );
-  };
-
   const handleSelectReceptor = (client: ClientData) => {
     setSelectedReceptor(client);
     setShowClientSearch(false);
@@ -312,301 +339,6 @@ const FacturaGenerator: React.FC = () => {
     const stock = stockByCode[codigo];
     if (!stock) return '0';
     return stock.onHand.toString();
-  };
-
-  const handleGenerateDTE = async () => {
-    if (!emisor || !selectedReceptor) {
-      addToast('Faltan datos de emisor o receptor', 'error');
-      return;
-    }
-
-    // Validar items
-    const validItems = items.filter(i => i.descripcion && i.cantidad > 0 && i.precioUni >= 0);
-    if (validItems.length === 0) {
-      addToast('Debe agregar al menos un ítem válido', 'error');
-      return;
-    }
-
-    // Validar stock (si hay integración de inventario)
-    const goodsOnly = validItems
-      .filter(i => i.tipoItem === 1 && i.codigo)
-      .map(i => ({
-        codigo: i.codigo,
-        cantidad: i.cantidad * i.factorConversion, // Convertir a unidades base para validación
-        descripcion: i.descripcion
-      }));
-
-    if (goodsOnly.length > 0) {
-      const itemsToCheckInDb: typeof goodsOnly = [];
-      
-      for (const item of goodsOnly) {
-        const codeToSearch = (item.codigo || '').trim();
-        // Prioridad: Inventario Simplificado (Service)
-        const prodService = inventarioService.findProductoByCodigo(codeToSearch);
-        
-        if (prodService) {
-           // Encontrado en el nuevo sistema.
-           // Si gestiona inventario, validamos stock.
-           // Si NO gestiona inventario, asumimos stock infinito (no validamos).
-           // EN NINGÚN CASO caemos al sistema legacy si el producto existe aquí.
-           if (prodService.gestionarInventario) {
-             const config = inventarioService.getConfig();
-             if (!config.permitirVentaSinStock && prodService.existenciasTotales < item.cantidad) {
-               const msg = `Sin stock para ${codeToSearch}. Disponible: ${prodService.existenciasTotales.toFixed(2)}`;
-               setStockError(msg);
-               addToast(msg, 'error');
-               return;
-             }
-           }
-        } else {
-           // No está en service, agregar a lista para validar en legacy DB
-           itemsToCheckInDb.push(item);
-        }
-      }
-
-      if (itemsToCheckInDb.length > 0) {
-        const stockCheck = await validateStockForSale(itemsToCheckInDb);
-        if (!stockCheck.ok) {
-          setStockError(stockCheck.message);
-          addToast(stockCheck.message, 'error');
-          return;
-        }
-      }
-    }
-
-    setIsGenerating(true);
-    setStockError('');
-
-    try {
-      const correlativo = Date.now() % 100000;
-      
-      const itemsParaCalculo: ItemFactura[] = validItems.map((item, idx) => {
-        const cantidad8 = redondear(item.cantidad, 8);
-        const precio8 = redondear(item.precioUni, 8);
-        const totalLinea = redondear(cantidad8 * precio8, 8);
-
-        let ventaGravada = 0;
-        let ventaExenta = 0;
-        let ventaNoSuj = 0;
-        let ivaItem = 0;
-
-        // Lógica simple: solo esExento vs gravado
-        if (item.esExento) {
-          ventaExenta = totalLinea;
-        } else if (tipoDocumento === '01') {
-          // Factura: precio incluye IVA
-          ventaGravada = totalLinea;
-          const base = redondear(totalLinea / 1.13, 8);
-          ivaItem = redondear(totalLinea - base, 2);
-        } else if (tipoDocumento === '03') {
-          // CCF: precio sin IVA
-          ventaGravada = totalLinea;
-          ivaItem = redondear(totalLinea * 0.13, 2);
-        } else {
-          // Otros documentos: sin IVA
-          ventaGravada = totalLinea;
-        }
-
-        // Tributos: solo IVA 13% si hay venta gravada y es FE/CCF
-        const tributos = (ventaGravada > 0 && (tipoDocumento === '01' || tipoDocumento === '03')) ? ['20'] : null;
-
-        return {
-          numItem: idx + 1,
-          tipoItem: item.tipoItem,
-          cantidad: cantidad8,
-          codigo: item.codigo || null,
-          uniMedida: item.uniMedida || 99,
-          descripcion: item.descripcion,
-          precioUni: precio8,
-          montoDescu: 0,
-          ventaNoSuj,
-          ventaExenta,
-          ventaGravada,
-          tributos,
-          numeroDocumento: null,
-          codTributo: null,
-          psv: 0,
-          noGravado: 0,
-          ivaItem,
-        };
-      });
-
-      const totalesPreview = calcularTotales(itemsParaCalculo, tipoDocumento);
-
-      // Validaciones MH: tolerancia 0.01
-      const tolerance = 0.01;
-      const itemErrors: string[] = [];
-      itemsParaCalculo.forEach((it) => {
-        const base = redondear(redondear(it.precioUni, 8) * redondear(it.cantidad, 8) - redondear(it.montoDescu, 8), 8);
-        const sumaLineas = redondear(it.ventaGravada + it.ventaExenta + it.ventaNoSuj, 8);
-        if (Math.abs(base - sumaLineas) > tolerance) {
-          itemErrors.push(`Ítem ${it.numItem}: base ${base.toFixed(2)} ≠ sumatoria ${sumaLineas.toFixed(2)}`);
-        }
-      });
-
-      const resumenErrors: string[] = [];
-      if (Math.abs(totalesPreview.totalGravada - itemsParaCalculo.reduce((s, i) => s + i.ventaGravada, 0)) > tolerance) {
-        resumenErrors.push('Total gravada no cuadra');
-      }
-      if (Math.abs(totalesPreview.totalExenta - itemsParaCalculo.reduce((s, i) => s + i.ventaExenta, 0)) > tolerance) {
-        resumenErrors.push('Total exenta no cuadra');
-      }
-      if (Math.abs(totalesPreview.totalNoSuj - itemsParaCalculo.reduce((s, i) => s + i.ventaNoSuj, 0)) > tolerance) {
-        resumenErrors.push('Total no sujeto no cuadra');
-      }
-      const ivaSum = itemsParaCalculo.reduce((s, i) => s + (i.ivaItem || 0), 0);
-      if (Math.abs(totalesPreview.iva - ivaSum) > tolerance && !(ivaSum === 0 && totalesPreview.iva > 0)) {
-        resumenErrors.push('IVA resumen no cuadra con ítems');
-      }
-      const recomputeMonto = redondear(totalesPreview.subTotal + totalesPreview.iva + totalesPreview.totalNoGravado, 2);
-      if (Math.abs(totalesPreview.montoTotalOperacion - recomputeMonto) > tolerance) {
-        resumenErrors.push('Monto total de operación no cuadra');
-      }
-      if (Math.abs(totalesPreview.totalPagar - (totalesPreview.montoTotalOperacion)) > tolerance) {
-        resumenErrors.push('Total a pagar no cuadra');
-      }
-
-      // Validar datos obligatorios de emisor/receptor
-      const datosErrors: string[] = [];
-      const filled = (v?: string | null) => (v ?? '').toString().trim().length > 0;
-      const emisorDirOK = filled(emisor.departamento) && filled(emisor.municipio) && filled(emisor.direccion);
-      const emisorCodEst = emisor.codEstableMH ?? (emisor as any).codEstable;
-      const emisorPunto = emisor.codPuntoVentaMH ?? (emisor as any).codPuntoVenta;
-      const missingEmisor: string[] = [];
-      if (!filled(emisor.nit)) missingEmisor.push('NIT');
-      if (!filled(emisor.nrc)) missingEmisor.push('NRC');
-      if (!filled(emisor.nombre)) missingEmisor.push('nombre');
-      if (!filled(emisor.actividadEconomica)) missingEmisor.push('actividad');
-      if (!emisorDirOK) missingEmisor.push('dirección');
-      if (!filled(emisor.telefono)) missingEmisor.push('teléfono');
-      if (!filled(emisor.correo)) missingEmisor.push('correo');
-      if (!filled(emisorCodEst)) missingEmisor.push('código establecimiento MH');
-      if (!filled(emisorPunto)) missingEmisor.push('código punto de venta MH');
-      if (missingEmisor.length > 0) {
-        datosErrors.push(`Faltan datos del emisor: ${missingEmisor.join(', ')}`);
-      }
-
-      const receptorDirOK = selectedReceptor.departamento && selectedReceptor.municipio && selectedReceptor.direccion;
-      const receptorContactoOK = selectedReceptor.telefono || selectedReceptor.email;
-      const totalDoc = totalesPreview.totalPagar;
-      if (tipoDocumento === '01') {
-        const receptorId = (selectedReceptor.nit || '').replace(/[\s-]/g, '');
-        if (totalDoc >= 1095 && receptorId.length < 9) {
-          datosErrors.push('Factura (01) ≥ 1095 requiere documento de receptor');
-        }
-      }
-      if (tipoDocumento === '03') {
-        if (!selectedReceptor.nit || !selectedReceptor.nrc || !receptorDirOK || !receptorContactoOK) {
-          datosErrors.push('CCF (03) requiere NIT, NRC, dirección y contacto del receptor');
-        }
-      }
-
-      const allErrors = [...itemErrors, ...resumenErrors, ...datosErrors];
-      if (allErrors.length > 0) {
-        setIsGenerating(false);
-        allErrors.forEach(e => addToast(e, 'error'));
-        return;
-      }
-
-      const dte = generarDTE({
-        tipoDocumento,
-        tipoTransmision: 1,
-        emisor: {
-          ...emisor,
-          tipoEstablecimiento: emisor.tipoEstablecimiento || '01',
-        },
-        receptor: {
-          id: selectedReceptor.id,
-          nit: selectedReceptor.nit || '',
-          name: selectedReceptor.name || '',
-          nrc: selectedReceptor.nrc || '',
-          nombreComercial: selectedReceptor.nombreComercial || '',
-          actividadEconomica: selectedReceptor.actividadEconomica || '',
-          descActividad: selectedReceptor.descActividad || '',
-          departamento: selectedReceptor.departamento || '',
-          municipio: selectedReceptor.municipio || '',
-          direccion: selectedReceptor.direccion || '',
-          telefono: selectedReceptor.telefono || '',
-          email: selectedReceptor.email || '',
-          timestamp: selectedReceptor.timestamp || Date.now(),
-        },
-        items: itemsParaCalculo,
-        condicionOperacion,
-        formaPago,
-        observaciones,
-      }, correlativo, '00');
-
-      setGeneratedDTE(dte);
-      
-      // Aplicar descuentos de inventario si corresponde
-      // 1. Inventario Simplificado (Prioridad)
-      await inventarioService.aplicarVentaDesdeDTE(dte);
-      // 2. Inventario Legacy (Opcional, mantenemos para no romper historial legacy si se usa)
-      await applySalesFromDTE(dte);
-      
-      // Mostrar preview
-      setShowDTEPreview(true);
-
-    } catch (error) {
-      console.error('Error generando DTE:', error);
-      addToast('Error al generar DTE', 'error');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleNuevaFactura = () => {
-    setItems([{ ...defaultItem }]);
-    setGeneratedDTE(null);
-    setSelectedReceptor(null);
-    setTipoDocumento('03');
-    setFormaPago('01');
-    setCondicionOperacion(1);
-    setObservaciones('');
-    setShowDTEPreview(false);
-    setShowTransmision(false);
-  };
-
-  const handleTransmitir = () => {
-    if (!generatedDTE) return;
-    setShowDTEPreview(false);
-    setShowTransmision(true);
-  };
-
-  const handleDeleteGeneratedDTE = async () => {
-    if (generatedDTE) {
-      // 1. Revertir en Inventario Simplificado
-      const docRef = generatedDTE.identificacion.numeroControl;
-      if (docRef) {
-        await inventarioService.revertirVentaPorDocumentoReferencia(docRef);
-      }
-      
-      // 2. Revertir en Legacy
-      await revertSalesFromDTE(generatedDTE);
-      
-      setGeneratedDTE(null);
-      addToast('DTE descartado y stock revertido', 'info');
-      setShowDTEPreview(false);
-    }
-  };
-
-  const handleCopyJSON = () => {
-    if (generatedDTE) {
-      navigator.clipboard.writeText(JSON.stringify(generatedDTE, null, 2));
-      addToast('JSON copiado al portapapeles', 'success');
-    }
-  };
-
-  const handleDownloadJSON = () => {
-    if (generatedDTE) {
-      const blob = new Blob([JSON.stringify(generatedDTE, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `DTE-${generatedDTE.identificacion.codigoGeneracion}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
   };
 
   const handleStripeConnectSuccess = () => {
