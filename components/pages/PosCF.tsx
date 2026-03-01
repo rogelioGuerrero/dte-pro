@@ -370,8 +370,8 @@ const PosCF: React.FC = () => {
               const emailError = respuestaMH.data?.emailError;
               return (
                 <>
-                  <div className="font-semibold">Hacienda: {mhStatus || 'Sin estado'}</div>
-                  <div className="text-gray-600">{mhMessage || 'Mensaje no disponible'}</div>
+                  <div className="font-semibold">Hacienda: {mhStatus || transmision?.estado || 'Sin estado'}</div>
+                  <div className="text-gray-600">{mhMessage || transmision?.descripcionMsg || 'Mensaje no disponible'}</div>
                   {transmision?.selloRecepcion && (
                     <div className="text-xs text-gray-500 break-all">Sello: {transmision.selloRecepcion}</div>
                   )}

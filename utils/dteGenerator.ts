@@ -175,7 +175,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       descActividad: receptorDescActividad,
       direccion: receptorDireccion,
       telefono: datos.receptor.telefono || null,
-      correo: datos.receptor.email,
+      correo: datos.receptor.email || null,
     },
     otrosDocumentos: null,
     ventaTercero: null,

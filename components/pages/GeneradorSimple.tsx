@@ -134,12 +134,21 @@ export const GeneradorSimple: React.FC = () => {
       });
 
       const result = await response.json();
-      setRespuestaMH(result);
 
-      if (response.ok && result.success && result.data?.transmisionResult?.estado === 'PROCESADO') {
-        addToast('DTE Procesado exitosamente', 'success');
+      // Normalizar campos provenientes del backend
+      const estado = result.data?.mhStatus || result.data?.transmisionResult?.estado || null;
+      const mensaje = result.data?.mhMessage || result.data?.transmisionResult?.descripcionMsg || result.error?.userMessage || null;
+
+      setRespuestaMH({
+        ...result,
+        estado,
+        descripcionMsg: mensaje,
+      });
+
+      if (response.ok && result.success && estado === 'PROCESADO') {
+        addToast('DTE procesado por Hacienda', 'success');
       } else {
-        addToast(result.error?.userMessage || result.data?.transmisionResult?.descripcionMsg || 'Error en la transmisión', 'error');
+        addToast(mensaje || 'Error en la transmisión', 'error');
       }
     } catch (error: any) {
       setRespuestaMH({ error: error.message });
@@ -222,11 +231,17 @@ export const GeneradorSimple: React.FC = () => {
             <div className={`border rounded-xl overflow-hidden shadow-sm ${respuestaMH.estado === 'PROCESADO' ? 'border-green-300' : 'border-red-300'}`}>
               <div className={`px-4 py-3 border-b ${respuestaMH.estado === 'PROCESADO' ? 'bg-green-50' : 'bg-red-50'}`}>
                 <h2 className={`text-lg font-bold ${respuestaMH.estado === 'PROCESADO' ? 'text-green-800' : 'text-red-800'}`}>
-                  Respuesta Hacienda: {respuestaMH.estado || 'ERROR'}
+                  Hacienda: {respuestaMH.estado || 'Sin estado'}
                 </h2>
                 <p className={`text-sm ${respuestaMH.estado === 'PROCESADO' ? 'text-green-600' : 'text-red-600'}`}>
                   {respuestaMH.descripcionMsg || respuestaMH.error || 'Mensaje no disponible'}
                 </p>
+                {respuestaMH.data?.selloRecepcion && (
+                  <p className="text-xs text-gray-500 break-all">Sello: {respuestaMH.data.selloRecepcion}</p>
+                )}
+                {respuestaMH.data?.codigoGeneracion && (
+                  <p className="text-xs text-gray-500 break-all">Código: {respuestaMH.data.codigoGeneracion}</p>
+                )}
               </div>
               <pre className="bg-gray-50 p-4 overflow-x-auto text-xs text-gray-800 max-h-64">
                 {JSON.stringify(respuestaMH, null, 2)}
