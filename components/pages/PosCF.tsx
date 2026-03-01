@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ShoppingCart, Trash2, Plus, Minus, CreditCard, Send, Loader2 } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, Send, Loader2 } from 'lucide-react';
 import { Producto } from '../../types/inventario';
 import { inventarioService } from '../../utils/inventario/inventarioService';
 import { useToast } from '../Toast';
@@ -20,6 +20,7 @@ const PosCF: React.FC = () => {
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>('todos');
   const [busqueda, setBusqueda] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [correoReceptor, setCorreoReceptor] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [resultadoJSON, setResultadoJSON] = useState<string>('');
   const [respuestaMH, setRespuestaMH] = useState<any>(null);
@@ -121,7 +122,7 @@ const PosCF: React.FC = () => {
       municipio: '',
       direccion: '',
       telefono: '',
-      email: '',
+      email: correoReceptor.trim(),
       esConsumidorFinal: true,
       nombreComercial: '',
       timestamp: Date.now(),
@@ -300,7 +301,17 @@ const PosCF: React.FC = () => {
           ))}
         </div>
 
-        <div className="border-t border-gray-100 pt-3 space-y-1 text-sm text-gray-700">
+        <div className="border-t border-gray-100 pt-3 space-y-3 text-sm text-gray-700">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500">Correo (opcional, para enviar factura)</label>
+            <input
+              type="email"
+              value={correoReceptor}
+              onChange={(e) => setCorreoReceptor(e.target.value)}
+              placeholder="cliente@correo.com (déjalo vacío si no quiere)"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+            />
+          </div>
           <div className="flex justify-between">
             <span>Gravado</span>
             <span>{formatCurrency(totales.gravado)}</span>
@@ -318,25 +329,21 @@ const PosCF: React.FC = () => {
         <div className="flex flex-col gap-2">
           <button
             onClick={transmitir}
-            disabled={isSending || cart.length === 0}
-            className="w-full inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSending}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 font-semibold shadow"
           >
-            {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            {isSending ? 'Enviando…' : 'Cobrar / Generar DTE'}
+            {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            {isSending ? 'Enviando...' : 'Cobrar / Generar DTE'}
           </button>
-          <button
-            onClick={() => {
-              setCart([]);
-              setResultadoJSON('');
-              setRespuestaMH(null);
-            }}
-            className="w-full inline-flex items-center justify-center gap-2 bg-gray-100 text-gray-700 font-medium py-2.5 rounded-xl hover:bg-gray-200"
-          >
-            <CreditCard className="w-4 h-4" />
-            Nueva venta
-          </button>
+          {resultadoJSON && (
+            <button
+              onClick={() => navigator.clipboard.writeText(resultadoJSON)}
+              className="w-full text-sm text-emerald-700 hover:text-emerald-800"
+            >
+              Copiar JSON
+            </button>
+          )}
         </div>
-
         {resultadoJSON && (
           <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 text-xs text-gray-800 max-h-48 overflow-auto">
             <div className="flex items-center justify-between mb-2 text-sm font-semibold text-gray-700">
@@ -354,21 +361,35 @@ const PosCF: React.FC = () => {
         )}
 
         {respuestaMH && (
-          <div
-            className={`border rounded-lg p-3 text-sm ${
-              respuestaMH.estado === 'PROCESADO' ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'
-            }`}
-          >
-            <div className="font-semibold">Respuesta Hacienda: {respuestaMH.estado || 'ERROR'}</div>
-            <div className="text-gray-700 text-xs">
-              {respuestaMH.descripcionMsg ||
-                respuestaMH.error ||
-                respuestaMH.data?.transmisionResult?.descripcionMsg ||
-                'Mensaje no disponible'}
-            </div>
-            <pre className="mt-2 max-h-40 overflow-auto bg-white border border-gray-100 rounded p-2 text-[11px] text-gray-800">
-              {JSON.stringify(respuestaMH, null, 2)}
-            </pre>
+          <div className="border rounded-lg p-3 text-sm text-gray-800 space-y-2">
+            {(() => {
+              const transmision = respuestaMH.data?.transmisionResult;
+              const mhStatus = transmision?.mhStatus || transmision?.estado || respuestaMH.estado;
+              const mhMessage = transmision?.mhMessage || transmision?.descripcionMsg || respuestaMH.descripcionMsg || respuestaMH.error?.userMessage;
+              const emailSent = respuestaMH.data?.emailSent;
+              const emailError = respuestaMH.data?.emailError;
+              return (
+                <>
+                  <div className="font-semibold">Hacienda: {mhStatus || 'Sin estado'}</div>
+                  <div className="text-gray-600">{mhMessage || 'Mensaje no disponible'}</div>
+                  {transmision?.selloRecepcion && (
+                    <div className="text-xs text-gray-500 break-all">Sello: {transmision.selloRecepcion}</div>
+                  )}
+                  {transmision?.codigoGeneracion && (
+                    <div className="text-xs text-gray-500 break-all">Código: {transmision.codigoGeneracion}</div>
+                  )}
+                  <div className="pt-1">
+                    {emailSent === true && <span className="text-emerald-700 font-semibold">Correo enviado.</span>}
+                    {emailSent === false && (
+                      <span className="text-amber-700 font-semibold">Correo no enviado: {emailError || 'Sin correo de receptor/emisor'}</span>
+                    )}
+                  </div>
+                  <pre className="mt-2 max-h-40 overflow-auto bg-gray-50 border border-gray-100 rounded p-2 text-[11px] text-gray-800">
+                    {JSON.stringify(respuestaMH, null, 2)}
+                  </pre>
+                </>
+              );
+            })()}
           </div>
         )}
       </div>
