@@ -8,6 +8,7 @@ import {
 } from '../utils/dteGenerator';
 import { ToastContainer, useToast } from './Toast';
 import { useCertificateManager } from '../hooks/useCertificateManager';
+import { useFacturaItems, ItemForm } from '../hooks/useFacturaItems';
 import { FacturaMainContent } from './FacturaMainContent';
 import { FacturaModals } from './FacturaModals';
 import { FacturaHeader } from './FacturaHeader';
@@ -15,7 +16,6 @@ import { applySalesFromDTE, validateStockForSale } from '../utils/inventoryDb';
 import { revertSalesFromDTE } from '../utils/inventoryDb';
 import { inventarioService } from '../utils/inventario/inventarioService';
 import { getUserModeConfig, hasFeature } from '../utils/userMode';
-import { resolveProductForDescription } from '../utils/facturaGeneratorHelpers';
 import { useStockByCode } from '../hooks/useStockByCode';
 import { requiereStripe } from '../catalogos/pagos';
 import { mergeProducts } from '../utils/inventoryAdapter';
@@ -31,22 +31,6 @@ import {
   formatTextInput,
   formatMultilineTextInput,
 } from '../utils/validators';
-
-interface ItemForm {
-  id: string;
-  codigo: string;
-  descripcion: string;
-  cantidad: number;
-  unidadVenta: string;
-  factorConversion: number;
-  precioUni: number;
-  precioUniRaw?: string;
-  tipoItem: number;
-  uniMedida: number;
-  esExento: boolean;
-  cargosNoBase: number; // cargos/abonos que no afectan base imponible
-  tributoCodigo?: string | null;
-}
 
 const emptyItem: ItemForm = {
   id: '',
@@ -107,7 +91,6 @@ const FacturaGenerator: React.FC = () => {
 
   const [stockError, setStockError] = useState<string>('');
 
-  const [items, setItems] = useState<ItemForm[]>([{ ...defaultItem }]);
   const [tipoDocumento, setTipoDocumento] = useState('03');
   const [formaPago, setFormaPago] = useState('01');
   const [condicionOperacion, setCondicionOperacion] = useState(1);
@@ -117,6 +100,18 @@ const FacturaGenerator: React.FC = () => {
   const [generatedDTE, setGeneratedDTE] = useState<DTEJSON | null>(null);
 
   const ambiente = useMemo(() => localStorage.getItem('dte_ambiente') || '00', []);
+
+  const {
+    items,
+    setItems,
+    handleAddItem,
+    handleRemoveItem,
+    handleItemChange,
+    applyProductToItem,
+    handleItemDescriptionBlur,
+    handlePrecioUniChange,
+    handlePrecioUniBlur,
+  } = useFacturaItems({ defaultItem, tipoDocumento, products });
 
   // Resolve Modal State
   const [showResolveModal, setShowResolveModal] = useState(false);
@@ -287,91 +282,20 @@ const FacturaGenerator: React.FC = () => {
     }
   }, [selectedReceptor, receptorEsConsumidorFinal]);
 
-  const handleAddItem = () => {
-    setItems([...items, { ...defaultItem }]);
-  };
-
-  const handleRemoveItem = (index: number) => {
-    if (items.length === 1) {
-      setItems([{ ...defaultItem }]);
-    } else {
-      setItems(items.filter((_, i) => i !== index));
-    }
-  };
-
-  const handleItemChange = (index: number, field: keyof ItemForm, value: any) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
-    setItems(newItems);
-  };
-
-  const applyProductToItem = (index: number, p: ProductData) => {
-    const newItems = [...items];
-    if (!newItems[index]) return;
-    
-    // Si estamos en Factura (01), asumimos que el precio del catálogo es Neto y le agregamos IVA
-    // Si estamos en CCF (03), usamos el precio del catálogo tal cual (Neto)
-    const precioAplicar = tipoDocumento === '01' ? redondear(p.precioUni * 1.13, 8) : p.precioUni;
-
-    newItems[index] = {
-      ...newItems[index],
-      codigo: p.codigo,
-      descripcion: p.descripcion,
-      unidadVenta: 'UNIDAD',
-      factorConversion: 1,
-      precioUni: precioAplicar,
-      uniMedida: p.uniMedida,
-      tipoItem: p.tipoItem,
-    };
-    setItems(newItems);
-    setStockError('');
-  };
-
   const openProductPicker = (index: number) => {
     setProductPickerIndex(index);
     setProductSearch('');
     setShowProductPicker(true);
   };
 
-  const handleItemDescriptionBlur = (index: number) => {
-    const current = items[index];
-    if (!current) return;
-
-    const found = resolveProductForDescription({ raw: current.descripcion, products });
-    if (!found) return;
-
-    const newItems = [...items];
-    const precioAplicar = tipoDocumento === '01' ? redondear(found.precioUni * 1.13, 8) : found.precioUni;
-
-    newItems[index] = {
-      ...newItems[index],
-      codigo: found.codigo,
-      descripcion: found.descripcion,
-      precioUni: precioAplicar,
-      uniMedida: found.uniMedida,
-      tipoItem: found.tipoItem,
-    };
-    setItems(newItems);
+  const handleApplyProductToItem = (index: number, p: ProductData) => {
+    applyProductToItem(index, p);
     setStockError('');
   };
 
-  const handlePrecioUniChange = (index: number, val: string) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], precioUniRaw: val };
-    setItems(newItems);
-  };
-
-  const handlePrecioUniBlur = (index: number) => {
-    const newItems = [...items];
-    const val = newItems[index].precioUniRaw;
-    if (val !== undefined && val !== '') {
-      const num = parseFloat(val);
-      if (!isNaN(num)) {
-        newItems[index].precioUni = num;
-      }
-    }
-    delete newItems[index].precioUniRaw;
-    setItems(newItems);
+  const handleItemDescriptionBlurWithStockClear = (index: number) => {
+    handleItemDescriptionBlur(index, tipoDocumento);
+    setStockError('');
   };
 
   const getPresentacionesForCodigo = (codigo: string) => {
@@ -815,7 +739,7 @@ const FacturaGenerator: React.FC = () => {
         setProductSearch={setProductSearch}
         filteredProductsForPicker={filteredProductsForPicker}
         productPickerIndex={productPickerIndex}
-        applyProductToItem={applyProductToItem}
+        applyProductToItem={handleApplyProductToItem}
         setShowProductPicker={setShowProductPicker}
         showQRPayment={showQRPayment}
         setShowQRPayment={setShowQRPayment}
@@ -845,7 +769,7 @@ const FacturaGenerator: React.FC = () => {
         onRemoveItem={handleRemoveItem}
         onOpenProductPicker={openProductPicker}
         onItemChange={handleItemChange}
-        onItemDescriptionBlur={handleItemDescriptionBlur}
+        onItemDescriptionBlur={handleItemDescriptionBlurWithStockClear}
         onPrecioUniChange={handlePrecioUniChange}
         onPrecioUniBlur={handlePrecioUniBlur}
         getPresentacionesForCodigo={getPresentacionesForCodigo}
