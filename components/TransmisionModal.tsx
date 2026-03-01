@@ -57,6 +57,22 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isConnectionError, setIsConnectionError] = useState(false);
 
+  const getFriendlyError = (raw: string | null): { friendly: string; raw: string } => {
+    if (!raw) {
+      return { friendly: 'No pudimos completar la firma en este momento. Intenta nuevamente en unos segundos.', raw: '' };
+    }
+
+    const isHtml = /<[^>]+>/.test(raw) || raw.toLowerCase().includes('doctype html') || raw.toLowerCase().includes('cloudflare');
+    if (isHtml) {
+      return {
+        friendly: 'El servicio de firma está temporalmente protegido (Cloudflare) o tardó en responder. Reintenta en 1-2 minutos o desde otra conexión.',
+        raw,
+      };
+    }
+
+    return { friendly: raw, raw };
+  };
+
   const iniciarTransmision = async () => {
     setEstado('firmando');
     setError(null);
@@ -486,7 +502,25 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
         <h3 className="text-lg font-bold text-gray-900">
           {estado === 'rechazado' ? 'DTE Rechazado' : 'Error de Transmisión'}
         </h3>
-        <p className="text-sm text-gray-500">{resultado?.mensaje || error || 'Ocurrió un error'}</p>
+        {(() => {
+          const { friendly, raw } = getFriendlyError(resultado?.mensaje || error || null);
+          return (
+            <div className="space-y-2">
+              <p className="text-sm text-gray-700">{friendly}</p>
+              <ul className="text-xs text-gray-500 space-y-1">
+                <li>• Espera 1-2 minutos y reintenta.</li>
+                <li>• Si puedes, prueba con otra red o desactiva VPN.</li>
+                <li>• Si persiste, guarda el borrador y envía en modo contingencia.</li>
+              </ul>
+              {raw && (
+                <details className="text-xs text-gray-400 bg-gray-50 rounded-lg p-2 border border-gray-100">
+                  <summary className="cursor-pointer select-none">Ver detalle técnico</summary>
+                  <pre className="whitespace-pre-wrap break-all mt-1 text-[11px] leading-snug">{raw}</pre>
+                </details>
+              )}
+            </div>
+          );
+        })()}
       </div>
       
       {/* Errores detallados */}
