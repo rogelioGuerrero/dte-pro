@@ -110,15 +110,12 @@ export const GeneradorSimple: React.FC = () => {
     setIsTransmitting(true);
     addToast('Transmitiendo a Hacienda...', 'info');
 
-    const formatNitConGuiones = (rawNit: string) => {
-      const clean = rawNit.replace(/[\s-]/g, '');
-      if (clean.length === 14) {
-        return `${clean.substring(0, 4)}-${clean.substring(4, 10)}-${clean.substring(10, 13)}-${clean.substring(13, 14)}`;
-      }
-      return rawNit;
-    };
-    
-    const nitEmisor = formatNitConGuiones(emisor.nit);
+    const nitEmisor = emisor.nit.replace(/[\s-]/g, '');
+    if (!(nitEmisor.length === 9 || nitEmisor.length === 14)) {
+      addToast('NIT debe tener 9 o 14 dígitos (sin guiones) para transmitir.', 'error');
+      setIsTransmitting(false);
+      return;
+    }
 
     try {
       const response = await fetch(`${BACKEND_CONFIG.URL}/api/dte/process`, {
