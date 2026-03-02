@@ -24,15 +24,21 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const cuerpoDocumento = datos.items.map((item, index) => {
     // Valores pre-calculados en la UI (FacturaGenerator / MobileFactura)
     const precioUni = redondear(item.precioUni, 8);
-    const ventaGravada = redondear(item.ventaGravada, 8);
+    const cantidad = redondear(item.cantidad, 8);
+
+    // Recalcular base/iva de forma defensiva para FE (01) usando precio*cantidad
+    const totalLinea = redondear(precioUni * cantidad, 8);
+    const ventaGravada = datos.tipoDocumento === '01'
+      ? redondear(totalLinea / 1.13, 8)
+      : redondear(item.ventaGravada, 8);
     const montoDescu = redondear(item.montoDescu, 8);
     const ventaNoSuj = redondear(item.ventaNoSuj, 8);
     const ventaExenta = redondear(item.ventaExenta, 8);
-    // IVA por ítem: para FE (01) alineamos con MH (13% sobre ventaGravada) para evitar desajuste
+
+    // IVA por ítem: para FE (01) sobre la base recalculada
     const ivaItem = datos.tipoDocumento === '01'
-      ? redondear(ventaGravada * 0.13, 2)
+      ? redondear(totalLinea - ventaGravada, 2)
       : redondear(item.ivaItem || 0, 2);
-    const cantidad = redondear(item.cantidad, 8);
 
     // Tributos: solo si hay venta gravada > 0, evitar filtrar valores cuando el precio es 0
     const tributos = ventaGravada > 0 ? item.tributos : null;
