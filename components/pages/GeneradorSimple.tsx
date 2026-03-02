@@ -53,6 +53,9 @@ export const GeneradorSimple: React.FC = () => {
     const precioNum = Number(precio);
     const cantidadNum = Number(cantidad);
     const totalLinea = redondear(precioNum * cantidadNum, 8);
+    // Para FE (01) el precio incluye IVA: base = total/1.13, ivaItem = total - base
+    const base = precioNum > 0 ? redondear(totalLinea / 1.13, 8) : 0;
+    const ivaItem = precioNum > 0 ? redondear(totalLinea - base, 2) : 0;
 
     const item = {
       numItem: 1,
@@ -65,12 +68,13 @@ export const GeneradorSimple: React.FC = () => {
       montoDescu: 0,
       ventaNoSuj: 0,
       ventaExenta: 0,
-      ventaGravada: precioNum > 0 ? totalLinea : 0,
+      ventaGravada: base,
       tributos: precioNum > 0 ? ['20'] : null,
       numeroDocumento: null,
       codTributo: null,
       psv: 0,
-      noGravado: 0
+      noGravado: 0,
+      ivaItem,
     };
 
     return {
