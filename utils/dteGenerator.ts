@@ -28,8 +28,10 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     const montoDescu = redondear(item.montoDescu, 8);
     const ventaNoSuj = redondear(item.ventaNoSuj, 8);
     const ventaExenta = redondear(item.ventaExenta, 8);
-    // Para FE (01) NO debe ir ivaItem en el cuerpo según el manual (solo CCF y otros)
-    const ivaItem = datos.tipoDocumento !== '01' ? redondear(item.ivaItem || 0, 2) : undefined;
+    // IVA por ítem: para FE (01) alineamos con MH (13% sobre ventaGravada) para evitar desajuste
+    const ivaItem = datos.tipoDocumento === '01'
+      ? redondear(ventaGravada * 0.13, 2)
+      : redondear(item.ivaItem || 0, 2);
     const cantidad = redondear(item.cantidad, 8);
 
     // Tributos: solo si hay venta gravada > 0, evitar filtrar valores cuando el precio es 0

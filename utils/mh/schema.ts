@@ -207,7 +207,7 @@ export const DTE_SCHEMA = {
               },
             },
             telefono: { type: 'string', maxLength: 30, minLength: 8 },
-            correo: { type: 'string', format: 'email', maxLength: 100 },
+            correo: { type: ['string', 'null'], format: 'email', maxLength: 100 },
             codEstableMH: { type: ['string', 'null'], maxLength: 10 },
             codPuntoVentaMH: { type: ['string', 'null'], maxLength: 15 },
           },
