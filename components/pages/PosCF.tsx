@@ -92,6 +92,8 @@ const PosCF: React.FC = () => {
       const precio = Number(item.producto.precioSugerido || 0);
       const cantidad = Number(item.cantidad || 1);
       const totalLinea = redondear(precio * cantidad, 8);
+      const base = redondear(totalLinea / 1.13, 8);
+      const ivaItem = redondear(totalLinea - base, 2);
       return {
         numItem: idx + 1,
         tipoItem: 1, // Bien
@@ -103,12 +105,13 @@ const PosCF: React.FC = () => {
         montoDescu: 0,
         ventaNoSuj: 0,
         ventaExenta: 0,
-        ventaGravada: totalLinea,
+        ventaGravada: base,
         tributos: ['20'],
         numeroDocumento: null,
         codTributo: null,
         psv: 0,
         noGravado: 0,
+        ivaItem,
       };
     });
 
@@ -122,7 +125,7 @@ const PosCF: React.FC = () => {
       municipio: '',
       direccion: '',
       telefono: '',
-      email: correoReceptor.trim(),
+      email: correoReceptor.trim() || null,
       esConsumidorFinal: true,
       nombreComercial: '',
       timestamp: Date.now(),
