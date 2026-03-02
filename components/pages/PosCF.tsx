@@ -367,8 +367,15 @@ const PosCF: React.FC = () => {
           <div className="border rounded-lg p-3 text-sm text-gray-800 space-y-2">
             {(() => {
               const transmision = respuestaMH.data?.transmisionResult;
-              const mhStatus = transmision?.mhStatus || transmision?.estado || respuestaMH.estado;
-              const mhMessage = transmision?.mhMessage || transmision?.descripcionMsg || respuestaMH.descripcionMsg || respuestaMH.error?.userMessage;
+              const mhStatus = transmision?.mhStatus
+                || transmision?.estado
+                || respuestaMH.data?.mhStatus
+                || respuestaMH.estado;
+              const mhMessage = transmision?.mhMessage
+                || transmision?.descripcionMsg
+                || respuestaMH.data?.mhMessage
+                || respuestaMH.descripcionMsg
+                || respuestaMH.error?.userMessage;
               const emailSent = respuestaMH.data?.emailSent;
               const emailError = respuestaMH.data?.emailError;
               return (
