@@ -80,18 +80,21 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const reteRenta = 0;
   const saldoFavor = 0;
 
-  const ivaCalculado = totalIva;
+  const sinIvaEnItems = datos.tipoDocumento === '01' && cuerpoDocumento.every((item) => !item.ivaItem || item.ivaItem === 0);
+  const ivaCalculado = sinIvaEnItems ? 0 : totalIva;
 
   const resumenSubTotal = redondear(subTotalVentas - totalDescu, 2);
 
-  const resumenMontoTotal = redondear(totalGravada + totalExenta + totalNoSuj + totalNoGravado + ivaCalculado, 2);
+  const resumenMontoTotal = sinIvaEnItems
+    ? redondear(totalGravada + totalExenta + totalNoSuj + totalNoGravado, 2)
+    : redondear(totalGravada + totalExenta + totalNoSuj + totalNoGravado + ivaCalculado, 2);
 
   const resumenTotalPagar = redondear(
     resumenMontoTotal - ivaRete1 - reteRenta + saldoFavor + totalCargosNoBase,
     2
   );
 
-  const tributosResumen = aplicaIVAResumen && totalGravada > 0
+  const tributosResumen = aplicaIVAResumen && totalGravada > 0 && ivaCalculado > 0
     ? [{ codigo: '20', descripcion: 'IVA 13%', valor: ivaCalculado }]
     : null;
 

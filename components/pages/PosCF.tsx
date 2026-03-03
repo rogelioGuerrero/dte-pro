@@ -95,7 +95,7 @@ const PosCF: React.FC = () => {
       // Regla MH: precioUni es base sin IVA. Derivamos desde precio con IVA.
       const precioBase = redondear(precioConIva / 1.13, 2);
       const ventaGravada = redondear(precioBase * cantidad, 2);
-      const ivaItem = redondear(ventaGravada * 0.13, 2);
+      const ivaItem = 0; // backend recalcula IVA 13% en resumen
 
       return {
         numItem: idx + 1,
