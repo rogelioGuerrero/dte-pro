@@ -33,10 +33,10 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     const ventaExenta = redondear(item.ventaExenta, 8);
 
     // IVA por ítem: usar el valor provisto (ya redondeado) para mantener coherencia con resumen
-    const ivaItem = redondear(item.ivaItem || 0, 2);
+    const ivaItem = datos.tipoDocumento === '01' ? 0 : redondear(item.ivaItem || 0, 2);
 
-    // Tributos: solo si hay venta gravada > 0, evitar filtrar valores cuando el precio es 0
-    const tributos = ventaGravada > 0 ? item.tributos : null;
+    // FE (01) no debe enviar tributos desde el frontend; el backend los arma
+    const tributos = datos.tipoDocumento === '01' ? null : (ventaGravada > 0 ? item.tributos : null);
 
     return {
       numItem: index + 1,
@@ -80,8 +80,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const reteRenta = 0;
   const saldoFavor = 0;
 
-  const sinIvaEnItems = datos.tipoDocumento === '01' && cuerpoDocumento.every((item) => !item.ivaItem || item.ivaItem === 0);
-  const ivaCalculado = sinIvaEnItems ? 0 : totalIva;
+  const sinIvaEnItems = datos.tipoDocumento === '01' || cuerpoDocumento.every((item) => !item.ivaItem || item.ivaItem === 0);
+  const ivaCalculado = datos.tipoDocumento === '01' ? 0 : (sinIvaEnItems ? 0 : totalIva);
 
   const resumenSubTotal = redondear(subTotalVentas - totalDescu, 2);
 
@@ -94,9 +94,11 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     2
   );
 
-  const tributosResumen = aplicaIVAResumen && totalGravada > 0 && ivaCalculado > 0
-    ? [{ codigo: '20', descripcion: 'IVA 13%', valor: ivaCalculado }]
-    : null;
+  const tributosResumen = datos.tipoDocumento === '01'
+    ? null
+    : (aplicaIVAResumen && totalGravada > 0 && ivaCalculado > 0
+      ? [{ codigo: '20', descripcion: 'IVA 13%', valor: ivaCalculado }]
+      : null);
 
   const receptorIdDigits = (datos.receptor.nit || '').replace(/[\s-]/g, '').trim();
   const receptorSinDocumento = receptorIdDigits.length === 0;
@@ -209,14 +211,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       }] : null,
       numPagoElectronico: null,
     },
-    extension: {
-      nombEntrega: null,
-      docuEntrega: null,
-      nombRecibe: null,
-      docuRecibe: null,
-      observaciones: null,
-      placaVehiculo: null,
-    },
+    extension: null,
     apendice: null,
   };
   

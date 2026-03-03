@@ -123,9 +123,9 @@ export function useDTEWorkflow({
         if (item.esExento) {
           ventaExenta = totalLinea;
         } else if (tipoDocumento === '01') {
-          const base = redondear(totalLinea / 1.13, 8);
-          ventaGravada = base;
-          ivaItem = redondear(totalLinea - base, 2);
+          // FE: mantener precio final con IVA en ventaGravada; backend recalcula IVA
+          ventaGravada = totalLinea;
+          ivaItem = 0;
         } else if (tipoDocumento === '03') {
           ventaGravada = totalLinea;
           ivaItem = redondear(totalLinea * 0.13, 2);
@@ -133,7 +133,7 @@ export function useDTEWorkflow({
           ventaGravada = totalLinea;
         }
 
-        const tributos = (ventaGravada > 0 && (tipoDocumento === '01' || tipoDocumento === '03')) ? ['20'] : null;
+        const tributos = (ventaGravada > 0 && tipoDocumento === '03') ? ['20'] : null;
 
         return {
           numItem: idx + 1,

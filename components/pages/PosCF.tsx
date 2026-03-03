@@ -70,11 +70,12 @@ const PosCF: React.FC = () => {
   };
 
   const totales = useMemo(() => {
+    // Para FE 01: precios incluyen IVA; no calcular IVA en frontend
     const gravado = cart.reduce(
       (sum, item) => sum + redondear((item.producto.precioSugerido || 0) * item.cantidad, 8),
       0
     );
-    const iva = redondear(gravado * 0.13, 8);
+    const iva = 0;
     const total = redondear(gravado, 2);
     return { gravado, iva, total };
   }, [cart]);
@@ -92,10 +93,10 @@ const PosCF: React.FC = () => {
       const precioConIva = Number(item.producto.precioSugerido || 0);
       const cantidad = Number(item.cantidad || 1);
 
-      // Regla MH: precioUni es base sin IVA. Derivamos desde precio con IVA.
-      const precioBase = redondear(precioConIva / 1.13, 2);
-      const ventaGravada = redondear(precioBase * cantidad, 2);
-      const ivaItem = 0; // backend recalcula IVA 13% en resumen
+      // FE 01: mantener precio final (incluye IVA) en ventaGravada y precioUni; backend recalcula IVA
+      const precioUni = redondear(precioConIva, 8);
+      const ventaGravada = redondear(precioConIva * cantidad, 2);
+      const ivaItem = 0; // no enviar IVA desde frontend
 
       return {
         numItem: idx + 1,
@@ -104,12 +105,12 @@ const PosCF: React.FC = () => {
         codigo: item.producto.codigo || null,
         uniMedida: 59, // Unidad genérica
         descripcion: item.producto.descripcion,
-        precioUni: precioBase,
+        precioUni: precioUni,
         montoDescu: 0,
         ventaNoSuj: 0,
         ventaExenta: 0,
         ventaGravada,
-        tributos: null, // el backend generará IVA 20 en el resumen
+        tributos: null, // no enviar tributos; backend arma IVA
         numeroDocumento: null,
         codTributo: null,
         psv: 0,
