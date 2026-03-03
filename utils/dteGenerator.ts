@@ -26,19 +26,14 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     const precioUni = redondear(item.precioUni, 8);
     const cantidad = redondear(item.cantidad, 8);
 
-    // Recalcular base/iva de forma defensiva para FE (01) usando precio*cantidad
-    const totalLinea = redondear(precioUni * cantidad, 8);
-    const ventaGravada = datos.tipoDocumento === '01'
-      ? redondear(totalLinea / 1.13, 8)
-      : redondear(item.ventaGravada, 8);
+    // Tomar base e IVA ya calculados en la UI para FE (01); no recalcular dividiendo entre 1.13
+    const ventaGravada = redondear(item.ventaGravada, 8);
     const montoDescu = redondear(item.montoDescu, 8);
     const ventaNoSuj = redondear(item.ventaNoSuj, 8);
     const ventaExenta = redondear(item.ventaExenta, 8);
 
-    // IVA por ítem: para FE (01) sobre la base recalculada
-    const ivaItem = datos.tipoDocumento === '01'
-      ? redondear(totalLinea - ventaGravada, 2)
-      : redondear(item.ivaItem || 0, 2);
+    // IVA por ítem: usar el valor provisto (ya redondeado) para mantener coherencia con resumen
+    const ivaItem = redondear(item.ivaItem || 0, 2);
 
     // Tributos: solo si hay venta gravada > 0, evitar filtrar valores cuando el precio es 0
     const tributos = ventaGravada > 0 ? item.tributos : null;
@@ -79,26 +74,17 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
 
   // Consolidar tributos: solo IVA 13% (código 20) por ahora, y solo para FE/CCF
   const aplicaIVAResumen = datos.tipoDocumento === '01' || datos.tipoDocumento === '03';
-  const tieneTributo20 = cuerpoDocumento.some((item) => item.tributos?.includes('20'));
 
   // Rete/perc/saldo: aún no se manejan en FE; se dejan en cero
   const ivaRete1 = 0;
   const reteRenta = 0;
   const saldoFavor = 0;
 
-  // Defensa: si llega IVA 0 pero hay base gravada con tributo 20, recalculamos para evitar payloads viejos
-  const debeRecalcularIva = aplicaIVAResumen && totalGravada > 0 && tieneTributo20 && totalIva === 0;
-  const ivaCalculado = debeRecalcularIva && datos.tipoDocumento === '01'
-    ? redondear(totalGravada * 0.13, 2)
-    : totalIva;
+  const ivaCalculado = totalIva;
 
-  const resumenSubTotal = datos.tipoDocumento === '01'
-    ? redondear(subTotalVentas - totalDescu - ivaCalculado, 2)
-    : redondear(subTotalVentas - totalDescu, 2);
+  const resumenSubTotal = redondear(subTotalVentas - totalDescu, 2);
 
-  const resumenMontoTotal = datos.tipoDocumento === '01'
-    ? redondear(totalGravada + totalExenta + totalNoSuj + totalNoGravado + ivaCalculado, 2)
-    : redondear(resumenSubTotal + ivaCalculado + totalNoGravado, 2);
+  const resumenMontoTotal = redondear(totalGravada + totalExenta + totalNoSuj + totalNoGravado + ivaCalculado, 2);
 
   const resumenTotalPagar = redondear(
     resumenMontoTotal - ivaRete1 - reteRenta + saldoFavor + totalCargosNoBase,

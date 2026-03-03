@@ -91,8 +91,11 @@ const PosCF: React.FC = () => {
     const items = cart.map((item, idx) => {
       const precioConIva = Number(item.producto.precioSugerido || 0);
       const cantidad = Number(item.cantidad || 1);
-      const totalLinea = redondear(precioConIva * cantidad, 8);
-      const base = redondear(totalLinea / 1.13, 2); // venta gravada requerida por backend (dos decimales)
+
+      // Regla MH: precioUni es base sin IVA. Derivamos desde precio con IVA.
+      const precioBase = redondear(precioConIva / 1.13, 2);
+      const ventaGravada = redondear(precioBase * cantidad, 2);
+      const ivaItem = redondear(ventaGravada * 0.13, 2);
 
       return {
         numItem: idx + 1,
@@ -101,16 +104,17 @@ const PosCF: React.FC = () => {
         codigo: item.producto.codigo || null,
         uniMedida: 59, // Unidad genérica
         descripcion: item.producto.descripcion,
-        precioUni: precioConIva,
+        precioUni: precioBase,
         montoDescu: 0,
         ventaNoSuj: 0,
         ventaExenta: 0,
-        ventaGravada: base,
+        ventaGravada,
         tributos: null, // el backend generará IVA 20 en el resumen
         numeroDocumento: null,
         codTributo: null,
         psv: 0,
         noGravado: 0,
+        ivaItem,
       };
     });
 
