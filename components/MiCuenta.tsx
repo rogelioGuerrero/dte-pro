@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Download, Bell, Shield, Key, Store, Upload, Image as ImageIcon } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { downloadBackup, restoreBackupFromText } from '../utils/backup';
-import { getCertificate } from '../utils/secureStorage';
 import { notify } from '../utils/notifications';
 import { Settings } from 'lucide-react';
 import { EmisorConfigModal } from './EmisorConfigModal';
@@ -79,6 +78,8 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     const loadBusinessFromSupabase = async () => {
       if (!user || !businessId) {
         setBusinessData({ nombre: 'Sin emisor', nit: 'No definido', ambiente: localStorage.getItem('dte_ambiente') || '00' });
+        setLogoUrl('');
+        setCredentialsStatus({ hasCert: false, hasPassword: false });
         return;
       }
 
@@ -116,24 +117,32 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
         }));
       }
     };
+
+    const loadCredentialsFromSupabase = async () => {
+      if (!businessId) {
+        setCredentialsStatus({ hasCert: false, hasPassword: false });
+        return;
+      }
+      const { data, error } = await supabase
+        .from('mh_credentials')
+        .select('certificate_b64, password_pri')
+        .eq('business_id', businessId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error cargando credenciales MH:', error);
+        return;
+      }
+
+      setCredentialsStatus({
+        hasCert: !!data?.certificate_b64,
+        hasPassword: !!data?.password_pri,
+      });
+    };
     
     loadBusinessFromSupabase();
-
-    // Cargar estado de credenciales desde IndexedDB (secureStorage)
-    const loadCredentials = async () => {
-      try {
-        const cert = await getCertificate();
-        setCredentialsStatus({ 
-          hasCert: !!cert?.certificate, 
-          hasPassword: !!cert?.password 
-        });
-      } catch (err) {
-        console.error('Error cargando credenciales:', err);
-      }
-    };
-
-    loadCredentials();
-  }, [permission, showEmisorConfig]);
+    loadCredentialsFromSupabase();
+  }, [permission, showEmisorConfig, businessId, user]);
 
   const handleOpenConfig = () => {
     setShowEmisorConfig(true);
@@ -453,7 +462,9 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
           setCertificatePassword={setCertificatePassword}
           setShowCertPassword={setShowCertPassword}
           handleCertFileSelect={handleCertFileSelect}
-          handleSaveCertificate={() => handleSaveCertificate(emisorForm, businessData.ambiente)}
+          handleSaveCertificate={(nit, nrc, ambiente) =>
+            handleSaveCertificate({ nit, nrc }, ambiente || businessData.ambiente)
+          }
           fileInputRef={fileInputRef}
         />
       )}

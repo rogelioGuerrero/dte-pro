@@ -1,5 +1,8 @@
 import { useState, useRef } from 'react';
-import { Upload, X, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Trash2, Loader2 } from 'lucide-react';
+import { supabase } from '../utils/supabaseClient';
+import { useEmisor } from '../contexts/EmisorContext';
+import { notify } from '../utils/notifications';
 
 interface LogoUploaderProps {
   currentLogo?: string;
@@ -12,15 +15,21 @@ const LogoUploader: React.FC<LogoUploaderProps> = ({
   onLogoChange,
   compact = false
 }) => {
+  const { businessId } = useEmisor();
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_SIZE = 500 * 1024; // 500KB
   const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'];
 
-  const handleFile = (file: File) => {
+  const handleFile = async (file: File) => {
     setError(null);
+    if (!businessId) {
+      setError('Selecciona un emisor antes de subir logo');
+      return;
+    }
 
     if (!ALLOWED_TYPES.includes(file.type)) {
       setError('Formato no válido. Use PNG, JPG, SVG o WebP');
@@ -32,15 +41,30 @@ const LogoUploader: React.FC<LogoUploaderProps> = ({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string;
-      onLogoChange(base64);
-    };
-    reader.onerror = () => {
-      setError('Error al leer el archivo');
-    };
-    reader.readAsDataURL(file);
+    setIsUploading(true);
+    const filePath = `logos/${businessId}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from('business-logos')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('Error subiendo logo:', uploadError);
+      setError('Error al subir logo. Intenta de nuevo.');
+      setIsUploading(false);
+      return;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('business-logos')
+      .getPublicUrl(filePath);
+
+    const publicUrl = publicUrlData.publicUrl;
+    onLogoChange(publicUrl);
+    setIsUploading(false);
+    notify('Logo subido exitosamente', 'success');
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -142,9 +166,10 @@ const LogoUploader: React.FC<LogoUploaderProps> = ({
           <div className="flex gap-2">
             <button
               onClick={handleClick}
-              className="px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100"
+              disabled={isUploading}
+              className="px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 disabled:opacity-50"
             >
-              Cambiar
+              {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : null} Cambiar
             </button>
             <button
               onClick={handleRemove}
@@ -173,10 +198,10 @@ const LogoUploader: React.FC<LogoUploaderProps> = ({
               w-12 h-12 rounded-full flex items-center justify-center mb-3
               ${isDragging ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'}
             `}>
-              <Upload className="w-6 h-6" />
+              {isUploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Upload className="w-6 h-6" />}
             </div>
             <p className="text-sm font-medium text-gray-700">
-              {isDragging ? 'Suelta la imagen aquí' : 'Arrastra tu logo o haz click'}
+              {isUploading ? 'Subiendo...' : (isDragging ? 'Suelta la imagen aquí' : 'Arrastra tu logo o haz click')}
             </p>
             <p className="text-xs text-gray-500 mt-1">
               PNG, JPG, SVG o WebP (máximo 500KB)

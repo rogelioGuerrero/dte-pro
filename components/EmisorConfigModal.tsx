@@ -145,8 +145,8 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
               </div>
               <div className="col-span-2">
                 <LogoUploader
-                  currentLogo={emisorForm.logo}
-                  onLogoChange={(logo) => setEmisorForm({ ...emisorForm, logo })}
+                  currentLogo={emisorForm.logoUrl}
+                  onLogoChange={(logoUrl) => setEmisorForm({ ...emisorForm, logoUrl })}
                 />
               </div>
               <div>
