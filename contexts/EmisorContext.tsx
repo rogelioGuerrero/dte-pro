@@ -2,8 +2,13 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { supabase } from '../utils/supabaseClient';
 import { useAuth } from './AuthContext';
 
-type BusinessUserRow = {
+type BusinessRow = {
   business_id: string;
+  businesses?: {
+    id: string | null;
+    nombre?: string | null;
+    nombre_comercial?: string | null;
+  } | null;
 };
 
 interface EmisorContextValue {
@@ -39,10 +44,16 @@ export const EmisorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setLoading(true);
       const { data, error } = await supabase
         .from('business_users')
-        .select('business_id')
+        .select('business_id, businesses(id, nombre, nombre_comercial)')
         .eq('user_id', user.id);
+
       if (!error && data) {
-        const mapped = (data as BusinessUserRow[]).map((row) => ({ business_id: row.business_id }));
+        const rows = data as unknown as BusinessRow[];
+
+        const mapped = rows.map((row) => ({
+          business_id: row.business_id,
+          nombre: row.businesses?.nombre || row.businesses?.nombre_comercial || undefined
+        }));
         setEmisores(mapped);
         if (!businessId && mapped.length > 0) {
           setBusinessIdState(mapped[0].business_id);

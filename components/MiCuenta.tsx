@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Bell, Shield, Key, Store, Upload } from 'lucide-react';
+import { Download, Bell, Shield, Key, Store, Upload, Image as ImageIcon } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { downloadBackup, restoreBackupFromText } from '../utils/backup';
-import { loadSettings } from '../utils/settings';
-import { getEmisor } from '../utils/emisorDb';
 import { getCertificate } from '../utils/secureStorage';
 import { notify } from '../utils/notifications';
 import { Settings } from 'lucide-react';
 import { EmisorConfigModal } from './EmisorConfigModal';
 import { useCertificateManager } from '../hooks/useCertificateManager';
 import { EmisorData } from '../utils/emisorDb';
+import { supabase } from '../utils/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
+import { useEmisor } from '../contexts/EmisorContext';
 
 interface MiCuentaProps {
   onBack?: () => void;
@@ -17,9 +18,11 @@ interface MiCuentaProps {
 
 const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
   const { isSupported, permission, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
+  const { user } = useAuth();
+  const { businessId } = useEmisor();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showEmisorConfig, setShowEmisorConfig] = useState(false);
-  const [emisorForm, setEmisorForm] = useState<Omit<EmisorData, 'id'>>({
+  const [emisorForm, setEmisorForm] = useState<Omit<EmisorData, 'id'> & { logoUrl?: string }>({
     nit: '',
     nrc: '',
     nombre: '',
@@ -33,7 +36,8 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     telefono: '',
     correo: '',
     codEstableMH: null,
-    codPuntoVentaMH: null
+    codPuntoVentaMH: null,
+    logoUrl: ''
   });
   const [isSavingEmisor, setIsSavingEmisor] = useState(false);
 
@@ -59,6 +63,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     nit: '',
     ambiente: '00'
   });
+  const [logoUrl, setLogoUrl] = useState('');
   const [credentialsStatus, setCredentialsStatus] = useState({
     hasCert: false,
     hasPassword: false
@@ -71,33 +76,48 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     const dismissed = localStorage.getItem('push-notification-dismissed');
     setNotificationsEnabled(permission === 'granted' && dismissed !== 'true');
 
-    // Cargar datos de negocio desde IndexedDB (fuente de verdad principal)
-    const loadEmisorData = async () => {
-      try {
-        const emisor = await getEmisor();
-        const settings = loadSettings();
-        const storedAmbiente = localStorage.getItem('dte_ambiente') || '00';
-        
-        if (emisor) {
-          setBusinessData({
-            nombre: emisor.nombreComercial || emisor.nombre || 'Empresa No Configurada',
-            nit: emisor.nit || 'No definido',
-            ambiente: storedAmbiente
-          });
-        } else {
-          // Fallback a localStorage si no hay en DB
-          setBusinessData({
-            nombre: localStorage.getItem('emisor_nombre') || 'Empresa No Configurada',
-            nit: settings.myNit || localStorage.getItem('emisor_nit') || 'No definido',
-            ambiente: storedAmbiente
-          });
-        }
-      } catch (err) {
-        console.error('Error cargando datos del emisor:', err);
+    const loadBusinessFromSupabase = async () => {
+      if (!user || !businessId) {
+        setBusinessData({ nombre: 'Sin emisor', nit: 'No definido', ambiente: localStorage.getItem('dte_ambiente') || '00' });
+        return;
+      }
+
+      const storedAmbiente = localStorage.getItem('dte_ambiente') || '00';
+      const { data, error } = await supabase
+        .from('businesses')
+        .select('id, nombre, nombre_comercial, correo, telefono, nrc, dir_departamento, dir_municipio, dir_complemento, logo_url')
+        .eq('id', businessId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error cargando negocio:', error);
+        notify('No se pudo cargar el emisor', 'error');
+        return;
+      }
+
+      if (data) {
+        setBusinessData({
+          nombre: data.nombre_comercial || data.nombre || 'Empresa No Configurada',
+          nit: data.id,
+          ambiente: storedAmbiente
+        });
+        setLogoUrl(data.logo_url || '');
+        setEmisorForm((prev) => ({
+          ...prev,
+          nombre: data.nombre || '',
+          nombreComercial: data.nombre_comercial || '',
+          correo: data.correo || '',
+          telefono: data.telefono || '',
+          nrc: data.nrc || '',
+          departamento: data.dir_departamento || '',
+          municipio: data.dir_municipio || '',
+          direccion: data.dir_complemento || '',
+          logoUrl: data.logo_url || ''
+        }));
       }
     };
     
-    loadEmisorData();
+    loadBusinessFromSupabase();
 
     // Cargar estado de credenciales desde IndexedDB (secureStorage)
     const loadCredentials = async () => {
@@ -115,36 +135,72 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     loadCredentials();
   }, [permission, showEmisorConfig]);
 
-  const loadEmisorParaConfig = async () => {
-    try {
-      const emisor = await getEmisor();
-      if (emisor) {
-        const { id, ...rest } = emisor;
-        setEmisorForm(rest);
-      }
-    } catch (err) {
-      console.error('Error cargando emisor para form:', err);
-    }
-  };
-
   const handleOpenConfig = () => {
-    loadEmisorParaConfig();
     setShowEmisorConfig(true);
   };
 
   const handleSaveEmisor = async () => {
+    if (!businessId) {
+      notify('Selecciona un emisor para actualizar', 'error');
+      return;
+    }
+
     setIsSavingEmisor(true);
     try {
-      const { saveEmisor } = await import('../utils/emisorDb');
-      await saveEmisor(emisorForm);
+      const payload: Record<string, unknown> = {
+        nombre: emisorForm.nombre?.trim() || null,
+        nombre_comercial: emisorForm.nombreComercial?.trim() || null,
+        correo: emisorForm.correo?.trim() || null,
+        telefono: emisorForm.telefono?.trim() || null,
+        nrc: emisorForm.nrc?.trim() || null,
+        dir_departamento: emisorForm.departamento?.trim() || null,
+        dir_municipio: emisorForm.municipio?.trim() || null,
+        dir_complemento: emisorForm.direccion?.trim() || null,
+        logo_url: emisorForm.logoUrl?.trim() || null,
+      };
+
+      const { error } = await supabase
+        .from('businesses')
+        .update(payload)
+        .eq('id', businessId);
+
+      if (error) {
+        throw error;
+      }
+
       notify('Datos del emisor guardados', 'success');
       setShowEmisorConfig(false);
+      setBusinessData((prev) => ({ ...prev, nombre: payload.nombre_comercial as string || payload.nombre as string || prev.nombre }));
+      setLogoUrl((payload.logo_url as string) || logoUrl);
     } catch (error) {
       console.error(error);
       notify('Error guardando emisor', 'error');
     } finally {
       setIsSavingEmisor(false);
     }
+  };
+
+  const handleSaveLogoUrl = async () => {
+    if (!businessId) {
+      notify('Selecciona un emisor para actualizar el logo', 'error');
+      return;
+    }
+    const cleanUrl = logoUrl.trim();
+    if (!cleanUrl) {
+      notify('Proporciona una URL de logo', 'error');
+      return;
+    }
+    const { error } = await supabase
+      .from('businesses')
+      .update({ logo_url: cleanUrl })
+      .eq('id', businessId);
+    if (error) {
+      console.error(error);
+      notify('Error actualizando logo', 'error');
+      return;
+    }
+    notify('Logo actualizado', 'success');
+    setEmisorForm((prev) => ({ ...prev, logoUrl: cleanUrl }));
   };
 
   const handleNotificationToggle = async (checked: boolean) => {
@@ -250,6 +306,28 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
                   {businessData.ambiente === '01' ? 'Producción' : 'Pruebas'}
                 </span>
               </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-gray-500 uppercase font-semibold flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-gray-500" /> Logo (URL pública)
+              </label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="url"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  placeholder="https://.../logo.png"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveLogoUrl}
+                  className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition"
+                >
+                  Guardar logo
+                </button>
+              </div>
+              <p className="text-xs text-gray-500">Sube la imagen a Supabase Storage o externo, pega aquí la URL pública y guarda.</p>
             </div>
           </div>
         </div>
