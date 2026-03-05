@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Bell, Shield, Key, Store, Upload, Image as ImageIcon } from 'lucide-react';
+import { Download, Bell, Shield, Key, Store, Upload } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { downloadBackup, restoreBackupFromText } from '../utils/backup';
 import { notify } from '../utils/notifications';
@@ -62,7 +62,6 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     nit: '',
     ambiente: '00'
   });
-  const [logoUrl, setLogoUrl] = useState('');
   const [credentialsStatus, setCredentialsStatus] = useState({
     hasCert: false,
     hasPassword: false
@@ -78,7 +77,6 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     const loadBusinessFromSupabase = async () => {
       if (!user || !businessId) {
         setBusinessData({ nombre: 'Sin emisor', nit: 'No definido', ambiente: localStorage.getItem('dte_ambiente') || '00' });
-        setLogoUrl('');
         setCredentialsStatus({ hasCert: false, hasPassword: false });
         return;
       }
@@ -86,7 +84,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
       const storedAmbiente = localStorage.getItem('dte_ambiente') || '00';
       const { data, error } = await supabase
         .from('businesses')
-        .select('id, nombre, nombre_comercial, correo, telefono, nrc, dir_departamento, dir_municipio, dir_complemento, logo_url')
+        .select('id, nombre, nombre_comercial, correo, telefono, nrc, dir_departamento, dir_municipio, dir_complemento')
         .eq('id', businessId)
         .maybeSingle();
 
@@ -102,7 +100,6 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
           nit: data.id,
           ambiente: storedAmbiente
         });
-        setLogoUrl(data.logo_url || '');
         setEmisorForm((prev) => ({
           ...prev,
           nombre: data.nombre || '',
@@ -112,8 +109,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
           nrc: data.nrc || '',
           departamento: data.dir_departamento || '',
           municipio: data.dir_municipio || '',
-          direccion: data.dir_complemento || '',
-          logoUrl: data.logo_url || ''
+          direccion: data.dir_complemento || ''
         }));
       }
     };
@@ -180,36 +176,12 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
       notify('Datos del emisor guardados', 'success');
       setShowEmisorConfig(false);
       setBusinessData((prev) => ({ ...prev, nombre: payload.nombre_comercial as string || payload.nombre as string || prev.nombre }));
-      setLogoUrl((payload.logo_url as string) || logoUrl);
     } catch (error) {
       console.error(error);
       notify('Error guardando emisor', 'error');
     } finally {
       setIsSavingEmisor(false);
     }
-  };
-
-  const handleSaveLogoUrl = async () => {
-    if (!businessId) {
-      notify('Selecciona un emisor para actualizar el logo', 'error');
-      return;
-    }
-    const cleanUrl = logoUrl.trim();
-    if (!cleanUrl) {
-      notify('Proporciona una URL de logo', 'error');
-      return;
-    }
-    const { error } = await supabase
-      .from('businesses')
-      .update({ logo_url: cleanUrl })
-      .eq('id', businessId);
-    if (error) {
-      console.error(error);
-      notify('Error actualizando logo', 'error');
-      return;
-    }
-    notify('Logo actualizado', 'success');
-    setEmisorForm((prev) => ({ ...prev, logoUrl: cleanUrl }));
   };
 
   const handleNotificationToggle = async (checked: boolean) => {
@@ -315,28 +287,6 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
                   {businessData.ambiente === '01' ? 'Producción' : 'Pruebas'}
                 </span>
               </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs text-gray-500 uppercase font-semibold flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-gray-500" /> Logo (URL pública)
-              </label>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="url"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  placeholder="https://.../logo.png"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleSaveLogoUrl}
-                  className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition"
-                >
-                  Guardar logo
-                </button>
-              </div>
-              <p className="text-xs text-gray-500">Sube la imagen a Supabase Storage o externo, pega aquí la URL pública y guarda.</p>
             </div>
           </div>
         </div>
