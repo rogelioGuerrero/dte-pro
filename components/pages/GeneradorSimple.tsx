@@ -3,10 +3,14 @@ import { generarDTE, redondear } from '../../utils/dteGenerator';
 import { useToast } from '../Toast';
 import { Copy, Send } from 'lucide-react';
 
-import { BACKEND_CONFIG, getAuthHeaders } from '../../utils/backendConfig';
+import { BACKEND_CONFIG, buildBackendHeaders } from '../../utils/backendConfig';
+import { useAuth } from '../../contexts/AuthContext';
+import { useEmisor } from '../../contexts/EmisorContext';
 
 export const GeneradorSimple: React.FC = () => {
   const { addToast } = useToast();
+  const { session } = useAuth();
+  const { businessId } = useEmisor();
   const [precio, setPrecio] = useState<number>(0);
   const [cantidad, setCantidad] = useState<number>(1);
   const [descripcion, setDescripcion] = useState<string>('limpi');
@@ -108,13 +112,25 @@ export const GeneradorSimple: React.FC = () => {
   };
 
   const transmitirMH = async () => {
+    const token = session?.access_token;
+    const activeBusinessId = businessId || emisor.nit.replace(/\s|-/g, '');
+
+    if (!token) {
+      addToast('Debes iniciar sesión para transmitir.', 'error');
+      return;
+    }
+    if (!activeBusinessId) {
+      addToast('Selecciona un emisor antes de transmitir.', 'error');
+      return;
+    }
+
     // Siempre regenerar para forzar numeroControl único en cada envío
     const dteParaEnviar = buildAndSetDTE();
 
     setIsTransmitting(true);
     addToast('Transmitiendo a Hacienda...', 'info');
 
-    const nitEmisor = emisor.nit.replace(/[\s-]/g, '');
+    const nitEmisor = activeBusinessId.replace(/[\s-]/g, '');
     if (!(nitEmisor.length === 9 || nitEmisor.length === 14)) {
       addToast('NIT debe tener 9 o 14 dígitos (sin guiones) para transmitir.', 'error');
       setIsTransmitting(false);
@@ -124,10 +140,7 @@ export const GeneradorSimple: React.FC = () => {
     try {
       const response = await fetch(`${BACKEND_CONFIG.URL}/api/dte/process`, {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'x-business-id': nitEmisor
-        },
+        headers: buildBackendHeaders({ token, businessId: nitEmisor }),
         body: JSON.stringify({
           dte: dteParaEnviar,
           nit: nitEmisor,

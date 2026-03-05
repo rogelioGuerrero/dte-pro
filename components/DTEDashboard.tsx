@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   FileText,
   Search,
@@ -16,22 +16,14 @@ import {
   Loader2,
   BarChart3,
   DollarSign,
-  Hash,
-  Ban
+  Hash
 } from 'lucide-react';
-import {
-  DTECacheRecord,
-  DTECacheFilter,
-  DTECacheStats,
-  obtenerCacheDTE,
-  obtenerEstadisticasDTE,
-  exportarCacheJSON
-} from '../utils/dteHistoryDb';
 import { tiposDocumento } from '../utils/dteGenerator';
 import { descargarPDFConPlantilla, TemplateName } from '../utils/pdfTemplates';
-import { marcarAnulacionLocal } from '../utils/dteHistoryDb';
-import { generarLibroDesdeDTEs } from '../utils/librosAutoGenerator';
 import { notify } from '../utils/notifications';
+import { supabase } from '../utils/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
+import { useEmisor } from '../contexts/EmisorContext';
 
 interface DTEDashboardProps {
   onClose?: () => void;
@@ -40,10 +32,43 @@ interface DTEDashboardProps {
 
 const ITEMS_POR_PAGINA = 10;
 
+type DTERow = {
+  codigo_generacion: string;
+  numero_control: string;
+  tipo_dte: string;
+  fecha_emision: string;
+  hora_emision: string | null;
+  monto_total: number;
+  monto_gravado?: number;
+  monto_iva?: number;
+  receptor_nombre: string | null;
+  receptor_documento: string | null;
+  estado: string;
+  sello_recepcion?: string | null;
+  dte_json: any;
+  emisor_nombre?: string | null;
+  emisor_nit?: string | null;
+  ambiente?: string | null;
+  fecha_hora_procesamiento?: string | null;
+};
+
+type DTEStats = {
+  totalEmitidos: number;
+  totalAceptados: number;
+  totalRechazados: number;
+  totalPendientes: number;
+  montoTotalEmitido: number;
+  montoTotalIva: number;
+  porTipo: Record<string, number>;
+  porMes: Record<string, { cantidad: number; monto: number }>;
+};
+
 const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
-  const [registros, setRegistros] = useState<DTECacheRecord[]>([]);
-  const [stats, setStats] = useState<DTECacheStats | null>(null);
-  const [filtros, setFiltros] = useState<DTECacheFilter>({});
+  const { user } = useAuth();
+  const { businessId } = useEmisor();
+
+  const [registros, setRegistros] = useState<DTERow[]>([]);
+  const [stats, setStats] = useState<DTEStats | null>(null);
   const [totalRegistros, setTotalRegistros] = useState(0);
   const [paginaActual, setPaginaActual] = useState(1);
 
@@ -57,57 +82,128 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
 
   // Vista
   const [vistaActiva, setVistaActiva] = useState<'lista' | 'estadisticas'>('lista');
-  const [dteSeleccionado, setDteSeleccionado] = useState<DTECacheRecord | null>(null);
+  const [dteSeleccionado, setDteSeleccionado] = useState<DTERow | null>(null);
   const [exportando, setExportando] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
+  const filtrosMemo = useMemo(() => ({
+    busqueda,
+    fechaDesde,
+    fechaHasta,
+    tipoDte,
+    estado,
+  }), [busqueda, fechaDesde, fechaHasta, tipoDte, estado]);
+
   const cargarDatos = async () => {
+    if (!businessId) return;
     setLoading(true);
-    const filtros: DTECacheFilter = {
-      busqueda: busqueda || undefined,
-      fechaDesde: fechaDesde || undefined,
-      fechaHasta: fechaHasta || undefined,
-      tipoDte: tipoDte || undefined,
-      estado: estado || undefined,
-      limite: ITEMS_POR_PAGINA,
-      offset: (paginaActual - 1) * ITEMS_POR_PAGINA
-    };
-    
-    // Solo para actualizar referencia interna de exportar (ya que useEffect no tiene setFiltros como dep)
-    setFiltros(filtros);
 
     try {
-      const [{ registros }, nuevasStats] = await Promise.all([
-        obtenerCacheDTE(filtros),
-        obtenerEstadisticasDTE(filtros)
-      ]);
+      let query = supabase
+        .from('dte_responses')
+        .select(
+          `codigo_generacion,numero_control,tipo_dte,fecha_emision,hora_emision,monto_total,monto_gravado,monto_iva,receptor_nombre,receptor_documento,estado,sello_recepcion,dte_json,emisor_nombre,emisor_nit,ambiente,fecha_hora_procesamiento`,
+          { count: 'exact' }
+        )
+        .eq('business_id', businessId)
+        .order('fecha_hora_procesamiento', { ascending: false });
 
-      setRegistros(registros);
-      setTotalRegistros(registros.length);
-      setStats(nuevasStats);
-      
-      // Extraer tipos únicos disponibles en base a los registros actuales y stats
-      if (nuevasStats && Object.keys(nuevasStats.porTipo).length > 0) {
-        setTiposDisponibles(Object.keys(nuevasStats.porTipo));
+      if (tipoDte) query = query.eq('tipo_dte', tipoDte);
+      if (estado) query = query.eq('estado', estado);
+      if (fechaDesde) query = query.gte('fecha_emision', fechaDesde);
+      if (fechaHasta) query = query.lte('fecha_emision', fechaHasta);
+      if (busqueda) {
+        const pattern = `%${busqueda}%`;
+        query = query.or(
+          `codigo_generacion.ilike.${pattern},numero_control.ilike.${pattern},receptor_nombre.ilike.${pattern},receptor_documento.ilike.${pattern}`
+        );
+      }
+
+      const from = (paginaActual - 1) * ITEMS_POR_PAGINA;
+      const to = from + ITEMS_POR_PAGINA - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
+      if (error) throw error;
+
+      setRegistros(data || []);
+      setTotalRegistros(count ?? data?.length ?? 0);
+
+      // Calcular stats simples con registros cargados (limitados) para UI rápida
+      const statsLocales: DTEStats = {
+        totalEmitidos: count ?? data?.length ?? 0,
+        totalAceptados: 0,
+        totalRechazados: 0,
+        totalPendientes: 0,
+        montoTotalEmitido: 0,
+        montoTotalIva: 0,
+        porTipo: {},
+        porMes: {},
+      };
+
+      (data || []).forEach((r: DTERow) => {
+        if (r.estado === 'ACEPTADO') statsLocales.totalAceptados += 1;
+        if (r.estado === 'RECHAZADO') statsLocales.totalRechazados += 1;
+        if (r.estado === 'PENDIENTE') statsLocales.totalPendientes += 1;
+        if (r.estado === 'ACEPTADO') {
+          statsLocales.montoTotalEmitido += r.monto_total || 0;
+          statsLocales.montoTotalIva += r.monto_iva || 0;
+        }
+        statsLocales.porTipo[r.tipo_dte] = (statsLocales.porTipo[r.tipo_dte] || 0) + 1;
+        const mes = (r.fecha_emision || '').substring(0, 7);
+        if (mes) {
+          if (!statsLocales.porMes[mes]) statsLocales.porMes[mes] = { cantidad: 0, monto: 0 };
+          statsLocales.porMes[mes].cantidad += 1;
+          if (r.estado === 'ACEPTADO') statsLocales.porMes[mes].monto += r.monto_total || 0;
+        }
+      });
+
+      setStats(statsLocales);
+      if (statsLocales && Object.keys(statsLocales.porTipo).length > 0) {
+        setTiposDisponibles(Object.keys(statsLocales.porTipo));
       }
     } catch (error) {
       console.error('Error cargando historial:', error);
+      notify('No se pudo cargar el historial', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (!user) {
+      setRegistros([]);
+      setTotalRegistros(0);
+      return;
+    }
     cargarDatos();
-  }, [paginaActual, busqueda, fechaDesde, fechaHasta, tipoDte, estado]);
+  }, [user, businessId, paginaActual, filtrosMemo]);
 
   const totalPaginas = Math.ceil(totalRegistros / ITEMS_POR_PAGINA);
 
   const handleExportar = async () => {
     setExportando(true);
     try {
-      const json = await exportarCacheJSON(filtros);
+      if (!businessId) throw new Error('Sin emisor activo');
+      let query = supabase
+        .from('dte_responses')
+        .select('*')
+        .eq('business_id', businessId);
+      if (tipoDte) query = query.eq('tipo_dte', tipoDte);
+      if (estado) query = query.eq('estado', estado);
+      if (fechaDesde) query = query.gte('fecha_emision', fechaDesde);
+      if (fechaHasta) query = query.lte('fecha_emision', fechaHasta);
+      if (busqueda) {
+        const pattern = `%${busqueda}%`;
+        query = query.or(
+          `codigo_generacion.ilike.${pattern},numero_control.ilike.${pattern},receptor_nombre.ilike.${pattern},receptor_documento.ilike.${pattern}`
+        );
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      const json = JSON.stringify({ version: 'supabase', registros: data || [] }, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -125,13 +221,13 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
     }
   };
 
-  const handleDescargarPDF = (registro: DTECacheRecord) => {
+  const handleDescargarPDF = (registro: DTERow) => {
     descargarPDFConPlantilla({
-      dte: registro.dteJson,
-      resultado: registro.respuestaMH,
+      dte: registro.dte_json,
+      resultado: undefined,
       plantilla: 'moderna' as TemplateName,
       logoUrl,
-      ambiente: registro.ambiente
+      ambiente: (registro.ambiente as any) || '00'
     });
   };
 
@@ -310,40 +406,33 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
                 <tbody>
                   {registros.map((registro) => (
                     <tr 
-                      key={registro.codigoGeneracion}
+                      key={registro.codigo_generacion}
                       className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     >
                       <td className="py-3 px-4">
-                        <p className="font-medium text-gray-900">{registro.fechaEmision}</p>
-                        <p className="text-xs text-gray-500">{registro.horaEmision}</p>
+                        <p className="font-medium text-gray-900">{registro.fecha_emision}</p>
+                        <p className="text-xs text-gray-500">{registro.hora_emision}</p>
                       </td>
                       <td className="py-3 px-4">
-                        <p className="font-mono text-xs text-gray-700">{registro.numeroControl}</p>
+                        <p className="font-mono text-xs text-gray-700">{registro.numero_control}</p>
                       </td>
                       <td className="py-3 px-4">
                         <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                          {getTipoDocNombre(registro.tipoDte).substring(0, 15)}...
+                          {getTipoDocNombre(registro.tipo_dte).substring(0, 15)}...
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <p className="text-gray-900 truncate max-w-[150px]">{registro.receptorNombre}</p>
-                        <p className="text-xs text-gray-500">{registro.receptorDocumento}</p>
+                        <p className="text-gray-900 truncate max-w-[150px]">{registro.receptor_nombre}</p>
+                        <p className="text-xs text-gray-500">{registro.receptor_documento}</p>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <p className="font-mono font-medium text-gray-900">{formatMonto(registro.montoTotal)}</p>
+                        <p className="font-mono font-medium text-gray-900">{formatMonto(registro.monto_total)}</p>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        {(registro as any)?.anulacionLocal ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                            <Ban className="w-4 h-4" />
-                            ANULADO
-                          </span>
-                        ) : (
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(registro.estado)}`}>
-                            {getEstadoIcon(registro.estado)}
-                            {registro.estado}
-                          </span>
-                        )}
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(registro.estado)}`}>
+                          {getEstadoIcon(registro.estado)}
+                          {registro.estado}
+                        </span>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-center gap-1">
@@ -363,12 +452,12 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
                           </button>
                           <button
                             onClick={() => {
-                              const json = JSON.stringify(registro.dteJson, null, 2);
+                              const json = JSON.stringify(registro.dte_json, null, 2);
                               const blob = new Blob([json], { type: 'application/json' });
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement('a');
                               a.href = url;
-                              a.download = `${registro.codigoGeneracion}.json`;
+                              a.download = `${registro.codigo_generacion}.json`;
                               a.click();
                               URL.revokeObjectURL(url);
                             }}
@@ -378,56 +467,7 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
                             <FileJson className="w-4 h-4" />
                           </button>
 
-                          <button
-                            onClick={async () => {
-                              const already = Boolean((registro as any)?.anulacionLocal);
-                              if (already) return;
-                              const ok = window.confirm(
-                                '¿Anular este DTE (solo local)? Se ocultará de libros IVA automáticos. (Luego, cuando esté integrado MH, esto deberá gestionarse en MH.)'
-                              );
-                              if (!ok) return;
-
-                              const motivo = window.prompt('Motivo (opcional):', '') || '';
-                              const r = await marcarAnulacionLocal({
-                                codigoGeneracion: registro.codigoGeneracion,
-                                motivo,
-                                anulada: true,
-                              });
-                              if (!r.ok) {
-                                notify(r.message, 'error');
-                                return;
-                              }
-
-                              // Regenerar libros del periodo para reflejar anulación
-                              const periodo = (registro.fechaEmision || '').substring(0, 7);
-                              if (periodo && /^\d{4}-\d{2}$/.test(periodo)) {
-                                try {
-                                  await generarLibroDesdeDTEs({
-                                    modo: 'ventas',
-                                    periodo,
-                                    incluirPendientes: false,
-                                    incluirRechazados: false,
-                                  });
-                                  await generarLibroDesdeDTEs({
-                                    modo: 'compras',
-                                    periodo,
-                                    incluirPendientes: false,
-                                    incluirRechazados: false,
-                                  });
-                                } catch {
-                                  // no bloquear
-                                }
-                              }
-
-                              notify('DTE anulado (local).', 'success');
-                              await cargarDatos();
-                            }}
-                            disabled={Boolean((registro as any)?.anulacionLocal)}
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-30 disabled:hover:text-gray-400 disabled:hover:bg-transparent"
-                            title={(registro as any)?.anulacionLocal ? 'Ya está anulado' : 'Anular (local)'}
-                          >
-                            <Ban className="w-4 h-4" />
-                          </button>
+                          {/* Anulación local removida: ahora se depende de backend/MH */}
                         </div>
                       </td>
                     </tr>
@@ -490,11 +530,11 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 uppercase">Número de Control</p>
-                <p className="font-mono text-sm text-gray-900">{dteSeleccionado.numeroControl}</p>
+                <p className="font-mono text-sm text-gray-900">{dteSeleccionado.numero_control}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 uppercase">Código Generación</p>
-                <p className="font-mono text-xs text-gray-900 break-all">{dteSeleccionado.codigoGeneracion}</p>
+                <p className="font-mono text-xs text-gray-900 break-all">{dteSeleccionado.codigo_generacion}</p>
               </div>
             </div>
 
@@ -504,10 +544,10 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
                 {getEstadoIcon(dteSeleccionado.estado)}
                 {dteSeleccionado.estado}
               </span>
-              {dteSeleccionado.selloRecepcion && (
+              {dteSeleccionado.sello_recepcion && (
                 <div className="flex-1 bg-green-50 rounded-lg p-2">
                   <p className="text-xs text-green-600 font-medium">Sello de Recepción</p>
-                  <p className="font-mono text-xs text-green-800 break-all">{dteSeleccionado.selloRecepcion}</p>
+                  <p className="font-mono text-xs text-green-800 break-all">{dteSeleccionado.sello_recepcion}</p>
                 </div>
               )}
             </div>
@@ -516,13 +556,13 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
             <div className="grid grid-cols-2 gap-4">
               <div className="border border-gray-200 rounded-lg p-3">
                 <p className="text-xs text-gray-500 uppercase mb-2">Emisor</p>
-                <p className="font-medium text-gray-900">{dteSeleccionado.emisorNombre}</p>
-                <p className="text-sm text-gray-600">{dteSeleccionado.emisorNit}</p>
+                <p className="font-medium text-gray-900">{dteSeleccionado.emisor_nombre}</p>
+                <p className="text-sm text-gray-600">{dteSeleccionado.emisor_nit}</p>
               </div>
               <div className="border border-gray-200 rounded-lg p-3">
                 <p className="text-xs text-gray-500 uppercase mb-2">Receptor</p>
-                <p className="font-medium text-gray-900">{dteSeleccionado.receptorNombre}</p>
-                <p className="text-sm text-gray-600">{dteSeleccionado.receptorDocumento}</p>
+                <p className="font-medium text-gray-900">{dteSeleccionado.receptor_nombre}</p>
+                <p className="text-sm text-gray-600">{dteSeleccionado.receptor_documento}</p>
               </div>
             </div>
 
@@ -531,15 +571,15 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <p className="text-xs text-indigo-600 uppercase">Gravado</p>
-                  <p className="text-lg font-bold text-indigo-900">{formatMonto(dteSeleccionado.montoGravado)}</p>
+                  <p className="text-lg font-bold text-indigo-900">{formatMonto(dteSeleccionado.monto_gravado || 0)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-indigo-600 uppercase">IVA</p>
-                  <p className="text-lg font-bold text-indigo-900">{formatMonto(dteSeleccionado.montoIva)}</p>
+                  <p className="text-lg font-bold text-indigo-900">{formatMonto(dteSeleccionado.monto_iva || 0)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-indigo-600 uppercase">Total</p>
-                  <p className="text-lg font-bold text-indigo-900">{formatMonto(dteSeleccionado.montoTotal)}</p>
+                  <p className="text-lg font-bold text-indigo-900">{formatMonto(dteSeleccionado.monto_total)}</p>
                 </div>
               </div>
             </div>
@@ -547,10 +587,10 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
             {/* Fechas */}
             <div className="flex items-center gap-4 text-sm text-gray-600">
               <div>
-                <span className="text-gray-400">Emisión:</span> {dteSeleccionado.fechaEmision} {dteSeleccionado.horaEmision}
+                <span className="text-gray-400">Emisión:</span> {dteSeleccionado.fecha_emision} {dteSeleccionado.hora_emision}
               </div>
               <div>
-                <span className="text-gray-400">Transmisión:</span> {dteSeleccionado.fechaTransmision ? new Date(dteSeleccionado.fechaTransmision).toLocaleString() : 'N/A'}
+                <span className="text-gray-400">Transmisión:</span> {dteSeleccionado.fecha_hora_procesamiento ? new Date(dteSeleccionado.fecha_hora_procesamiento).toLocaleString() : 'N/A'}
               </div>
             </div>
           </div>
@@ -565,12 +605,12 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
             </button>
             <button
               onClick={() => {
-                const json = JSON.stringify(dteSeleccionado.dteJson, null, 2);
+                const json = JSON.stringify(dteSeleccionado.dte_json, null, 2);
                 const blob = new Blob([json], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `${dteSeleccionado.codigoGeneracion}.json`;
+                a.download = `${dteSeleccionado.codigo_generacion}.json`;
                 a.click();
                 URL.revokeObjectURL(url);
               }}

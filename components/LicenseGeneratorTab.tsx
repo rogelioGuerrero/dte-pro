@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { Shield, Key, Calendar, Mail, User, Smartphone, Copy, Check, ExternalLink } from 'lucide-react';
 import { notify } from '../utils/notifications';
+import { useAuth } from '../contexts/AuthContext';
+import { useEmisor } from '../contexts/EmisorContext';
 
 export const LicenseGeneratorTab: React.FC = () => {
+  const { session } = useAuth();
+  const { businessId } = useEmisor();
   // Form State
   const [formData, setFormData] = useState({
     email: '',
@@ -32,16 +36,12 @@ export const LicenseGeneratorTab: React.FC = () => {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + formData.daysValid);
 
-      // Obtener token JWT y business_id del localStorage
-      const token = localStorage.getItem('dte_token') || 'dev-token-temporal';
-      const businessId = localStorage.getItem('dte_business_id') || localStorage.getItem('emisor_nit') || 'uuid-business-temporal';
+      const token = session?.access_token;
       const adminSecret = localStorage.getItem('admin_secret');
-      
-      // Permitimos token temporal para pruebas locales. Backend validará.
 
-      if (!adminSecret) {
-        throw new Error('No estás autenticado como administrador. Vuelve a ingresar el PIN maestro.');
-      }
+      if (!token) throw new Error('Sesión requerida. Inicia sesión nuevamente.');
+      if (!businessId) throw new Error('Selecciona un emisor antes de generar licencia.');
+      if (!adminSecret) throw new Error('No estás autenticado como administrador. Vuelve a ingresar el PIN maestro.');
 
       const payload = {
         id: crypto.randomUUID(),

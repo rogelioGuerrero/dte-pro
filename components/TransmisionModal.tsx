@@ -25,6 +25,8 @@ import {
   TransmisionResult,
   EstadoTransmision
 } from '../utils/dteSignature';
+import { useAuth } from '../contexts/AuthContext';
+import { useEmisor } from '../contexts/EmisorContext';
 
 interface TransmisionModalProps {
   dte: DTEJSON;
@@ -48,6 +50,8 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
   ambiente = '00',
   logoUrl,
 }) => {
+  const { session } = useAuth();
+  const { businessId } = useEmisor();
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [estado, setEstado] = useState<EstadoTransmision>('pendiente');
@@ -117,17 +121,26 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
       const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
 
       // Enviar al backend para que obtenga la contraseña y firme
+      if (!session?.access_token) {
+        throw new Error('Sesión requerida. Inicia sesión nuevamente.');
+      }
+      if (!businessId) {
+        throw new Error('Selecciona un emisor antes de transmitir.');
+      }
+
       const response = await fetch('https://api-dte.onrender.com/api/dte/process', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-business-id': nitEmisor
+          'Authorization': `Bearer ${session.access_token}`,
+          'x-business-id': businessId
         },
         body: JSON.stringify({
           dte: dteLimpio,
           nit: nitEmisor,
           ambiente: (dteLimpio as any).identificacion?.ambiente || '00',
-          flowType: 'emission'
+          flowType: 'emission',
+          business_id: businessId
         })
       });
 

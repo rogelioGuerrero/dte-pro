@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { Send, Bell, CheckCircle, AlertTriangle } from 'lucide-react';
 import { notify } from '../utils/notifications';
+import { useAuth } from '../contexts/AuthContext';
+import { useEmisor } from '../contexts/EmisorContext';
 
 export const PushBroadcastTab: React.FC = () => {
+  const { session } = useAuth();
+  const { businessId } = useEmisor();
   const [formData, setFormData] = useState({
     title: '',
     body: '',
@@ -18,16 +22,12 @@ export const PushBroadcastTab: React.FC = () => {
     setSentCount(null);
 
     try {
-      // Obtener token JWT y business_id del localStorage
-      const token = localStorage.getItem('dte_token') || 'dev-token-temporal';
-      const businessId = localStorage.getItem('dte_business_id') || localStorage.getItem('emisor_nit') || 'uuid-business-temporal';
+      const token = session?.access_token;
       const adminSecret = localStorage.getItem('admin_secret');
-      
-      // Permitimos token temporal para pruebas locales. Backend validará.
 
-      if (!adminSecret) {
-        throw new Error('No estás autenticado como administrador. Vuelve a ingresar el PIN maestro.');
-      }
+      if (!token) throw new Error('Sesión requerida. Inicia sesión nuevamente.');
+      if (!businessId) throw new Error('Selecciona un emisor antes de enviar.');
+      if (!adminSecret) throw new Error('No estás autenticado como administrador. Vuelve a ingresar el PIN maestro.');
 
       if (!formData.title.trim() || !formData.body.trim()) {
         throw new Error('El título y el mensaje son obligatorios.');

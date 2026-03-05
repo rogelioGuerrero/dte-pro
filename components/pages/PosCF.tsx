@@ -3,9 +3,11 @@ import { ShoppingCart, Trash2, Plus, Minus, Send, Loader2 } from 'lucide-react';
 import { Producto } from '../../types/inventario';
 import { inventarioService } from '../../utils/inventario/inventarioService';
 import { useToast } from '../Toast';
-import { BACKEND_CONFIG, getAuthHeaders } from '../../utils/backendConfig';
+import { BACKEND_CONFIG, buildBackendHeaders } from '../../utils/backendConfig';
 import { generarDTE, redondear } from '../../utils/dteGenerator';
 import { getEmisor } from '../../utils/emisorDb';
+import { useAuth } from '../../contexts/AuthContext';
+import { useEmisor } from '../../contexts/EmisorContext';
 
 interface CartItem {
   producto: Producto;
@@ -16,6 +18,8 @@ const formatCurrency = (n: number) => `$${(n || 0).toFixed(2)}`;
 
 const PosCF: React.FC = () => {
   const { addToast } = useToast();
+  const { session } = useAuth();
+  const { businessId } = useEmisor();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>('todos');
   const [busqueda, setBusqueda] = useState('');
@@ -173,19 +177,30 @@ const PosCF: React.FC = () => {
     }
     setIsSending(true);
     try {
-      const { dte, nitSinGuiones } = await buildDTE();
+      const token = session?.access_token;
+    const { dte, nitSinGuiones } = await buildDTE();
+
+    if (!token) {
+      addToast('Debes iniciar sesión para transmitir.', 'error');
+      setIsSending(false);
+      return;
+    }
+
+    const activeBusinessId = businessId || nitSinGuiones;
+    if (!activeBusinessId) {
+      addToast('Selecciona un emisor antes de transmitir.', 'error');
+      setIsSending(false);
+      return;
+    }
       const response = await fetch(`${BACKEND_CONFIG.URL}/api/dte/process`, {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'x-business-id': nitSinGuiones,
-        },
+        headers: buildBackendHeaders({ token, businessId: activeBusinessId }),
         body: JSON.stringify({
           dte,
           nit: nitSinGuiones,
           ambiente: '00',
           flowType: 'emission',
-          business_id: nitSinGuiones,
+          business_id: activeBusinessId,
         }),
       });
 

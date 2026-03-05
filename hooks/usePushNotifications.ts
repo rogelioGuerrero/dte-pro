@@ -1,4 +1,6 @@
 ﻿import { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useEmisor } from '../contexts/EmisorContext';
 
 interface PushSubscription {
   endpoint: string;
@@ -9,6 +11,8 @@ interface PushSubscription {
 }
 
 export const usePushNotifications = () => {
+  const { session } = useAuth();
+  const { businessId } = useEmisor();
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -94,8 +98,7 @@ export const usePushNotifications = () => {
 
   const sendSubscriptionToBackend = async (subscription: PushSubscription) => {
     try {
-      const token = localStorage.getItem('dte_token');
-      const businessId = localStorage.getItem('dte_business_id');
+      const token = session?.access_token;
 
       if (!token || !businessId) {
         return;
@@ -133,9 +136,7 @@ export const usePushNotifications = () => {
       if (pushSubscription) {
         await pushSubscription.unsubscribe();
 
-        const token = localStorage.getItem('dte_token');
-        const businessId = localStorage.getItem('dte_business_id');
-
+        const token = session?.access_token;
         if (token && businessId) {
           const apiUrl = import.meta.env.VITE_API_DTE_URL || '';
           await fetch(`${apiUrl}/api/push/unsubscribe`, {

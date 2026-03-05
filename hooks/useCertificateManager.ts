@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
-import { getAuthHeaders } from '../utils/backendConfig';
+import { buildBackendHeaders } from '../utils/backendConfig';
 import { EmisorData } from '../utils/emisorDb';
+import { useAuth } from '../contexts/AuthContext';
+import { useEmisor } from '../contexts/EmisorContext';
 
 export const useCertificateManager = (params: {
   onToast?: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -19,6 +21,8 @@ export const useCertificateManager = (params: {
   handleSaveCertificate: (emisor: Partial<EmisorData>, ambiente?: string) => Promise<void>;
   fileInputRef: React.RefObject<HTMLInputElement>;
 } => {
+  const { session } = useAuth();
+  const { businessId } = useEmisor();
   const [apiPassword, setApiPassword] = useState('');
   const [certificatePassword, setCertificatePassword] = useState('');
   const [showCertPassword, setShowCertPassword] = useState(false);
@@ -79,7 +83,7 @@ export const useCertificateManager = (params: {
   };
 
   const handleSaveCertificate = async (emisor: Partial<EmisorData>, ambiente: string = '00') => {
-    const nit = emisor.nit || '';
+    const nit = emisor.nit || businessId || '';
     if (!certificatePassword) {
       setCertificateError('La contraseña del certificado es requerida.');
       return;
@@ -147,7 +151,7 @@ export const useCertificateManager = (params: {
       // Guardar certificado en Supabase (via backend)
       const response = await fetch(`https://api-dte.onrender.com/api/business/credentials`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: buildBackendHeaders({ token: session?.access_token, businessId: nitSinGuiones }),
         body: JSON.stringify(payload)
       });
 

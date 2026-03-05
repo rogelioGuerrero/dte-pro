@@ -21,6 +21,8 @@ import { LayoutDashboard, CheckCircle } from 'lucide-react';
 import ForceUpdateModal from './components/ForceUpdateModal';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import MiCuenta from './components/MiCuenta';
+import { EmisorSelector } from './components/EmisorSelector';
+import { useAuth } from './contexts/AuthContext';
 
 type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta' | 'simple' | 'poscf';
 
@@ -51,6 +53,7 @@ const App: React.FC = () => {
   const [showLicenseManager, setShowLicenseManager] = useState(false);
   const [showUserModeSetup, setShowUserModeSetup] = useState(false);
   const [forceUpdateInfo, setForceUpdateInfo] = useState<{ minVersion: string; message?: string } | null>(null);
+  const { signOut } = useAuth();
   const clickCountRef = useRef(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -218,6 +221,7 @@ const App: React.FC = () => {
           
           {/* Right Actions */}
           <div className="flex items-center gap-2">
+            <EmisorSelector className="hidden md:flex" />
             {/* Mi Cuenta Button */}
             <button
               onClick={() => setActiveTab('micuenta' as AppTab)}
@@ -233,6 +237,15 @@ const App: React.FC = () => {
                 </span>
               </div>
               <span className="hidden sm:inline">Mi Cuenta</span>
+            </button>
+            <button
+              onClick={async () => {
+                await signOut();
+                window.location.reload();
+              }}
+              className="px-3 py-1.5 text-sm font-medium rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50"
+            >
+              Cerrar sesión
             </button>
           </div>
         </div>
