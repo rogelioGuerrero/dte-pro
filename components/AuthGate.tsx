@@ -16,6 +16,8 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  const emailRedirectTo = (import.meta.env.VITE_SITE_URL || window.location.origin) as string;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -31,7 +33,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       if (useMagicLink) {
         const { error } = await supabase.auth.signInWithOtp({
           email,
-          options: { emailRedirectTo: window.location.origin }
+          options: { emailRedirectTo }
         });
         if (error) throw error;
         setMessage('Te enviamos un enlace mágico. Revisa tu correo.');
@@ -41,7 +43,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: window.location.origin }
+        options: { emailRedirectTo }
       });
       if (error) throw error;
       setMessage('Cuenta creada. Revisa tu correo para confirmar.');
