@@ -25,7 +25,7 @@ export const TeamPanel: React.FC = () => {
     if (!businessId) return;
     setLoading(true);
     try {
-      const data = await apiFetch<Member[]>(`/businesses/${businessId}/users`);
+      const data = await apiFetch<Member[]>(`/api/business/businesses/${businessId}/users`);
       setMembers(
         data.map((m) => ({
           email: m.email,
@@ -51,7 +51,7 @@ export const TeamPanel: React.FC = () => {
     if (!businessId) return;
     setInviting(true);
     try {
-      await apiFetch('/business_users/invite', {
+      await apiFetch('/api/business/business_users/invite', {
         method: 'POST',
         body: { businessId, email: email.trim(), role },
       });

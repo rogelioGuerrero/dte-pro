@@ -42,7 +42,7 @@ export const EmisorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     setLoading(true);
     try {
-      const raw = await apiFetch<unknown>('/businesses/me');
+      const raw = await apiFetch<unknown>('/api/business/businesses/me');
       const rows = Array.isArray(raw)
         ? (raw as BusinessRow[])
         : (Array.isArray((raw as any)?.data)
