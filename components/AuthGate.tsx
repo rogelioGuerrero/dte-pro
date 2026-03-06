@@ -11,7 +11,6 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [useMagicLink, setUseMagicLink] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -27,16 +26,6 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        return;
-      }
-
-      if (useMagicLink) {
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: { emailRedirectTo }
-        });
-        if (error) throw error;
-        setMessage('Te enviamos un enlace mágico. Revisa tu correo.');
         return;
       }
 
@@ -99,28 +88,14 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
               />
             </div>
             <div className="space-y-2">
-              <div className={`transition-opacity ${useMagicLink && mode === 'signup' ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-                  required={!useMagicLink || mode === 'login'}
-                  disabled={useMagicLink && mode === 'signup'}
-                />
-              </div>
-              {mode === 'signup' && (
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    checked={useMagicLink}
-                    onChange={(e) => setUseMagicLink(e.target.checked)}
-                  />
-                  Usar enlace mágico (sin contraseña)
-                </label>
-              )}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                required
+              />
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             {message && <p className="text-sm text-green-600">{message}</p>}
@@ -132,14 +107,10 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
               {submitting
                 ? mode === 'login'
                   ? 'Ingresando...'
-                  : useMagicLink
-                    ? 'Enviando enlace...'
-                    : 'Creando cuenta...'
+                  : 'Creando cuenta...'
                 : mode === 'login'
                   ? 'Ingresar'
-                  : useMagicLink
-                    ? 'Enviar enlace mágico'
-                    : 'Crear cuenta'}
+                  : 'Crear cuenta'}
             </button>
           </form>
         </div>
