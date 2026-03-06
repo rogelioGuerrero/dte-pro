@@ -7,7 +7,7 @@ interface EmisorSelectorProps {
 }
 
 export const EmisorSelector: React.FC<EmisorSelectorProps> = ({ className }) => {
-  const { emisores, businessId, setBusinessId, loading } = useEmisor();
+  const { emisores, businessId, setBusinessId, loading, currentRole } = useEmisor();
 
   return (
     <div className={`flex items-center gap-2 ${className || ''}`}>
@@ -22,10 +22,11 @@ export const EmisorSelector: React.FC<EmisorSelectorProps> = ({ className }) => 
         {emisores.length === 0 && <option value="">Sin emisores</option>}
         {emisores.map((em) => (
           <option key={em.business_id} value={em.business_id}>
-            {em.business_id}
+            {em.nombre || em.business_id} {em.role ? `(${em.role})` : ''}
           </option>
         ))}
       </select>
+      {currentRole && <span className="text-xs text-gray-500">Rol: {currentRole}</span>}
     </div>
   );
 };

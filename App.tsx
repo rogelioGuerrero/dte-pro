@@ -23,6 +23,8 @@ import { usePushNotifications } from './hooks/usePushNotifications';
 import MiCuenta from './components/MiCuenta';
 import { EmisorSelector } from './components/EmisorSelector';
 import { useAuth } from './contexts/AuthContext';
+import { useEmisor } from './contexts/EmisorContext';
+import { EmisorWizard } from './components/EmisorWizard';
 
 type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta' | 'simple' | 'poscf';
 
@@ -54,6 +56,7 @@ const App: React.FC = () => {
   const [showUserModeSetup, setShowUserModeSetup] = useState(false);
   const [forceUpdateInfo, setForceUpdateInfo] = useState<{ minVersion: string; message?: string } | null>(null);
   const { signOut } = useAuth();
+  const { emisores, loading: emisoresLoading, businessId } = useEmisor();
   const clickCountRef = useRef(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -160,6 +163,20 @@ const App: React.FC = () => {
     return <UserModeSetup onComplete={handleSetupComplete} />;
   }
 
+  // Cargando emisores
+  if (emisoresLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-600">
+        Cargando emisores...
+      </div>
+    );
+  }
+
+  // Si no hay emisores asociados, lanzar wizard
+  if (!emisoresLoading && emisores.length === 0) {
+    return <EmisorWizard onCompleted={() => window.location.reload()} />;
+  }
+
   // Actualización requerida: bloquear el uso de la app hasta recargar
   if (forceUpdateInfo) {
     return (
@@ -254,19 +271,24 @@ const App: React.FC = () => {
       {/* Main Content Area - with bottom padding for mobile nav */}
       <main className="flex-grow px-3 sm:px-6 lg:px-8 py-4 md:py-10 pb-20 md:pb-10">
         <LicenseStatus onManageLicense={() => setShowLicenseManager(true)} />
-        {activeTab === 'batch' && <BatchDashboard />}
-        {activeTab === 'fiscal' && <FiscalDashboard />}
-        {activeTab === 'clients' && <ClientManager />}
-        {activeTab === 'inventory' && <SistemaInventario />}
-        {activeTab === 'factura' && <FacturaGenerator />}
-        {activeTab === 'historial' && <DTEDashboard />}
+        {!businessId && (
+          <div className="mb-4 p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800">
+            Selecciona un emisor para continuar. (Si no ves emisores, refresca o vuelve a asociar.)
+          </div>
+        )}
+        {activeTab === 'batch' && businessId && <BatchDashboard />}
+        {activeTab === 'fiscal' && businessId && <FiscalDashboard />}
+        {activeTab === 'clients' && businessId && <ClientManager />}
+        {activeTab === 'inventory' && businessId && <SistemaInventario />}
+        {activeTab === 'factura' && businessId && <FacturaGenerator />}
+        {activeTab === 'historial' && businessId && <DTEDashboard />}
         {activeTab === 'micuenta' && <MiCuenta onBack={() => setActiveTab('factura')} />}
-        {activeTab === 'simple' && (
+        {activeTab === 'simple' && businessId && (
           <React.Suspense fallback={<div>Cargando...</div>}>
             {React.createElement(React.lazy(() => import('./components/pages/GeneradorSimple')))}
           </React.Suspense>
         )}
-        {activeTab === 'poscf' && (
+        {activeTab === 'poscf' && businessId && (
           <React.Suspense fallback={<div>Cargando...</div>}>
             {React.createElement(React.lazy(() => import('./components/pages/PosCF')))}
           </React.Suspense>

@@ -28,6 +28,7 @@ interface EmisorConfigModalProps {
   handleCertFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSaveCertificate: (nit: string, nrc: string, ambiente?: string) => void | Promise<void>;
   fileInputRef: React.RefObject<HTMLInputElement>;
+  readOnly?: boolean;
 }
 
 export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
@@ -55,6 +56,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
   handleCertFileSelect,
   handleSaveCertificate,
   fileInputRef,
+  readOnly = false,
 }) => {
   if (!isOpen) return null;
 
@@ -127,6 +129,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                   type="text"
                   value={emisorForm.nombre}
                   onChange={(e) => setEmisorForm({ ...emisorForm, nombre: formatTextInput(e.target.value) })}
+                  disabled={readOnly}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                   placeholder="Nombre legal del contribuyente"
                 />
@@ -139,6 +142,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                   onChange={(e) =>
                     setEmisorForm({ ...emisorForm, nombreComercial: formatTextInput(e.target.value) })
                   }
+                  disabled={readOnly}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                   placeholder="Nombre comercial (opcional)"
                 />
@@ -146,7 +150,10 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
               <div className="col-span-2">
                 <LogoUploader
                   currentLogo={emisorForm.logoUrl}
-                  onLogoChange={(logoUrl) => setEmisorForm({ ...emisorForm, logoUrl })}
+                  onLogoChange={(logoUrl) => {
+                    if (readOnly) return;
+                    setEmisorForm({ ...emisorForm, logoUrl });
+                  }}
                 />
               </div>
               <div>
@@ -155,6 +162,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                   onChange={(codigo, descripcion) =>
                     setEmisorForm({ ...emisorForm, actividadEconomica: codigo, descActividad: descripcion })
                   }
+                  disabled={readOnly}
                   required
                   label="Actividad Económica"
                   placeholder="Escribe una actividad..."
@@ -195,6 +203,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                   onChange={(e) =>
                     setEmisorForm({ ...emisorForm, direccion: formatMultilineTextInput(e.target.value) })
                   }
+                  disabled={readOnly}
                   rows={2}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                   placeholder="Calle, número, colonia, etc."
@@ -248,6 +257,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                     type="password"
                     value={apiPassword}
                     onChange={(e) => setApiPassword(e.target.value)}
+                    disabled={readOnly}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="Password para el token"
                     title="Se usa para renovar el token con MH; no se comparte ni se envía por correo"
@@ -259,6 +269,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                   type="file"
                   accept=".crt,.p12,.pfx"
                   onChange={handleCertFileSelect}
+                  disabled={readOnly}
                   className="hidden"
                 />
                 <button
@@ -268,6 +279,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                       ? 'border-green-300 bg-green-50 text-green-700'
                       : 'border-gray-300 text-gray-600 hover:border-blue-400 hover:bg-blue-50'
                   }`}
+                  disabled={readOnly}
                 >
                   {certificateFile ? <span>{certificateFile.name}</span> : <span>Seleccionar archivo .crt</span>}
                 </button>
@@ -282,15 +294,16 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                         type={showCertPassword ? "text" : "password"}
                         value={certificatePassword}
                         onChange={(e) => setCertificatePassword(e.target.value)}
-                        className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                        placeholder="Ingresa la contraseña del certificado"
+                        disabled={readOnly}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none pr-10"
                       />
                       <button
                         type="button"
                         onClick={() => setShowCertPassword(!showCertPassword)}
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        className="absolute inset-y-0 right-0 px-3 flex items-center text-sm text-gray-500"
+                        disabled={readOnly}
                       >
-                        {showCertPassword ? "👁️" : "👁️‍🗨️"}
+                        {showCertPassword ? 'Ocultar' : 'Mostrar'}
                       </button>
                     </div>
                   </div>
@@ -310,7 +323,8 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                     !certificatePassword ||
                     !apiPassword ||
                     !emisorForm.nit ||
-                    !emisorForm.nrc
+                    !emisorForm.nrc ||
+                    readOnly
                   }
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                 >
@@ -344,6 +358,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                     onChange={(e) =>
                       setEmisorForm({ ...emisorForm, tipoEstablecimiento: e.target.value })
                     }
+                    disabled={readOnly}
                     className="w-full mt-1 px-4 py-3 border border-gray-300 rounded-xl"
                   >
                     {/* Valores permitidos por esquema MH: 01-05 */}
@@ -362,6 +377,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                     onChange={(e) =>
                       setEmisorForm({ ...emisorForm, codEstableMH: e.target.value || null })
                     }
+                    disabled={readOnly}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="M001"
                   />
@@ -374,6 +390,7 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                     onChange={(e) =>
                       setEmisorForm({ ...emisorForm, codPuntoVentaMH: e.target.value || null })
                     }
+                    disabled={readOnly}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="P001"
                   />
@@ -391,15 +408,20 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
             <button
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
+              disabled={readOnly}
             >
               Cancelar
             </button>
             <button
               onClick={handleSaveEmisor}
-              disabled={isSavingEmisor}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              disabled={isSavingEmisor || readOnly}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-60"
             >
-              {isSavingEmisor ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isSavingEmisor ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
               Guardar
             </button>
           </div>

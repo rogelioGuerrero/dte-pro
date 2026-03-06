@@ -1,21 +1,20 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { supabase } from '../utils/supabaseClient';
 import { useAuth } from './AuthContext';
+import { apiFetch } from '../utils/apiClient';
 
 type BusinessRow = {
   business_id: string;
-  businesses?: {
-    id: string | null;
-    nombre?: string | null;
-    nombre_comercial?: string | null;
-  } | null;
+  nombre?: string | null;
+  role?: string | null;
 };
 
 interface EmisorContextValue {
   businessId: string | null;
   setBusinessId: (id: string | null) => void;
-  emisores: { business_id: string; nombre?: string }[];
+  emisores: { business_id: string; nombre?: string; role?: string | null }[];
   loading: boolean;
+  reload: () => Promise<void>;
+  currentRole: string | null;
 }
 
 const STORAGE_KEY = 'dte_business_id';
@@ -24,7 +23,7 @@ const EmisorContext = createContext<EmisorContextValue | undefined>(undefined);
 export const EmisorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [businessId, setBusinessIdState] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY));
-  const [emisores, setEmisores] = useState<{ business_id: string; nombre?: string }[]>([]);
+  const [emisores, setEmisores] = useState<{ business_id: string; nombre?: string; role?: string | null }[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -35,32 +34,33 @@ export const EmisorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [businessId]);
 
-  useEffect(() => {
-    const load = async () => {
-      if (!user) {
-        setEmisores([]);
-        return;
+  const load = async () => {
+    if (!user) {
+      setEmisores([]);
+      setBusinessIdState(null);
+      return;
+    }
+    setLoading(true);
+    try {
+      const rows = await apiFetch<BusinessRow[]>('/businesses/me');
+      const mapped = rows.map((row) => ({
+        business_id: row.business_id,
+        nombre: row.nombre || undefined,
+        role: row.role || null,
+      }));
+      setEmisores(mapped);
+      if (!businessId && mapped.length > 0) {
+        setBusinessIdState(mapped[0].business_id);
       }
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('business_users')
-        .select('business_id, businesses(id, nombre, nombre_comercial)')
-        .eq('user_id', user.id);
-
-      if (!error && data) {
-        const rows = data as unknown as BusinessRow[];
-
-        const mapped = rows.map((row) => ({
-          business_id: row.business_id,
-          nombre: row.businesses?.nombre || row.businesses?.nombre_comercial || undefined
-        }));
-        setEmisores(mapped);
-        if (!businessId && mapped.length > 0) {
-          setBusinessIdState(mapped[0].business_id);
-        }
-      }
+    } catch (err) {
+      console.error('Error cargando emisores', err);
+      setEmisores([]);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  useEffect(() => {
     load();
   }, [user]);
 
@@ -68,7 +68,15 @@ export const EmisorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setBusinessIdState(id);
   };
 
-  const value = useMemo<EmisorContextValue>(() => ({ businessId, setBusinessId, emisores, loading }), [businessId, emisores, loading]);
+  const currentRole = useMemo(() => {
+    if (!businessId) return null;
+    return emisores.find((e) => e.business_id === businessId)?.role || null;
+  }, [businessId, emisores]);
+
+  const value = useMemo<EmisorContextValue>(
+    () => ({ businessId, setBusinessId, emisores, loading, reload: load, currentRole }),
+    [businessId, emisores, loading, currentRole]
+  );
 
   return <EmisorContext.Provider value={value}>{children}</EmisorContext.Provider>;
 };

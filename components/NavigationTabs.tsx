@@ -1,6 +1,8 @@
 import React from 'react';
 import { LayoutDashboard, Users, FileText, History, Boxes, PieChart, Zap } from 'lucide-react';
 import { isTabAllowed } from '../utils/userMode';
+import { isTabAllowedForRole, firstAllowedTab, Role, normalizeRole } from '../utils/roleAccess';
+import { useEmisor } from '../contexts/EmisorContext';
 
 type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta' | 'simple' | 'poscf';
 
@@ -26,15 +28,18 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   onTabChange, 
   isMobile = false 
 }) => {
+  const { currentRole } = useEmisor();
+  const role: Role = normalizeRole(currentRole);
   // Filtrar pestañas según el modo de usuario
-  const allowedTabs = TABS_CONFIG.filter(tab => isTabAllowed(tab.key));
+  const allowedTabs = TABS_CONFIG.filter(tab => isTabAllowed(tab.key) && isTabAllowedForRole(tab.key, role));
 
   // Encontrar la primera pestaña permitida si la actual no está permitida (y no es micuenta)
   React.useEffect(() => {
-    if (activeTab !== 'micuenta' && !isTabAllowed(activeTab) && allowedTabs.length > 0) {
-      onTabChange(allowedTabs[0].key as AppTab);
+    if (activeTab !== 'micuenta' && !allowedTabs.find((t) => t.key === activeTab) && allowedTabs.length > 0) {
+      const next = firstAllowedTab(role, allowedTabs[0].key, allowedTabs.map((t) => t.key));
+      onTabChange(next as AppTab);
     }
-  }, [activeTab, allowedTabs, onTabChange]);
+  }, [activeTab, allowedTabs, onTabChange, role]);
 
   const baseClasses = isMobile
     ? 'flex flex-col items-center justify-center flex-1 h-full transition-colors'

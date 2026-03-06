@@ -38,7 +38,7 @@ const writeUsage = (usage: DailyUsage) => {
 };
 
 export const consumeExportSlot = async (): Promise<{ allowed: boolean; remaining: number; message?: string }> => {
-  // Verificar si el licenciamiento está activado remotamente
+  // Licenciamiento desactivado: permitir siempre
   const licensingConfig = await fetchLicensingConfig();
   if (!licensingConfig.enabled) {
     return { allowed: true, remaining: -1 }; // Siempre permitido, ilimitado
@@ -119,7 +119,7 @@ export const consumeExportSlot = async (): Promise<{ allowed: boolean; remaining
 };
 
 export const getUsageInfo = async (): Promise<{ count: number; remaining: number; max: number; hasLicense: boolean }> => {
-  // Verificar si el licenciamiento está activado remotamente
+  // Licenciamiento desactivado: ilimitado
   const licensingConfig = await fetchLicensingConfig();
   if (!licensingConfig.enabled) {
     return { count: 0, remaining: -1, max: -1, hasLicense: true }; // Ilimitado

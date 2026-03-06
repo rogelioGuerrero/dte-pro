@@ -10,6 +10,8 @@ import { EmisorData } from '../utils/emisorDb';
 import { supabase } from '../utils/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useEmisor } from '../contexts/EmisorContext';
+import { normalizeRole } from '../utils/roleAccess';
+import { TeamPanel } from './TeamPanel';
 
 interface MiCuentaProps {
   onBack?: () => void;
@@ -18,7 +20,9 @@ interface MiCuentaProps {
 const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
   const { isSupported, permission, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
   const { user } = useAuth();
-  const { businessId } = useEmisor();
+  const { businessId, currentRole } = useEmisor();
+  const normalizedRole = normalizeRole(currentRole);
+  const canManage = normalizedRole === 'owner' || normalizedRole === 'admin';
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showEmisorConfig, setShowEmisorConfig] = useState(false);
   const [emisorForm, setEmisorForm] = useState<Omit<EmisorData, 'id'> & { logoUrl?: string }>({
@@ -261,13 +265,17 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
               <Store className="w-5 h-5 text-gray-500" />
               <h2 className="text-lg font-medium text-gray-900">Información del Negocio</h2>
             </div>
-            <button
-              onClick={handleOpenConfig}
-              className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors"
-            >
-              <Settings className="w-4 h-4" />
-              Configurar
-            </button>
+            {canManage ? (
+              <button
+                onClick={handleOpenConfig}
+                className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Configurar
+              </button>
+            ) : (
+              <span className="text-xs text-gray-500">Solo lectura (rol {normalizedRole || 'sin rol'})</span>
+            )}
           </div>
           <div className="p-6 space-y-4">
             <div>
@@ -387,6 +395,15 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
           </div>
         </div>
       </div>
+
+      {/* Equipo */}
+      {businessId ? (
+        <TeamPanel />
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 text-sm text-gray-600">
+          Selecciona un emisor para ver y gestionar el equipo.
+        </div>
+      )}
 
       {showEmisorConfig && (
         <EmisorConfigModal
