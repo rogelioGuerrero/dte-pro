@@ -256,9 +256,12 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Mi Cuenta</h1>
+    <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-fade-in">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Mi Cuenta</h1>
+          <p className="text-sm text-gray-600 mt-1">Configura tu negocio y habilita la transmisión.</p>
+        </div>
         {onBack && (
           <button onClick={onBack} className="text-indigo-600 hover:text-indigo-800 text-sm font-medium md:hidden">
             Volver
@@ -266,153 +269,194 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Información del Negocio */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Store className="w-5 h-5 text-gray-500" />
-              <h2 className="text-lg font-medium text-gray-900">Información del Negocio</h2>
-            </div>
-            {canManage ? (
-              <button
-                onClick={handleOpenConfig}
-                className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                <Settings className="w-4 h-4" />
-                Configurar
-              </button>
-            ) : (
-              <span className="text-xs text-gray-500">Solo lectura (rol {normalizedRole || 'sin rol'})</span>
-            )}
-          </div>
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="text-xs text-gray-500 uppercase font-semibold">Nombre Comercial</label>
-              <p className="text-gray-900 font-medium">{businessData.nombre}</p>
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 uppercase font-semibold">NIT</label>
-              <p className="text-gray-900 font-medium">{businessData.nit}</p>
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 uppercase font-semibold">Ambiente</label>
-              <div className="mt-1">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  businessData.ambiente === '01' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {businessData.ambiente === '01' ? 'Producción' : 'Pruebas'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Estado de Credenciales */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="border-b border-gray-200 px-6 py-4 flex items-center gap-3">
-            <Shield className="w-5 h-5 text-gray-500" />
-            <h2 className="text-lg font-medium text-gray-900">Estado de Credenciales</h2>
-          </div>
-          <div className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Key className="w-4 h-4 text-gray-500" />
-                <span className="text-gray-700">Certificado Digital</span>
-              </div>
-              <span className={`text-sm font-medium ${credentialsStatus.hasCert ? 'text-green-600' : 'text-red-600'}`}>
-                {credentialsStatus.hasCert ? '✅ Cargado' : '❌ No cargado'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-gray-500" />
-                <span className="text-gray-700">Contraseña</span>
-              </div>
-              <span className={`text-sm font-medium ${credentialsStatus.hasPassword ? 'text-green-600' : 'text-red-600'}`}>
-                {credentialsStatus.hasPassword ? '✅ Configurada' : '❌ No configurada'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Notificaciones */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Bell className="w-5 h-5 text-gray-500" />
-              <h2 className="text-lg font-medium text-gray-900">Notificaciones</h2>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                className="sr-only peer"
-                checked={notificationsEnabled}
-                onChange={(e) => handleNotificationToggle(e.target.checked)}
-                disabled={!isSupported}
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-            </label>
-          </div>
-          <div className="p-6">
+      <div className="bg-gradient-to-r from-indigo-50 to-white border border-indigo-100 rounded-2xl p-4 sm:p-5">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Estado de configuración</p>
             <p className="text-sm text-gray-600">
-              Recibe alertas importantes sobre mantenimiento, actualizaciones y estado del sistema.
+              {businessId ? 'Emisor seleccionado: puedes configurar datos y credenciales.' : 'Aún no hay emisor asociado a tu cuenta.'}
             </p>
-            {!isSupported && (
-              <p className="mt-2 text-xs text-red-500">Tu navegador no soporta notificaciones.</p>
-            )}
-            {permission === 'denied' && (
-              <p className="mt-2 text-xs text-orange-500">Permiso bloqueado. Debes habilitarlo en tu navegador.</p>
-            )}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={handleOpenConfig}
+              disabled={!businessId || !canManage}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
+            >
+              <Settings className="w-4 h-4" />
+              Configurar emisor
+            </button>
+            <button
+              onClick={() => notify('Para asociar un emisor a tu cuenta, solicita al backend/administrador la vinculación.', 'info')}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50"
+            >
+              <Store className="w-4 h-4" />
+              Asociar emisor
+            </button>
           </div>
         </div>
 
-        {/* Backup / Restaurar */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="border-b border-gray-200 px-6 py-4 flex items-center gap-3">
-            <Download className="w-5 h-5 text-gray-500" />
-            <h2 className="text-lg font-medium text-gray-900">Copia de Seguridad</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase">1. Emisor</p>
+            <p className="text-sm font-medium text-gray-900 mt-1">{businessId ? 'Listo para configurar' : 'Pendiente'}</p>
+            <p className="text-xs text-gray-600 mt-1">{businessId ? 'Datos del negocio y códigos MH.' : 'Vincula un emisor a tu cuenta.'}</p>
           </div>
-          <div className="p-6 space-y-4">
-            <p className="text-sm text-gray-600 mb-4">
-              Guarda o restaura tu configuración y datos locales.
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase">2. Credenciales</p>
+            <p className="text-sm font-medium text-gray-900 mt-1">
+              {credentialsStatus.hasCert && credentialsStatus.hasPassword ? 'Listo' : 'Pendiente'}
             </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={handleExportBackup}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                <Download className="w-4 h-4" />
-                Descargar Backup
-              </button>
-              
-              <input
-                ref={restoreFileInputRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                onChange={handleRestoreBackupFile}
-              />
-              <button
-                onClick={handleRestoreBackup}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-indigo-600 shadow-sm text-sm font-medium rounded-lg text-indigo-600 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                <Upload className="w-4 h-4" />
-                Restaurar Backup
-              </button>
-            </div>
+            <p className="text-xs text-gray-600 mt-1">Certificado y contraseña para firma/transmisión.</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase">3. Equipo</p>
+            <p className="text-sm font-medium text-gray-900 mt-1">{businessId ? 'Disponible' : 'Pendiente'}</p>
+            <p className="text-xs text-gray-600 mt-1">Roles y usuarios por emisor.</p>
           </div>
         </div>
       </div>
 
-      {/* Equipo */}
-      {businessId ? (
-        <TeamPanel />
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 text-sm text-gray-600">
-          Selecciona un emisor para ver y gestionar el equipo.
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Store className="w-5 h-5 text-gray-500" />
+                <h2 className="text-lg font-medium text-gray-900">Negocio</h2>
+              </div>
+              {canManage ? (
+                <button
+                  onClick={handleOpenConfig}
+                  disabled={!businessId}
+                  className="text-indigo-700 hover:text-indigo-800 text-sm font-medium flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
+                >
+                  <Settings className="w-4 h-4" />
+                  Editar
+                </button>
+              ) : (
+                <span className="text-xs text-gray-500">Solo lectura (rol {normalizedRole || 'sin rol'})</span>
+              )}
+            </div>
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs text-gray-500 uppercase font-semibold">Nombre</label>
+                <p className="text-gray-900 font-medium mt-1">{businessData.nombre}</p>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 uppercase font-semibold">NIT</label>
+                <p className="text-gray-900 font-medium mt-1">{businessData.nit}</p>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 uppercase font-semibold">Ambiente</label>
+                <div className="mt-2">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    businessData.ambiente === '01' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {businessData.ambiente === '01' ? 'Producción' : 'Pruebas'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {businessId ? (
+            <TeamPanel />
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-200 p-4 text-sm text-gray-600">
+              Selecciona o asocia un emisor para ver y gestionar el equipo.
+            </div>
+          )}
         </div>
-      )}
+
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="border-b border-gray-200 px-6 py-4 flex items-center gap-3">
+              <Shield className="w-5 h-5 text-gray-500" />
+              <h2 className="text-lg font-medium text-gray-900">Credenciales</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Key className="w-4 h-4 text-gray-500" />
+                  <span className="text-gray-700">Certificado Digital</span>
+                </div>
+                <span className={`text-sm font-medium ${credentialsStatus.hasCert ? 'text-green-600' : 'text-red-600'}`}>
+                  {credentialsStatus.hasCert ? '✅ Cargado' : '❌ No cargado'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-gray-500" />
+                  <span className="text-gray-700">Contraseña</span>
+                </div>
+                <span className={`text-sm font-medium ${credentialsStatus.hasPassword ? 'text-green-600' : 'text-red-600'}`}>
+                  {credentialsStatus.hasPassword ? '✅ Configurada' : '❌ No configurada'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">Se configuran dentro de “Configurar emisor”.</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Bell className="w-5 h-5 text-gray-500" />
+                <h2 className="text-lg font-medium text-gray-900">Notificaciones</h2>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={notificationsEnabled}
+                  onChange={(e) => handleNotificationToggle(e.target.checked)}
+                  disabled={!isSupported}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600">Recibe alertas importantes sobre mantenimiento y estado del sistema.</p>
+              {!isSupported && <p className="mt-2 text-xs text-red-500">Tu navegador no soporta notificaciones.</p>}
+              {permission === 'denied' && <p className="mt-2 text-xs text-orange-500">Permiso bloqueado. Debes habilitarlo en tu navegador.</p>}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="border-b border-gray-200 px-6 py-4 flex items-center gap-3">
+              <Download className="w-5 h-5 text-gray-500" />
+              <h2 className="text-lg font-medium text-gray-900">Copia de seguridad</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-600">Guarda o restaura tu configuración y datos locales.</p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={handleExportBackup}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  <Download className="w-4 h-4" />
+                  Descargar
+                </button>
+
+                <input
+                  ref={restoreFileInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  className="hidden"
+                  onChange={handleRestoreBackupFile}
+                />
+                <button
+                  onClick={handleRestoreBackup}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-indigo-600 shadow-sm text-sm font-medium rounded-xl text-indigo-700 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  <Upload className="w-4 h-4" />
+                  Restaurar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {showEmisorConfig && (
         <EmisorConfigModal
