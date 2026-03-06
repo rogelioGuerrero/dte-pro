@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useEmisor } from '../contexts/EmisorContext';
 import { normalizeRole } from '../utils/roleAccess';
 import { TeamPanel } from './TeamPanel';
+import { AuthGate } from './AuthGate';
 
 interface MiCuentaProps {
   onBack?: () => void;
@@ -19,7 +20,7 @@ interface MiCuentaProps {
 
 const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
   const { isSupported, permission, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { businessId, currentRole } = useEmisor();
   const normalizedRole = normalizeRole(currentRole);
   const canManage = normalizedRole === 'owner' || normalizedRole === 'admin';
@@ -245,6 +246,14 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
       e.target.value = ''; // Reset input
     }
   };
+
+  if (!session) {
+    return (
+      <AuthGate>
+        <div />
+      </AuthGate>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 animate-fade-in">
