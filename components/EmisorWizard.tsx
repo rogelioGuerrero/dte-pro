@@ -6,11 +6,12 @@ import { useEmisor } from '../contexts/EmisorContext';
 
 interface EmisorWizardProps {
   onCompleted?: () => void;
+  onCancel?: () => void;
 }
 
 type Step = 'datos' | 'firma' | 'codigos';
 
-export const EmisorWizard: React.FC<EmisorWizardProps> = ({ onCompleted }) => {
+export const EmisorWizard: React.FC<EmisorWizardProps> = ({ onCompleted, onCancel }) => {
   const { user } = useAuth();
   const { setBusinessId, reload } = useEmisor();
   const [step, setStep] = useState<Step>('datos');
@@ -112,14 +113,24 @@ export const EmisorWizard: React.FC<EmisorWizardProps> = ({ onCompleted }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center px-4 z-50">
       <div className="bg-white w-full max-w-3xl rounded-2xl shadow-xl border border-gray-200 p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-500">Configuración inicial</p>
             <h1 className="text-2xl font-bold text-gray-900">Crear emisor</h1>
           </div>
-          <div className="text-sm text-gray-600">{progress}%</div>
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-gray-600">{progress}%</div>
+            {onCancel && (
+              <button
+                className="text-sm text-gray-500 hover:text-gray-700"
+                onClick={onCancel}
+              >
+                Cerrar
+              </button>
+            )}
+          </div>
         </div>
         <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
           <div className="h-full bg-indigo-600" style={{ width: `${progress}%` }} />

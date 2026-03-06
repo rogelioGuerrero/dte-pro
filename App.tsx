@@ -28,6 +28,12 @@ import { EmisorWizard } from './components/EmisorWizard';
 
 type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta' | 'simple' | 'poscf';
 
+const Placeholder: React.FC = () => (
+  <div className="border border-dashed border-gray-300 rounded-xl p-6 text-center text-sm text-gray-500 bg-white/60">
+    Selecciona o crea un emisor para usar esta sección.
+  </div>
+);
+
 // Detectar si estamos en la pagina publica del cliente
 const isClientFormPage = (): boolean => {
   return window.location.pathname === '/cliente';
@@ -55,8 +61,9 @@ const App: React.FC = () => {
   const [showLicenseManager, setShowLicenseManager] = useState(false);
   const [showUserModeSetup, setShowUserModeSetup] = useState(false);
   const [forceUpdateInfo, setForceUpdateInfo] = useState<{ minVersion: string; message?: string } | null>(null);
+  const [showEmisorWizard, setShowEmisorWizard] = useState(false);
   const { signOut } = useAuth();
-  const { emisores, loading: emisoresLoading, businessId } = useEmisor();
+  const { loading: emisoresLoading, businessId } = useEmisor();
   const clickCountRef = useRef(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -172,11 +179,6 @@ const App: React.FC = () => {
     );
   }
 
-  // Si no hay emisores asociados, lanzar wizard
-  if (!emisoresLoading && emisores.length === 0) {
-    return <EmisorWizard onCompleted={() => window.location.reload()} />;
-  }
-
   // Actualización requerida: bloquear el uso de la app hasta recargar
   if (forceUpdateInfo) {
     return (
@@ -194,7 +196,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/50 flex flex-col font-sans text-slate-900">
-      
       {/* Global Header - Desktop */}
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 md:h-16 flex items-center justify-between">
@@ -272,27 +273,41 @@ const App: React.FC = () => {
       <main className="flex-grow px-3 sm:px-6 lg:px-8 py-4 md:py-10 pb-20 md:pb-10">
         <LicenseStatus onManageLicense={() => setShowLicenseManager(true)} />
         {!businessId && (
-          <div className="mb-4 p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800">
-            Selecciona un emisor para continuar. (Si no ves emisores, refresca o vuelve a asociar.)
+          <div className="mb-4 p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 flex items-center justify-between gap-3 flex-wrap">
+            <div>Sin emisor seleccionado. Puedes crear uno ahora o más tarde desde Mi Cuenta.</div>
+            <div className="flex gap-2">
+              <button
+                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo-600 text-white"
+                onClick={() => setShowEmisorWizard(true)}
+              >
+                Crear emisor
+              </button>
+              <button
+                className="px-3 py-1.5 text-sm font-medium rounded-lg border border-indigo-200 text-indigo-700 bg-white"
+                onClick={() => setActiveTab('micuenta')}
+              >
+                Ir a Mi Cuenta
+              </button>
+            </div>
           </div>
         )}
-        {activeTab === 'batch' && businessId && <BatchDashboard />}
-        {activeTab === 'fiscal' && businessId && <FiscalDashboard />}
-        {activeTab === 'clients' && businessId && <ClientManager />}
-        {activeTab === 'inventory' && businessId && <SistemaInventario />}
-        {activeTab === 'factura' && businessId && <FacturaGenerator />}
-        {activeTab === 'historial' && businessId && <DTEDashboard />}
+        {activeTab === 'batch' && (businessId ? <BatchDashboard /> : <Placeholder />)}
+        {activeTab === 'fiscal' && (businessId ? <FiscalDashboard /> : <Placeholder />)}
+        {activeTab === 'clients' && (businessId ? <ClientManager /> : <Placeholder />)}
+        {activeTab === 'inventory' && (businessId ? <SistemaInventario /> : <Placeholder />)}
+        {activeTab === 'factura' && (businessId ? <FacturaGenerator /> : <Placeholder />)}
+        {activeTab === 'historial' && (businessId ? <DTEDashboard /> : <Placeholder />)}
         {activeTab === 'micuenta' && <MiCuenta onBack={() => setActiveTab('factura')} />}
-        {activeTab === 'simple' && businessId && (
+        {activeTab === 'simple' && (businessId ? (
           <React.Suspense fallback={<div>Cargando...</div>}>
             {React.createElement(React.lazy(() => import('./components/pages/GeneradorSimple')))}
           </React.Suspense>
-        )}
-        {activeTab === 'poscf' && businessId && (
+        ) : <Placeholder />)}
+        {activeTab === 'poscf' && (businessId ? (
           <React.Suspense fallback={<div>Cargando...</div>}>
             {React.createElement(React.lazy(() => import('./components/pages/PosCF')))}
           </React.Suspense>
-        )}
+        ) : <Placeholder />)}
       </main>
 
       {/* Mobile Bottom Navigation */}
@@ -353,6 +368,12 @@ const App: React.FC = () => {
       <PWAInstallPrompt />
       <GlobalToastHost />
       <PushNotificationManager />
+      {showEmisorWizard && (
+        <EmisorWizard
+          onCompleted={() => window.location.reload()}
+          onCancel={() => setShowEmisorWizard(false)}
+        />
+      )}
     </div>
   );
 };

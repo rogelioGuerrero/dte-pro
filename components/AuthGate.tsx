@@ -46,7 +46,12 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       if (error) throw error;
       setMessage('Cuenta creada. Revisa tu correo para confirmar.');
     } catch (err: any) {
-      setError(err?.message || 'No se pudo procesar la solicitud');
+      const msg = (err?.message || '').toLowerCase();
+      if (msg.includes('rate limit')) {
+        setError('Hemos enviado demasiados correos. Intenta de nuevo en unos minutos.');
+      } else {
+        setError(err?.message || 'No se pudo procesar la solicitud');
+      }
     } finally {
       setSubmitting(false);
     }
