@@ -18,9 +18,18 @@ export async function apiFetch<T>(path: string, options: { method?: HttpMethod; 
     signal: options.signal,
   });
 
+  const contentType = res.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json');
+
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `Error ${res.status} en ${path}`);
+  }
+
+  if (!isJson) {
+    // return text as any to avoid JSON parse crash
+    const text = await res.text();
+    return text as unknown as T;
   }
 
   return res.json();
