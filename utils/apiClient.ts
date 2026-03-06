@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 
-const baseUrl = import.meta.env.VITE_API_DTE_URL || '';
+const baseUrl = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_DTE_URL || '') as string;
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 

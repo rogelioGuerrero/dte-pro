@@ -42,7 +42,19 @@ export const EmisorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     setLoading(true);
     try {
-      const rows = await apiFetch<BusinessRow[]>('/businesses/me');
+      const raw = await apiFetch<unknown>('/businesses/me');
+      const rows = Array.isArray(raw)
+        ? (raw as BusinessRow[])
+        : (Array.isArray((raw as any)?.data)
+            ? ((raw as any).data as BusinessRow[])
+            : (Array.isArray((raw as any)?.rows)
+                ? ((raw as any).rows as BusinessRow[])
+                : []));
+
+      if (!Array.isArray(rows)) {
+        throw new Error('Respuesta inválida: se esperaba un arreglo de emisores');
+      }
+
       const mapped = rows.map((row) => ({
         business_id: row.business_id,
         nombre: row.nombre || undefined,
