@@ -13,6 +13,7 @@ import { useEmisor } from '../contexts/EmisorContext';
 import { normalizeRole } from '../utils/roleAccess';
 import { TeamPanel } from './TeamPanel';
 import { AuthGate } from './AuthGate';
+import { apiFetch } from '../utils/apiClient';
 
 interface MiCuentaProps {
   onBack?: () => void;
@@ -162,31 +163,9 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
         nombre: associateNombre.trim(),
       };
 
-      const res = associateMode === 'create'
-        ? await fetch(`${import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_DTE_URL || ''}/api/business/businesses`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-            },
-            body: JSON.stringify(payload),
-          })
-        : await fetch(`${import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_DTE_URL || ''}/api/business/business_users/claim`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-            },
-            body: JSON.stringify({ business_id: associateBusinessId.trim() }),
-          });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || 'No se pudo asociar el emisor');
-      }
-
-      const contentType = res.headers.get('content-type') || '';
-      const json = contentType.includes('application/json') ? await res.json() : null;
+      const json = associateMode === 'create'
+        ? await apiFetch<any>('/api/business/businesses', { method: 'POST', body: payload })
+        : await apiFetch<any>('/api/business/business_users/claim', { method: 'POST', body: { business_id: associateBusinessId.trim() } });
 
       const newBusinessId =
         (json && typeof json.business_id === 'string' && json.business_id) ||
