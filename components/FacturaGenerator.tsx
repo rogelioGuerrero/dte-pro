@@ -30,6 +30,8 @@ import {
   formatTextInput,
   formatMultilineTextInput,
 } from '../utils/validators';
+import { useAuth } from '../contexts/AuthContext';
+import { useEmisor } from '../contexts/EmisorContext';
 
 const emptyItem: ItemForm = {
   id: '',
@@ -51,6 +53,8 @@ const FacturaGenerator: React.FC = () => {
   const defaultItem: ItemForm = isModoProfesional ? { ...emptyItem, tipoItem: 2 } : { ...emptyItem };
   const canUseCatalogoProductos = hasFeature('productos');
   const { toasts, addToast, removeToast } = useToast();
+  const { session } = useAuth();
+  const { businessId } = useEmisor();
 
   const [showQRCapture, setShowQRCapture] = useState(false);
   const [showStripeConnect, setShowStripeConnect] = useState(false);
@@ -178,6 +182,17 @@ const FacturaGenerator: React.FC = () => {
     addToast: (msg, type) => addToast(msg, type as any),
     setStockError,
     ambiente,
+    onTransmitBlocked: () => {
+      if (!session?.access_token) {
+        addToast('Demo: para transmitir debes iniciar sesión en Mi Cuenta.', 'info');
+        return true;
+      }
+      if (!businessId) {
+        addToast('Demo: selecciona/crea un emisor en Mi Cuenta para transmitir.', 'info');
+        return true;
+      }
+      return false;
+    },
   });
 
   // Resolve Modal State

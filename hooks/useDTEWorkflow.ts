@@ -24,6 +24,7 @@ interface Params {
   addToast: (msg: string, type: 'success' | 'error' | 'info' | 'warning') => void;
   setStockError: (msg: string) => void;
   ambiente: string;
+  onTransmitBlocked?: () => boolean;
 }
 
 export function useDTEWorkflow({
@@ -44,6 +45,7 @@ export function useDTEWorkflow({
   addToast,
   setStockError,
   ambiente,
+  onTransmitBlocked,
 }: Params) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedDTE, setGeneratedDTE] = useState<DTEJSON | null>(null);
@@ -289,6 +291,7 @@ export function useDTEWorkflow({
 
   const handleTransmitir = () => {
     if (!generatedDTE) return;
+    if (onTransmitBlocked && onTransmitBlocked()) return;
     setShowDTEPreview(false);
     setShowTransmision(true);
   };

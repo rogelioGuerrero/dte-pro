@@ -24,7 +24,6 @@ import MiCuenta from './components/MiCuenta';
 import { EmisorSelector } from './components/EmisorSelector';
 import { useAuth } from './contexts/AuthContext';
 import { useEmisor } from './contexts/EmisorContext';
-import { EmisorWizard } from './components/EmisorWizard';
 
 type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta' | 'simple' | 'poscf';
 
@@ -61,8 +60,7 @@ const App: React.FC = () => {
   const [showLicenseManager, setShowLicenseManager] = useState(false);
   const [showUserModeSetup, setShowUserModeSetup] = useState(false);
   const [forceUpdateInfo, setForceUpdateInfo] = useState<{ minVersion: string; message?: string } | null>(null);
-  const [showEmisorWizard, setShowEmisorWizard] = useState(false);
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const { loading: emisoresLoading, businessId } = useEmisor();
   const clickCountRef = useRef(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -256,15 +254,24 @@ const App: React.FC = () => {
               </div>
               <span className="hidden sm:inline">Mi Cuenta</span>
             </button>
-            <button
-              onClick={async () => {
-                await signOut();
-                window.location.reload();
-              }}
-              className="px-3 py-1.5 text-sm font-medium rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50"
-            >
-              Cerrar sesión
-            </button>
+            {user ? (
+              <button
+                onClick={async () => {
+                  await signOut();
+                  window.location.reload();
+                }}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50"
+              >
+                Cerrar sesión
+              </button>
+            ) : (
+              <button
+                onClick={() => setActiveTab('micuenta' as AppTab)}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+              >
+                Iniciar sesión
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -278,12 +285,6 @@ const App: React.FC = () => {
             <div className="flex gap-2">
               <button
                 className="px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo-600 text-white"
-                onClick={() => setShowEmisorWizard(true)}
-              >
-                Crear emisor
-              </button>
-              <button
-                className="px-3 py-1.5 text-sm font-medium rounded-lg border border-indigo-200 text-indigo-700 bg-white"
                 onClick={() => setActiveTab('micuenta')}
               >
                 Ir a Mi Cuenta
@@ -295,7 +296,7 @@ const App: React.FC = () => {
         {activeTab === 'fiscal' && (businessId ? <FiscalDashboard /> : <Placeholder />)}
         {activeTab === 'clients' && (businessId ? <ClientManager /> : <Placeholder />)}
         {activeTab === 'inventory' && (businessId ? <SistemaInventario /> : <Placeholder />)}
-        {activeTab === 'factura' && (businessId ? <FacturaGenerator /> : <Placeholder />)}
+        {activeTab === 'factura' && <FacturaGenerator />}
         {activeTab === 'historial' && (businessId ? <DTEDashboard /> : <Placeholder />)}
         {activeTab === 'micuenta' && <MiCuenta onBack={() => setActiveTab('factura')} />}
         {activeTab === 'simple' && (businessId ? (
@@ -368,12 +369,6 @@ const App: React.FC = () => {
       <PWAInstallPrompt />
       <GlobalToastHost />
       <PushNotificationManager />
-      {showEmisorWizard && (
-        <EmisorWizard
-          onCompleted={() => window.location.reload()}
-          onCancel={() => setShowEmisorWizard(false)}
-        />
-      )}
     </div>
   );
 };
