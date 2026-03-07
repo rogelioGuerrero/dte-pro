@@ -71,6 +71,17 @@ export const EmisorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     load();
   }, [load]);
 
+  useEffect(() => {
+    const handleAuthChanged = () => {
+      load();
+    };
+
+    window.addEventListener('dte-auth-changed', handleAuthChanged);
+    return () => {
+      window.removeEventListener('dte-auth-changed', handleAuthChanged);
+    };
+  }, [load]);
+
   const setBusinessId = (id: string | null) => {
     setBusinessIdState(id);
   };

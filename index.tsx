@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { AuthGate } from './components/AuthGate';
+import { AuthProvider } from './contexts/AuthContext';
 import { EmisorProvider } from './contexts/EmisorContext';
 
 const rootElement = document.getElementById('root');
@@ -12,8 +14,12 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <EmisorProvider>
-      <App />
-    </EmisorProvider>
+    <AuthProvider>
+      <EmisorProvider>
+        <AuthGate>
+          <App />
+        </AuthGate>
+      </EmisorProvider>
+    </AuthProvider>
   </React.StrictMode>
 );
