@@ -1,3 +1,5 @@
+import { getBackendAuthToken } from './backendConfig';
+
 export interface FirmaApiResponse {
   status?: string;
   body?: string | { codigo?: string; mensaje?: string | string[] };
@@ -81,6 +83,11 @@ const isRetriableHttpStatus = (status: number): boolean => {
   return status === 502 || status === 503 || status === 504;
 };
 
+const buildAuthHeaders = (): Record<string, string> => {
+  const token = getBackendAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 const cloneObject = <T>(value: T): T => {
   if (typeof structuredClone === 'function') {
     return structuredClone(value);
@@ -109,6 +116,7 @@ export const wakeFirmaService = async (opts?: {
         method: 'OPTIONS',
         headers: {
           Accept: 'application/json',
+          ...buildAuthHeaders(),
         },
         signal: controller.signal,
       });
@@ -168,6 +176,7 @@ export const firmarDocumento = async (params: {
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           Accept: 'application/json',
+          ...buildAuthHeaders(),
         },
         body: JSON.stringify({
           passwordPri: params.passwordPri,
@@ -184,6 +193,10 @@ export const firmarDocumento = async (params: {
       if (!res.ok) {
         const detail = typeof payload === 'string' ? payload : JSON.stringify(payload);
 
+        if (res.status === 401) {
+          throw new Error('Sesión expirada o token faltante. Inicia sesión nuevamente para firmar el documento.');
+        }
+
         if (res.status === 400) {
           throw new Error(`Firma falló (HTTP 400): ${detail}`);
         }
@@ -192,7 +205,6 @@ export const firmarDocumento = async (params: {
           await sleep(baseDelayMs * Math.pow(2, attempt));
           continue;
         }
-
         throw new Error(`Firma falló (HTTP ${res.status}): ${detail}`);
       }
 
@@ -253,6 +265,7 @@ export const transmitirDocumento = async (params: {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
         Accept: 'application/json',
+        ...buildAuthHeaders(),
       },
       body: JSON.stringify({
         dte: params.dte,
@@ -268,6 +281,10 @@ export const transmitirDocumento = async (params: {
       : await res.text().catch(() => '');
 
     if (!res.ok) {
+      if (res.status === 401) {
+        throw new Error('Sesión expirada o token faltante. Inicia sesión nuevamente para transmitir el documento.');
+      }
+
       const detail = typeof payload === 'string'
         ? payload
         : payload?.mhResponse?.mensaje || JSON.stringify(payload);
