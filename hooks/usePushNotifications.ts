@@ -16,7 +16,6 @@ export const usePushNotifications = () => {
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSubscribing, setIsSubscribing] = useState(false);
-  const syncEndpoint = import.meta.env.VITE_PUSH_SUBSCRIPTION_ENDPOINT as string | undefined;
   const storageKey = useMemo(() => `dte_push_subscription:${businessId || 'anonymous'}`, [businessId]);
 
   useEffect(() => {
@@ -130,15 +129,16 @@ export const usePushNotifications = () => {
   };
 
   const sendSubscriptionToBackend = async (nextSubscription: PushSubscription) => {
-    if (!syncEndpoint) {
+    if (!businessId) {
       return;
     }
 
-    await apiFetch(syncEndpoint, {
+    await apiFetch('/api/business/push-subscriptions', {
       method: 'POST',
       body: {
         businessId,
         subscription: nextSubscription,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
       },
     });
   };
@@ -157,11 +157,12 @@ export const usePushNotifications = () => {
       setSubscription(null);
       window.localStorage.removeItem(storageKey);
 
-      if (syncEndpoint) {
-        await apiFetch(syncEndpoint, {
+      if (businessId) {
+        await apiFetch('/api/business/push-subscriptions', {
           method: 'DELETE',
           body: {
             businessId,
+            endpoint: subscription?.endpoint || null,
           },
         });
       }
