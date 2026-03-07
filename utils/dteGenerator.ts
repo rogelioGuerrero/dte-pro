@@ -15,6 +15,23 @@ import {
 } from './validators';
 import { calcularTotales } from './totales';
 
+const normalizePhone = (value?: string | null): string | null => {
+  const digits = (value || '').replace(/\D/g, '').trim();
+  return digits || null;
+};
+
+const normalizeOptionalText = (value?: string | null): string | null => {
+  const normalized = (value || '').trim();
+  if (!normalized) return null;
+  if (['n/a', 'na', 'none', 'null', '-'].includes(normalized.toLowerCase())) return null;
+  return normalized;
+};
+
+const normalizeRequiredText = (value?: string | null, fallback: string = ''): string => {
+  const normalized = (value || '').trim();
+  return normalized || fallback;
+};
+
 // Generar estructura JSON del DTE
 export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: string = '00'): DTEJSON => {
   const uuid = generarUUID();
@@ -128,6 +145,14 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const emisorNit = (datos.emisor.nit || '').replace(/[\s-]/g, '').trim();
   const emisorNrc = (datos.emisor.nrc || '').replace(/[\s-]/g, '').trim();
   const receptorNrc = (datos.receptor.nrc || '').replace(/[\s-]/g, '').trim();
+  const emisorNombre = normalizeRequiredText(datos.emisor.nombre);
+  const emisorNombreComercial = normalizeOptionalText(datos.emisor.nombreComercial);
+  const emisorDireccionComplemento = normalizeRequiredText(datos.emisor.direccion, 'Dirección del negocio');
+  const emisorTelefono = normalizeRequiredText(normalizePhone(datos.emisor.telefono), '00000000');
+  const emisorCorreo = normalizeRequiredText(datos.emisor.correo);
+  const receptorNombre = normalizeRequiredText(datos.receptor.name, 'Consumidor Final');
+  const receptorTelefono = normalizePhone(datos.receptor.telefono);
+  const receptorCorreo = receptorSinDocumento ? null : normalizeOptionalText(datos.receptor.email);
 
   const dteJSON: DTEJSON = {
     identificacion: {
@@ -148,20 +173,20 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     emisor: {
       nit: emisorNit,
       nrc: emisorNrc,
-      nombre: datos.emisor.nombre,
+      nombre: emisorNombre,
       codActividad: emisorCodActividad,
       descActividad: emisorDescActividad,
-      nombreComercial: datos.emisor.nombreComercial || null,
+      nombreComercial: emisorNombreComercial,
       tipoEstablecimiento: datos.emisor.tipoEstablecimiento || '01',
       codEstable: datos.emisor.codEstableMH || null,
       codPuntoVenta: datos.emisor.codPuntoVentaMH || null,
       direccion: {
         departamento: datos.emisor.departamento,
         municipio: datos.emisor.municipio,
-        complemento: datos.emisor.direccion,
+        complemento: emisorDireccionComplemento,
       },
-      telefono: datos.emisor.telefono,
-      correo: datos.emisor.correo,
+      telefono: emisorTelefono,
+      correo: emisorCorreo,
       codEstableMH: datos.emisor.codEstableMH || null,
       codPuntoVentaMH: datos.emisor.codPuntoVentaMH || null,
     },
@@ -169,12 +194,12 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       tipoDocumento: receptorSinDocumento ? null : (receptorIdDigits.length === 9 ? '13' : '36'),
       numDocumento: receptorSinDocumento ? null : receptorIdDigits,
       nrc: receptorNrc || null,
-      nombre: (datos.receptor.name || '').trim() ? datos.receptor.name : 'Consumidor Final',
+      nombre: receptorNombre,
       codActividad: receptorCodActividad,
       descActividad: receptorDescActividad,
       direccion: receptorDireccion,
-      telefono: datos.receptor.telefono || null,
-      correo: datos.receptor.email || null,
+      telefono: receptorTelefono,
+      correo: receptorCorreo,
     },
     otrosDocumentos: null,
     ventaTercero: null,
@@ -238,6 +263,7 @@ export const convertirAContingencia = (dte: DTEJSON, motivo: string = 'Falla en 
 export type { ItemFactura, DatosFactura, DTEJSON } from './types';
 export { calcularTotales } from './totales';
 export {
+  generarCorrelativoControlado,
   generarUUID,
   generarNumeroControl,
   redondear,

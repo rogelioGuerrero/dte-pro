@@ -3,7 +3,7 @@ import { ShoppingCart, Trash2, Plus, Minus, Send, Loader2 } from 'lucide-react';
 import { Producto } from '../../types/inventario';
 import { inventarioService } from '../../utils/inventario/inventarioService';
 import { useToast } from '../Toast';
-import { generarDTE, redondear } from '../../utils/dteGenerator';
+import { generarCorrelativoControlado, generarDTE, redondear } from '../../utils/dteGenerator';
 import { getEmisor } from '../../utils/emisorDb';
 import { useEmisor } from '../../contexts/EmisorContext';
 import { checkLicense } from '../../utils/licenseValidator';
@@ -106,9 +106,9 @@ const PosCF: React.FC = () => {
         numItem: idx + 1,
         tipoItem: 1, // Bien
         cantidad,
-        codigo: item.producto.codigo || null,
-        uniMedida: 59, // Unidad genérica
-        descripcion: item.producto.descripcion,
+        codigo: item.producto.codigo || item.producto.codigoPrincipal || `VAR-${idx + 1}`,
+        uniMedida: 99,
+        descripcion: item.producto.descripcion.toUpperCase(),
         precioUni: precioUni,
         montoDescu: 0,
         ventaNoSuj: 0,
@@ -133,25 +133,29 @@ const PosCF: React.FC = () => {
       municipio: '',
       direccion: '',
       telefono: '',
-      email: correoReceptor.trim() || null,
+      email: '',
       esConsumidorFinal: true,
       nombreComercial: '',
       timestamp: Date.now(),
     };
+
+    const telefonoEmisor = (emisor.telefono || '').replace(/\D/g, '');
+    const nombreComercial = (emisor.nombreComercial || '').trim();
+    const direccionEmisor = (emisor.direccion || '').trim() || 'Dirección del negocio';
 
     const datosFactura = {
       emisor: {
         nit: emisor.nit,
         nrc: emisor.nrc,
         nombre: emisor.nombre,
-        nombreComercial: emisor.nombreComercial,
+        nombreComercial: ['n/a', 'na'].includes(nombreComercial.toLowerCase()) ? '' : nombreComercial,
         actividadEconomica: emisor.actividadEconomica,
         descActividad: emisor.descActividad,
         tipoEstablecimiento: emisor.tipoEstablecimiento,
         departamento: emisor.departamento,
         municipio: emisor.municipio,
-        direccion: emisor.direccion,
-        telefono: emisor.telefono,
+        direccion: direccionEmisor,
+        telefono: telefonoEmisor,
         correo: emisor.correo,
         codEstableMH: emisor.codEstableMH || 'M001',
         codPuntoVentaMH: emisor.codPuntoVentaMH || 'P001',
@@ -164,7 +168,7 @@ const PosCF: React.FC = () => {
       condicionOperacion: 1, // Contado
     };
 
-    const correlativo = Date.now();
+    const correlativo = generarCorrelativoControlado(datosFactura.tipoDocumento, datosFactura.emisor.codEstableMH, datosFactura.emisor.codPuntoVentaMH);
     const dte = generarDTE(datosFactura as any, correlativo);
     setResultadoJSON(JSON.stringify(dte, null, 2));
     return { dte, nitSinGuiones: nit };
@@ -390,11 +394,13 @@ const PosCF: React.FC = () => {
             {(() => {
               const mh = 'mhResponse' in respuestaMH ? respuestaMH.mhResponse : undefined;
               const mhStatus = mh?.estado;
-              const mhMessage = 'error' in respuestaMH ? respuestaMH.error : mh?.mensaje;
+              const mhMessage = 'error' in respuestaMH
+                ? respuestaMH.error
+                : (mh?.mensaje || (typeof respuestaMH.error === 'string' ? respuestaMH.error : respuestaMH.error?.message) || 'Mensaje no disponible');
               return (
                 <>
                   <div className="font-semibold">Hacienda: {mhStatus || 'Sin estado'}</div>
-                  <div className="text-gray-600">{mhMessage || 'Mensaje no disponible'}</div>
+                  <div className="text-gray-600">{String(mhMessage || 'Mensaje no disponible')}</div>
                   {mh?.selloRecepcion && (
                     <div className="text-xs text-gray-500 break-all">Sello: {mh.selloRecepcion}</div>
                   )}

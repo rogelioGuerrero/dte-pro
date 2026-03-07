@@ -13,7 +13,7 @@ import {
 import { getClients, ClientData } from '../utils/clientDb';
 import { getProducts, ProductData } from '../utils/productDb';
 import { getEmisor, EmisorData } from '../utils/emisorDb';
-import { generarDTE, ItemFactura, calcularTotales, redondear, DTEJSON, formasPago } from '../utils/dteGenerator';
+import { generarCorrelativoControlado, generarDTE, ItemFactura, calcularTotales, redondear, DTEJSON, formasPago } from '../utils/dteGenerator';
 import { ToastContainer, useToast } from './Toast';
 import Tooltip from './Tooltip';
 import TransmisionModal from './TransmisionModal';
@@ -195,7 +195,11 @@ const QuickSale: React.FC = () => {
 
     setIsGenerating(true);
     try {
-      const correlativo = Date.now();
+      const correlativo = generarCorrelativoControlado(
+        '01',
+        emisor.codEstableMH ?? null,
+        emisor.codPuntoVentaMH ?? null,
+      );
       const dte = generarDTE(
         {
           emisor,

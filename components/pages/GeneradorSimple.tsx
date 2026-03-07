@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { generarDTE, redondear } from '../../utils/dteGenerator';
+import { generarCorrelativoControlado, generarDTE, redondear } from '../../utils/dteGenerator';
 import { useToast } from '../Toast';
 import { Copy, Send } from 'lucide-react';
 
@@ -19,16 +19,16 @@ export const GeneradorSimple: React.FC = () => {
   const emisor = {
     nit: '14012805761025',
     nrc: '1571266',
-    nombre: 'rogelio guerrero',
-    nombreComercial: 'na',
+    nombre: 'Rogelio Guerrero',
+    nombreComercial: '',
     actividadEconomica: '96092', // codActividad en el JSON
     descActividad: 'Servicios n.c.p.',
     tipoEstablecimiento: '01',
     departamento: '06',
     municipio: '15',
-    direccion: 'av maraai',
-    telefono: '7929-3710',
-    correo: 'rogelio.guerrero@agtisa.com',
+    direccion: 'Dirección del negocio',
+    telefono: '79293710',
+    correo: 'guerrero_vi@yahoo.com',
     codEstableMH: 'M001',
     codPuntoVentaMH: 'P001'
   };
@@ -45,7 +45,7 @@ export const GeneradorSimple: React.FC = () => {
       municipio: '',
       direccion: '',
       telefono: '',
-      email: 'guerrero_vi@yahoo.com',
+      email: '',
       esConsumidorFinal: true,
       nombreComercial: '',
       timestamp: Date.now()
@@ -61,11 +61,11 @@ export const GeneradorSimple: React.FC = () => {
 
     const item = {
       numItem: 1,
-      tipoItem: 2, // Servicio
+      tipoItem: 1,
       cantidad: cantidadNum,
-      codigo: null,
+      codigo: 'VAR-001',
       uniMedida: 99,
-      descripcion: descripcion,
+      descripcion: descripcion.toUpperCase(),
       precioUni: precioNum,
       montoDescu: 0,
       ventaNoSuj: 0,
@@ -92,8 +92,7 @@ export const GeneradorSimple: React.FC = () => {
 
   const buildAndSetDTE = () => {
     const datosFactura = buildDatosFactura();
-    // Correlativo único basado en timestamp para evitar duplicados en MH
-    const correlativo = Date.now();
+    const correlativo = generarCorrelativoControlado(datosFactura.tipoDocumento, emisor.codEstableMH, emisor.codPuntoVentaMH);
     const dte = generarDTE(datosFactura, correlativo);
     setResultadoJSON(JSON.stringify(dte, null, 2));
     setRespuestaMH(null); // Limpiar respuesta anterior
@@ -233,20 +232,41 @@ export const GeneradorSimple: React.FC = () => {
 
           {respuestaMH && (
             <div className={`border rounded-xl overflow-hidden shadow-sm ${'mhResponse' in respuestaMH && respuestaMH.mhResponse?.success ? 'border-green-300' : 'border-red-300'}`}>
-              <div className={`px-4 py-3 border-b ${'mhResponse' in respuestaMH && respuestaMH.mhResponse?.success ? 'bg-green-50' : 'bg-red-50'}`}>
-                <h2 className={`text-lg font-bold ${'mhResponse' in respuestaMH && respuestaMH.mhResponse?.success ? 'text-green-800' : 'text-red-800'}`}>
-                  Hacienda: {('mhResponse' in respuestaMH ? respuestaMH.mhResponse?.estado : undefined) || 'Sin estado'}
-                </h2>
-                <p className={`text-sm ${'mhResponse' in respuestaMH && respuestaMH.mhResponse?.success ? 'text-green-600' : 'text-red-600'}`}>
-                  {('error' in respuestaMH ? respuestaMH.error : respuestaMH.mhResponse?.mensaje) || 'Mensaje no disponible'}
-                </p>
-                {'mhResponse' in respuestaMH && respuestaMH.mhResponse?.selloRecepcion && (
-                  <p className="text-xs text-gray-500 break-all">Sello: {respuestaMH.mhResponse.selloRecepcion}</p>
-                )}
-                {'mhResponse' in respuestaMH && respuestaMH.mhResponse?.codigoGeneracion && (
-                  <p className="text-xs text-gray-500 break-all">Código: {respuestaMH.mhResponse.codigoGeneracion}</p>
-                )}
-              </div>
+              {(() => {
+                const hasMh = 'mhResponse' in respuestaMH;
+                const status = hasMh ? respuestaMH.mhResponse?.estado : undefined;
+                let rawErrorMessage = '';
+
+                if (hasMh) {
+                  const backendError = respuestaMH.error;
+                  rawErrorMessage = typeof backendError === 'string'
+                    ? backendError
+                    : (backendError?.message || '');
+                } else {
+                  rawErrorMessage = String(respuestaMH.error || '');
+                }
+
+                const resolvedMessage = hasMh
+                  ? (respuestaMH.mhResponse?.mensaje || rawErrorMessage || 'Mensaje no disponible')
+                  : (rawErrorMessage || 'Mensaje no disponible');
+
+                return (
+                  <div className={`px-4 py-3 border-b ${hasMh && respuestaMH.mhResponse?.success ? 'bg-green-50' : 'bg-red-50'}`}>
+                    <h2 className={`text-lg font-bold ${hasMh && respuestaMH.mhResponse?.success ? 'text-green-800' : 'text-red-800'}`}>
+                      Hacienda: {status || 'Sin estado'}
+                    </h2>
+                    <p className={`text-sm ${hasMh && respuestaMH.mhResponse?.success ? 'text-green-600' : 'text-red-600'}`}>
+                      {resolvedMessage}
+                    </p>
+                    {hasMh && respuestaMH.mhResponse?.selloRecepcion && (
+                      <p className="text-xs text-gray-500 break-all">Sello: {respuestaMH.mhResponse.selloRecepcion}</p>
+                    )}
+                    {hasMh && respuestaMH.mhResponse?.codigoGeneracion && (
+                      <p className="text-xs text-gray-500 break-all">Código: {respuestaMH.mhResponse.codigoGeneracion}</p>
+                    )}
+                  </div>
+                );
+              })()}
               <pre className="bg-gray-50 p-4 overflow-x-auto text-xs text-gray-800 max-h-64">
                 {JSON.stringify(respuestaMH, null, 2)}
               </pre>

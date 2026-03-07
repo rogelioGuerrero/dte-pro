@@ -18,6 +18,7 @@ import {
 import { getClients, ClientData, saveClient } from '../utils/clientDb';
 import { EmisorData } from '../utils/emisorDb';
 import {
+  generarCorrelativoControlado,
   generarDTE,
   ItemFactura,
   tiposDocumento,
@@ -463,7 +464,11 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
 
     setIsGenerating(true);
     try {
-      const correlativo = Date.now() % 100000;
+      const correlativo = generarCorrelativoControlado(
+        tipoDoc,
+        emisor.codEstableMH ?? null,
+        emisor.codPuntoVentaMH ?? null,
+      );
 
       if (totales.montoTotalOperacion >= 25000) {
         const receptorId = (selectedClient.nit || '').replace(/[-\s]/g, '').trim();

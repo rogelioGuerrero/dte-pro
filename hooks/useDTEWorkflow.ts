@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DTEJSON, ItemFactura, calcularTotales, generarDTE, redondear } from '../utils/dteGenerator';
+import { DTEJSON, ItemFactura, calcularTotales, generarCorrelativoControlado, generarDTE, redondear } from '../utils/dteGenerator';
 import { ClientData } from '../utils/clientDb';
 import { EmisorData } from '../utils/emisorDb';
 import { ItemForm } from './useFacturaItems';
@@ -110,7 +110,11 @@ export function useDTEWorkflow({
     setStockError('');
 
     try {
-      const correlativo = Date.now() % 100000;
+      const correlativo = generarCorrelativoControlado(
+        tipoDocumento,
+        emisor.codEstableMH ?? null,
+        emisor.codPuntoVentaMH ?? null,
+      );
 
       const itemsParaCalculo: ItemFactura[] = validItems.map((item, idx) => {
         const cantidad8 = redondear(item.cantidad, 8);

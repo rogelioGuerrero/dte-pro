@@ -23,6 +23,26 @@ export const generarNumeroControl = (
   return `DTE-${tipoDoc}-${segmentoMedio}-${corr}`;
 };
 
+export const generarCorrelativoControlado = (
+  tipoDte: string,
+  codEstableMH: string | null,
+  codPuntoVentaMH: string | null
+): number => {
+  const establecimiento = (codEstableMH || 'M001').padEnd(4, '0').slice(0, 4);
+  const puntoVenta = (codPuntoVentaMH || 'P001').padEnd(4, '0').slice(0, 4);
+  const storageKey = `dte_correlativo_${tipoDte}_${establecimiento}_${puntoVenta}`;
+
+  if (typeof window === 'undefined') {
+    return 1;
+  }
+
+  const currentRaw = window.localStorage.getItem(storageKey);
+  const current = Number.parseInt(currentRaw || '0', 10);
+  const next = Number.isFinite(current) && current > 0 ? current + 1 : 1;
+  window.localStorage.setItem(storageKey, String(next));
+  return next;
+};
+
 export const redondear = (valor: number, decimales: number = 2): number => {
   const factor = Math.pow(10, decimales);
   const rounded = Math.round((valor + Number.EPSILON) * factor) / factor;
