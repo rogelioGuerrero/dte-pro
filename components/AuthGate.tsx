@@ -3,6 +3,10 @@ import { Mail, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { notify } from '../utils/notifications';
 
+const OTP_COOLDOWN_STORAGE_KEY = 'dte_auth_otp_cooldown_until';
+const DEFAULT_SEND_COOLDOWN_SECONDS = 60;
+const RATE_LIMIT_COOLDOWN_SECONDS = 300;
+
 interface AuthGateProps {
   children: React.ReactNode;
 }
@@ -12,8 +16,19 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [lastEmailSent, setLastEmailSent] = useState('');
-  const [inlineMessage, setInlineMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  const [inlineMessage, setInlineMessage] = useState<{ tone: 'default' | 'success' | 'error'; text: string } | null>(null);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(OTP_COOLDOWN_STORAGE_KEY);
+    if (!stored) return;
+    const remainingMs = Number(stored) - Date.now();
+    if (remainingMs > 0) {
+      setCooldownSeconds(Math.ceil(remainingMs / 1000));
+      return;
+    }
+    window.localStorage.removeItem(OTP_COOLDOWN_STORAGE_KEY);
+  }, []);
 
   useEffect(() => {
     if (cooldownSeconds <= 0) return;
@@ -22,6 +37,19 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     }, 1000);
     return () => window.clearTimeout(timer);
   }, [cooldownSeconds]);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) {
+      window.localStorage.removeItem(OTP_COOLDOWN_STORAGE_KEY);
+      return;
+    }
+    const nextUntil = Date.now() + cooldownSeconds * 1000;
+    window.localStorage.setItem(OTP_COOLDOWN_STORAGE_KEY, String(nextUntil));
+  }, [cooldownSeconds]);
+
+  const startCooldown = (seconds: number) => {
+    setCooldownSeconds(seconds);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,17 +61,17 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       await signInWithOtp(nextEmail);
       setLastEmailSent(nextEmail);
       setInlineMessage({ tone: 'success', text: `Revisa tu correo: ${nextEmail}` });
+      startCooldown(DEFAULT_SEND_COOLDOWN_SECONDS);
       notify('Revisa tu correo para abrir el enlace de acceso.', 'success');
     } catch (error) {
-      console.error(error);
       const message = (error as Error).message || 'No se pudo iniciar sesión.';
       if (/rate limit|too many requests|429/i.test(message)) {
-        setCooldownSeconds(45);
-        setInlineMessage({ tone: 'error', text: 'Espera un momento antes de volver a intentar.' });
-        notify('Espera un momento antes de volver a intentar.', 'error');
+        startCooldown(RATE_LIMIT_COOLDOWN_SECONDS);
+        setInlineMessage({ tone: 'error', text: 'Demasiados intentos. Intenta de nuevo en unos minutos.' });
+        notify('Demasiados intentos. Intenta de nuevo en unos minutos.', 'error');
       } else {
         setInlineMessage({ tone: 'error', text: 'No se pudo iniciar sesión.' });
-        notify(message, 'error');
+        notify('No se pudo iniciar sesión.', 'error');
       }
     } finally {
       setSubmitting(false);
@@ -70,9 +98,9 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-6">
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-gray-100 mx-auto flex items-center justify-center border border-gray-200">
+          <div className="w-12 h-12 rounded-2xl bg-gray-50 mx-auto flex items-center justify-center border border-gray-200">
             <Shield className="w-5 h-5 text-indigo-600" />
           </div>
           <div>
@@ -83,7 +111,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 mt-8">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Correo</label>
             <div className="relative">
@@ -106,18 +134,18 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
             className="w-full py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             title="Te enviaremos un enlace para entrar"
           >
-            {submitting ? 'Enviando...' : cooldownSeconds > 0 ? `Espera ${cooldownSeconds}s` : 'Iniciar sesión'}
+            {submitting ? 'Enviando...' : cooldownSeconds > 0 ? `Espera ${Math.ceil(cooldownSeconds / 60) > 1 ? `${Math.ceil(cooldownSeconds / 60)} min` : `${cooldownSeconds}s`}` : 'Iniciar sesión'}
           </button>
         </form>
 
         {inlineMessage && (
-          <div className={`rounded-xl px-4 py-3 text-sm border ${inlineMessage.tone === 'success' ? 'bg-green-50 border-green-100 text-green-800' : 'bg-amber-50 border-amber-100 text-amber-800'}`}>
+          <div className={`mt-4 rounded-xl px-4 py-3 text-sm border ${inlineMessage.tone === 'success' ? 'bg-green-50 border-green-100 text-green-800' : inlineMessage.tone === 'error' ? 'bg-amber-50 border-amber-100 text-amber-800' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
             {inlineMessage.text}
           </div>
         )}
 
         {!inlineMessage && lastEmailSent && (
-          <div className="rounded-xl px-4 py-3 text-sm border bg-green-50 border-green-100 text-green-800">
+          <div className="mt-4 rounded-xl px-4 py-3 text-sm border bg-green-50 border-green-100 text-green-800">
             Revisa tu correo: <strong>{lastEmailSent}</strong>
           </div>
         )}
