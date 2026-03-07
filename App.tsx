@@ -59,8 +59,8 @@ const App: React.FC = () => {
   const [showLicenseManager, setShowLicenseManager] = useState(false);
   const [showUserModeSetup, setShowUserModeSetup] = useState(false);
   const [forceUpdateInfo, setForceUpdateInfo] = useState<{ minVersion: string; message?: string } | null>(null);
-  const { businessId } = useEmisor();
-  const { settings: businessSettings, defaultTab, updateLocalSettings } = useBusinessSettings(businessId);
+  const { businessId, operationalBusinessId } = useEmisor();
+  const { settings: businessSettings, defaultTab, updateLocalSettings } = useBusinessSettings(operationalBusinessId);
   const clickCountRef = useRef(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -348,7 +348,7 @@ const App: React.FC = () => {
       <AdminModal
         isOpen={showAdminModal}
         onClose={() => setShowAdminModal(false)}
-        businessId={businessId}
+        businessId={operationalBusinessId}
         businessSettings={businessSettings}
         onBusinessSettingsChange={updateLocalSettings}
       />

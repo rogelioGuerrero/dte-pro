@@ -2,36 +2,51 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { apiFetch } from '../utils/apiClient';
 import { getBackendAuthToken } from '../utils/backendConfig';
 
+export interface EmisorMembership {
+  id?: string;
+  business_id: string;
+  nit?: string;
+  nombre?: string;
+  role?: string | null;
+}
+
 interface EmisorContextValue {
   businessId: string | null;
+  operationalBusinessId: string | null;
   setBusinessId: (id: string | null) => void;
-  emisores: { business_id: string; nombre?: string; role?: string | null }[];
+  emisores: EmisorMembership[];
   loading: boolean;
   reload: () => Promise<void>;
   currentRole: string | null;
+  selectedEmisor: EmisorMembership | null;
 }
 
 const STORAGE_KEY = 'dte_business_id';
 const EmisorContext = createContext<EmisorContextValue | undefined>(undefined);
 
-type BackendBusinessMembership = {
-  business_id: string;
-  nombre?: string;
-  role?: string | null;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const isUuid = (value: string | null | undefined) => Boolean(value && UUID_REGEX.test(value));
+
+const getMembershipSelectionValue = (membership: EmisorMembership) => membership.id || membership.business_id;
+
+const findMembershipBySelection = (memberships: EmisorMembership[], selection: string | null) => {
+  if (!selection) return null;
+  return memberships.find((item) => item.id === selection || item.business_id === selection) || null;
 };
 
 export const EmisorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [businessId, setBusinessIdState] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY));
-  const [emisores, setEmisores] = useState<{ business_id: string; nombre?: string; role?: string | null }[]>([]);
+  const [selectedBusinessKey, setSelectedBusinessKey] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY));
+  const [emisores, setEmisores] = useState<EmisorMembership[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (businessId) {
-      localStorage.setItem(STORAGE_KEY, businessId);
+    if (selectedBusinessKey) {
+      localStorage.setItem(STORAGE_KEY, selectedBusinessKey);
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
-  }, [businessId]);
+  }, [selectedBusinessKey]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,22 +56,22 @@ export const EmisorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       if (token) {
         try {
-          const remoteBusinesses = await apiFetch<BackendBusinessMembership[]>('/api/business/businesses/me');
+          const remoteBusinesses = await apiFetch<EmisorMembership[]>('/api/business/businesses/me');
           setEmisores(remoteBusinesses);
 
-          const hasStoredSelection = stored && remoteBusinesses.some((item) => item.business_id === stored);
+          const hasStoredSelection = Boolean(findMembershipBySelection(remoteBusinesses, stored));
           const nextBusinessId = hasStoredSelection
             ? stored
-            : remoteBusinesses[0]?.business_id || stored || null;
+            : remoteBusinesses[0] ? getMembershipSelectionValue(remoteBusinesses[0]) : stored || null;
 
-          setBusinessIdState(nextBusinessId);
+          setSelectedBusinessKey(nextBusinessId);
           return;
         } catch (error) {
           console.warn('No se pudieron cargar los emisores remotos; usando fallback local.', error);
         }
       }
 
-      setBusinessIdState(stored);
+      setSelectedBusinessKey(stored);
       if (stored) {
         setEmisores([{ business_id: stored, nombre: localStorage.getItem('emisor_nombre') || stored, role: null }]);
       } else {
@@ -83,16 +98,25 @@ export const EmisorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [load]);
 
   const setBusinessId = (id: string | null) => {
-    setBusinessIdState(id);
+    setSelectedBusinessKey(id);
   };
 
+  const selectedEmisor = useMemo(() => findMembershipBySelection(emisores, selectedBusinessKey), [emisores, selectedBusinessKey]);
+
+  const businessId = useMemo(() => selectedEmisor?.business_id || selectedBusinessKey || null, [selectedEmisor, selectedBusinessKey]);
+
+  const operationalBusinessId = useMemo(() => {
+    if (selectedEmisor?.id) return selectedEmisor.id;
+    return isUuid(selectedBusinessKey) ? selectedBusinessKey : null;
+  }, [selectedEmisor, selectedBusinessKey]);
+
   const currentRole = useMemo(() => {
-    return emisores.find((item) => item.business_id === businessId)?.role || null;
-  }, [businessId, emisores]);
+    return selectedEmisor?.role || null;
+  }, [selectedEmisor]);
 
   const value = useMemo<EmisorContextValue>(
-    () => ({ businessId, setBusinessId, emisores, loading, reload: load, currentRole }),
-    [businessId, emisores, loading, load, currentRole]
+    () => ({ businessId, operationalBusinessId, setBusinessId, emisores, loading, reload: load, currentRole, selectedEmisor }),
+    [businessId, operationalBusinessId, emisores, loading, load, currentRole, selectedEmisor]
   );
 
   return <EmisorContext.Provider value={value}>{children}</EmisorContext.Provider>;

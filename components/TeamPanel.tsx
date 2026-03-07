@@ -31,7 +31,7 @@ interface InviteResponse {
 }
 
 export const TeamPanel: React.FC = () => {
-  const { businessId, currentRole } = useEmisor();
+  const { businessId, operationalBusinessId, currentRole } = useEmisor();
   const { user } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,10 +43,13 @@ export const TeamPanel: React.FC = () => {
   const canManage = currentRole === 'owner' || currentRole === 'admin' || isPlatformAdmin;
 
   const load = async () => {
-    if (!businessId) return;
+    if (!operationalBusinessId) {
+      setMembers([]);
+      return;
+    }
     setLoading(true);
     try {
-      const data = await apiFetch<TeamUsersResponse>(`/api/business/businesses/${businessId}/users`);
+      const data = await apiFetch<TeamUsersResponse>(`/api/business/businesses/${operationalBusinessId}/users`);
       setMembers(
         data.users.map((m) => ({
           email: m.email,
@@ -65,18 +68,18 @@ export const TeamPanel: React.FC = () => {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [businessId]);
+  }, [operationalBusinessId]);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!businessId || !inviteEmail.trim()) return;
+    if (!operationalBusinessId || !inviteEmail.trim()) return;
 
     setInviting(true);
     try {
       const response = await apiFetch<InviteResponse>('/api/business/business_users/invite', {
         method: 'POST',
         body: {
-          businessId,
+          businessId: operationalBusinessId,
           email: inviteEmail.trim(),
           role: inviteRole || 'operator',
         },
@@ -119,6 +122,8 @@ export const TeamPanel: React.FC = () => {
             <p className="text-sm text-gray-500">Cargando...</p>
           ) : !businessId ? (
             <p className="text-sm text-gray-500">Selecciona un emisor para ver el equipo.</p>
+          ) : !operationalBusinessId ? (
+            <p className="text-sm text-gray-500">Este negocio aún no expone UUID operativo en `/businesses/me`, así que el equipo no puede consultarse desde frontend todavía.</p>
           ) : members.length === 0 ? (
             <p className="text-sm text-gray-500">No hay usuarios asociados.</p>
           ) : (
@@ -177,7 +182,7 @@ export const TeamPanel: React.FC = () => {
             <div className="flex justify-end">
               <button
                 type="submit"
-                disabled={inviting || !businessId}
+                disabled={inviting || !operationalBusinessId}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60"
               >
                 <Mail className="w-4 h-4" />

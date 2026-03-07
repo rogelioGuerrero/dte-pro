@@ -28,10 +28,10 @@ interface MiCuentaProps {
 const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, businessSettings, onBusinessSettingsChange }) => {
   const { isSupported, permission, subscription, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
   const { user, isConfigured, signOut } = useAuth();
-  const { businessId, emisores, reload, currentRole, setBusinessId } = useEmisor();
+  const { businessId, operationalBusinessId, emisores, reload, currentRole, setBusinessId, selectedEmisor } = useEmisor();
   const isPlatformAdmin = Boolean(user && businessId && !currentRole);
   const canManageLocal = currentRole === 'owner' || currentRole === 'admin' || isPlatformAdmin || !currentRole;
-  const canManageRemote = currentRole === 'owner' || currentRole === 'admin' || isPlatformAdmin;
+  const canManageRemote = (currentRole === 'owner' || currentRole === 'admin' || isPlatformAdmin) && Boolean(operationalBusinessId);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showEmisorConfig, setShowEmisorConfig] = useState(false);
   const [manualBusinessId, setManualBusinessId] = useState('');
@@ -80,7 +80,6 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
     hasCert: false,
     hasPassword: false
   });
-  const selectedEmisor = emisores.find((item) => item.business_id === businessId) || null;
   const [remoteDraft, setRemoteDraft] = useState<BusinessSettings | null>(businessSettings || null);
   const [isSavingRemoteSettings, setIsSavingRemoteSettings] = useState(false);
   
@@ -129,13 +128,13 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
   };
 
   const handleRemoteSave = async () => {
-    if (!remoteDraft || !businessId || !onBusinessSettingsChange) return;
+    if (!remoteDraft || !operationalBusinessId || !onBusinessSettingsChange) return;
 
     setIsSavingRemoteSettings(true);
     try {
       const normalized = normalizeBusinessSettings({
         ...remoteDraft,
-        businessId,
+        businessId: operationalBusinessId,
         source: 'remote',
       });
       const saved = await saveBusinessSettingsToBackend(normalized);
@@ -159,7 +158,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
       const storedAmbiente = localStorage.getItem('dte_ambiente') || '00';
       const localEmisor = await getEmisor();
 
-      if (businessId) {
+      if (operationalBusinessId) {
         try {
           const remote = await apiFetch<{ success: boolean; business: {
             id: string;
@@ -178,7 +177,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
             cod_punto_venta_mh?: string | null;
             nrc?: string;
             logo_url?: string | null;
-          } }>(`/api/business/businesses/${businessId}`);
+          } }>(`/api/business/businesses/${operationalBusinessId}`);
 
           setBusinessData({
             nombre: remote.business.nombre_comercial || remote.business.nombre || selectedEmisor?.nombre || 'Empresa',
@@ -234,7 +233,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
     };
 
     loadLocal();
-  }, [permission, showEmisorConfig, businessId, selectedEmisor?.nombre]);
+  }, [permission, showEmisorConfig, operationalBusinessId, selectedEmisor?.nombre]);
 
   const handleOpenConfig = () => {
     setShowEmisorConfig(true);
@@ -367,6 +366,11 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
             <p className="text-sm text-gray-600">
               {businessId ? 'Administra la tienda seleccionada desde aquí.' : 'Primero elige una tienda o escribe su código.'}
             </p>
+            {businessId && !operationalBusinessId && (
+              <p className="text-xs text-amber-700 mt-2">
+                El backend aún devuelve este emisor por NIT en `/businesses/me`. Para sincronización remota completa todavía hace falta el UUID real del negocio.
+              </p>
+            )}
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             {canManageLocal && (

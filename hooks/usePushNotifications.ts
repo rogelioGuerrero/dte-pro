@@ -11,7 +11,7 @@ interface PushSubscription {
 }
 
 export const usePushNotifications = () => {
-  const { businessId } = useEmisor();
+  const { businessId, operationalBusinessId } = useEmisor();
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -129,14 +129,14 @@ export const usePushNotifications = () => {
   };
 
   const sendSubscriptionToBackend = async (nextSubscription: PushSubscription) => {
-    if (!businessId) {
+    if (!operationalBusinessId) {
       return;
     }
 
     await apiFetch('/api/business/push-subscriptions', {
       method: 'POST',
       body: {
-        businessId,
+        businessId: operationalBusinessId,
         subscription: nextSubscription,
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
       },
@@ -157,11 +157,11 @@ export const usePushNotifications = () => {
       setSubscription(null);
       window.localStorage.removeItem(storageKey);
 
-      if (businessId) {
+      if (operationalBusinessId) {
         await apiFetch('/api/business/push-subscriptions', {
           method: 'DELETE',
           body: {
-            businessId,
+            businessId: operationalBusinessId,
             endpoint: subscription?.endpoint || null,
           },
         });
