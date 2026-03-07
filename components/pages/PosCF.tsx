@@ -394,13 +394,16 @@ const PosCF: React.FC = () => {
             {(() => {
               const mh = 'mhResponse' in respuestaMH ? respuestaMH.mhResponse : undefined;
               const mhStatus = mh?.estado;
-              const mhMessage = 'error' in respuestaMH
-                ? respuestaMH.error
-                : (mh?.mensaje || (typeof respuestaMH.error === 'string' ? respuestaMH.error : respuestaMH.error?.message) || 'Mensaje no disponible');
+              const rawErrorMessage: string = 'error' in respuestaMH
+                ? String(respuestaMH.error || '')
+                : (typeof respuestaMH.error === 'string' ? respuestaMH.error : String(respuestaMH.error?.message || ''));
+              const mhMessage: string = 'error' in respuestaMH
+                ? rawErrorMessage
+                : String(mh?.mensaje || rawErrorMessage || 'Mensaje no disponible');
               return (
                 <>
                   <div className="font-semibold">Hacienda: {mhStatus || 'Sin estado'}</div>
-                  <div className="text-gray-600">{String(mhMessage || 'Mensaje no disponible')}</div>
+                  <div className="text-gray-600">{mhMessage || 'Mensaje no disponible'}</div>
                   {mh?.selloRecepcion && (
                     <div className="text-xs text-gray-500 break-all">Sello: {mh.selloRecepcion}</div>
                   )}

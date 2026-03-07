@@ -235,20 +235,13 @@ export const GeneradorSimple: React.FC = () => {
               {(() => {
                 const hasMh = 'mhResponse' in respuestaMH;
                 const status = hasMh ? respuestaMH.mhResponse?.estado : undefined;
-                let rawErrorMessage = '';
+                const rawErrorMessage: string = hasMh
+                  ? (typeof respuestaMH.error === 'string' ? respuestaMH.error : String(respuestaMH.error?.message || ''))
+                  : String(respuestaMH.error || '');
 
-                if (hasMh) {
-                  const backendError = respuestaMH.error;
-                  rawErrorMessage = typeof backendError === 'string'
-                    ? backendError
-                    : (backendError?.message || '');
-                } else {
-                  rawErrorMessage = String(respuestaMH.error || '');
-                }
-
-                const resolvedMessage = hasMh
-                  ? (respuestaMH.mhResponse?.mensaje || rawErrorMessage || 'Mensaje no disponible')
-                  : (rawErrorMessage || 'Mensaje no disponible');
+                const resolvedMessage: string = hasMh
+                  ? String(respuestaMH.mhResponse?.mensaje || rawErrorMessage || 'Mensaje no disponible')
+                  : String(rawErrorMessage || 'Mensaje no disponible');
 
                 return (
                   <div className={`px-4 py-3 border-b ${hasMh && respuestaMH.mhResponse?.success ? 'bg-green-50' : 'bg-red-50'}`}>
