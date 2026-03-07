@@ -14,12 +14,15 @@ import { DeviceFingerprintDisplay } from './DeviceFingerprintDisplay';
 import { apiFetch } from '../utils/apiClient';
 import { TeamPanel } from './TeamPanel';
 import { useAuth } from '../contexts/AuthContext';
+import { BusinessSettings, buildFeatureSummary } from '../utils/businessSettings';
 
 interface MiCuentaProps {
   onBack?: () => void;
+  onOpenAdvancedSettings?: () => void;
+  businessSettings?: BusinessSettings;
 }
 
-const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
+const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, businessSettings }) => {
   const { isSupported, permission, subscription, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
   const { user, isConfigured, signOut } = useAuth();
   const { businessId, emisores, reload } = useEmisor();
@@ -72,6 +75,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     hasPassword: false
   });
   const selectedEmisor = emisores.find((item) => item.business_id === businessId) || null;
+  const visibleModules = businessSettings ? buildFeatureSummary(businessSettings) : [];
   
   const restoreFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -312,6 +316,15 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
               <Settings className="w-4 h-4" />
               Configurar emisor
             </button>
+            {onOpenAdvancedSettings && (
+              <button
+                onClick={onOpenAdvancedSettings}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50"
+              >
+                <Settings className="w-4 h-4" />
+                Configurar módulos y tabs
+              </button>
+            )}
           </div>
         </div>
 
@@ -357,6 +370,44 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <DeviceFingerprintDisplay />
+          {onOpenAdvancedSettings && businessSettings && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-medium text-gray-900">Módulos y tabs</h2>
+                  <p className="text-sm text-gray-500 mt-1">Aquí puedes ver qué se muestra hoy y abrir la configuración avanzada.</p>
+                </div>
+                <button
+                  onClick={onOpenAdvancedSettings}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
+                >
+                  <Settings className="w-4 h-4" />
+                  Abrir configuración
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Tab inicial</p>
+                  <p className="text-sm font-medium text-gray-900 mt-1">{businessSettings.defaultTab}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Módulos visibles</p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {visibleModules.length > 0 ? visibleModules.map((item) => (
+                      <span key={item} className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium border border-indigo-100">
+                        {item}
+                      </span>
+                    )) : (
+                      <span className="text-sm text-gray-500">No hay módulos visibles configurados.</span>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  La edición se hace en <strong>Configuración Avanzada &gt; Negocio</strong>.
+                </p>
+              </div>
+            </div>
+          )}
           {isConfigured && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="border-b border-gray-200 px-6 py-4 flex items-center gap-3">

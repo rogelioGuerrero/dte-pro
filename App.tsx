@@ -280,7 +280,13 @@ const App: React.FC = () => {
         {activeTab === 'inventory' && (businessId ? <SistemaInventario /> : <Placeholder />)}
         {activeTab === 'factura' && <FacturaGenerator />}
         {activeTab === 'historial' && (businessId ? <DTEDashboard /> : <Placeholder />)}
-        {activeTab === 'micuenta' && <MiCuenta onBack={() => setActiveTab('factura')} />}
+        {activeTab === 'micuenta' && (
+          <MiCuenta
+            onBack={() => setActiveTab('factura')}
+            onOpenAdvancedSettings={() => setShowAdminModal(true)}
+            businessSettings={businessSettings}
+          />
+        )}
         {activeTab === 'simple' && (businessId ? (
           <React.Suspense fallback={<div>Cargando...</div>}>
             {React.createElement(React.lazy(() => import('./components/pages/GeneradorSimple')))}
