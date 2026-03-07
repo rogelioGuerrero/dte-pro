@@ -1,5 +1,6 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useEmisor } from '../contexts/EmisorContext';
+import { apiFetch } from '../utils/apiClient';
 
 interface PushSubscription {
   endpoint: string;
@@ -10,14 +11,28 @@ interface PushSubscription {
 }
 
 export const usePushNotifications = () => {
-  useEmisor();
+  const { businessId } = useEmisor();
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const syncEndpoint = import.meta.env.VITE_PUSH_SUBSCRIPTION_ENDPOINT as string | undefined;
+  const storageKey = useMemo(() => `dte_push_subscription:${businessId || 'anonymous'}`, [businessId]);
 
   useEffect(() => {
     checkSupport();
+
+    if (typeof window !== 'undefined') {
+      const stored = window.localStorage.getItem(storageKey);
+      if (stored) {
+        try {
+          setSubscription(JSON.parse(stored) as PushSubscription);
+        } catch (error) {
+          console.error('Error parsing stored push subscription:', error);
+          window.localStorage.removeItem(storageKey);
+        }
+      }
+    }
 
     const handlePermissionGranted = () => {
       setPermission('granted');
@@ -29,7 +44,26 @@ export const usePushNotifications = () => {
     return () => {
       window.removeEventListener('push-permission-granted', handlePermissionGranted);
     };
-  }, []);
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!isSupported) return;
+
+    const loadExistingSubscription = async () => {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const existing = await registration.pushManager.getSubscription();
+        if (!existing) return;
+        const existingData = existing.toJSON() as PushSubscription;
+        setSubscription(existingData);
+        window.localStorage.setItem(storageKey, JSON.stringify(existingData));
+      } catch (error) {
+        console.error('Error loading existing push subscription:', error);
+      }
+    };
+
+    loadExistingSubscription();
+  }, [isSupported, storageKey]);
 
   const checkSupport = () => {
     const supported = 'serviceWorker' in navigator && 'PushManager' in window;
@@ -82,6 +116,7 @@ export const usePushNotifications = () => {
 
       const subscriptionData = pushSubscription.toJSON();
       setSubscription(subscriptionData as PushSubscription);
+      window.localStorage.setItem(storageKey, JSON.stringify(subscriptionData));
 
       await sendSubscriptionToBackend(subscriptionData as PushSubscription);
 
@@ -94,8 +129,18 @@ export const usePushNotifications = () => {
     }
   };
 
-  const sendSubscriptionToBackend = async (_subscription: PushSubscription) => {
-    return;
+  const sendSubscriptionToBackend = async (nextSubscription: PushSubscription) => {
+    if (!syncEndpoint) {
+      return;
+    }
+
+    await apiFetch(syncEndpoint, {
+      method: 'POST',
+      body: {
+        businessId,
+        subscription: nextSubscription,
+      },
+    });
   };
 
   const unsubscribeFromPush = async (): Promise<boolean> => {
@@ -110,6 +155,17 @@ export const usePushNotifications = () => {
       }
 
       setSubscription(null);
+      window.localStorage.removeItem(storageKey);
+
+      if (syncEndpoint) {
+        await apiFetch(syncEndpoint, {
+          method: 'DELETE',
+          body: {
+            businessId,
+          },
+        });
+      }
+
       return true;
     } catch (error) {
       console.error('Error unsubscribing from push notifications:', error);

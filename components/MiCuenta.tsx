@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Bell, Shield, Key, Store, Upload } from 'lucide-react';
+import { Download, Bell, Shield, Key, Store, Upload, LogOut, UserRound } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { downloadBackup, restoreBackupFromText } from '../utils/backup';
 import { notify } from '../utils/notifications';
@@ -13,13 +13,15 @@ import { hasCertificate } from '../utils/secureStorage';
 import { DeviceFingerprintDisplay } from './DeviceFingerprintDisplay';
 import { apiFetch } from '../utils/apiClient';
 import { TeamPanel } from './TeamPanel';
+import { useAuth } from '../contexts/AuthContext';
 
 interface MiCuentaProps {
   onBack?: () => void;
 }
 
 const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
-  const { isSupported, permission, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
+  const { isSupported, permission, subscription, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
+  const { user, isConfigured, signOut } = useAuth();
   const { businessId, emisores, reload } = useEmisor();
   const canManage = true;
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -72,6 +74,16 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
   const selectedEmisor = emisores.find((item) => item.business_id === businessId) || null;
   
   const restoreFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      notify('Sesión cerrada correctamente', 'success');
+    } catch (error) {
+      console.error(error);
+      notify('No se pudo cerrar sesión', 'error');
+    }
+  };
 
   useEffect(() => {
     // Cargar estado inicial
@@ -265,11 +277,22 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
           <h1 className="text-2xl font-bold text-gray-900">Mi Cuenta</h1>
           <p className="text-sm text-gray-600 mt-1">Configura tu negocio y habilita la transmisión.</p>
         </div>
-        {onBack && (
-          <button onClick={onBack} className="text-indigo-600 hover:text-indigo-800 text-sm font-medium md:hidden">
-            Volver
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {isConfigured && user && (
+            <button
+              onClick={handleSignOut}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <LogOut className="w-4 h-4" />
+              Cerrar sesión
+            </button>
+          )}
+          {onBack && (
+            <button onClick={onBack} className="text-indigo-600 hover:text-indigo-800 text-sm font-medium md:hidden">
+              Volver
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-gradient-to-r from-indigo-50 to-white border border-indigo-100 rounded-2xl p-4 sm:p-5">
@@ -294,6 +317,15 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase">Cuenta</p>
+            <p className="text-sm font-medium text-gray-900 mt-1">
+              {isConfigured ? (user?.email || 'Sin sesión') : 'Auth opcional desactivada'}
+            </p>
+            <p className="text-xs text-gray-600 mt-1">
+              {isConfigured ? (user ? 'Sesión activa con Supabase.' : 'Inicia sesión para sincronización remota.') : 'La app puede operar sin login mientras se configura Supabase.'}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs font-semibold text-gray-500 uppercase">1. Emisor</p>
             <p className="text-sm font-medium text-gray-900 mt-1">{businessId ? 'Listo para configurar' : 'Pendiente'}</p>
             <p className="text-xs text-gray-600 mt-1">{businessId ? 'Datos del negocio y códigos MH.' : 'Vincula un emisor a tu cuenta.'}</p>
@@ -310,12 +342,39 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
             <p className="text-sm font-medium text-gray-900 mt-1">{businessId ? 'Disponible' : 'Pendiente'}</p>
             <p className="text-xs text-gray-600 mt-1">Roles y usuarios por emisor.</p>
           </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase">4. Push</p>
+            <p className="text-sm font-medium text-gray-900 mt-1">
+              {subscription ? 'Suscrito' : permission === 'granted' ? 'Permiso activo' : 'Pendiente'}
+            </p>
+            <p className="text-xs text-gray-600 mt-1">
+              {subscription ? 'Este dispositivo ya está listo para recibir alertas.' : 'Activa notificaciones para suscribir este dispositivo.'}
+            </p>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <DeviceFingerprintDisplay />
+          {isConfigured && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="border-b border-gray-200 px-6 py-4 flex items-center gap-3">
+                <UserRound className="w-5 h-5 text-gray-500" />
+                <h2 className="text-lg font-medium text-gray-900">Sesión</h2>
+              </div>
+              <div className="p-6 space-y-3 text-sm text-gray-700">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-gray-500">Correo</span>
+                  <span className="font-medium text-gray-900 break-all">{user?.email || 'Sin sesión activa'}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-gray-500">Estado</span>
+                  <span className={`font-medium ${user ? 'text-green-600' : 'text-amber-600'}`}>{user ? 'Autenticado' : 'Sin autenticación'}</span>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -414,6 +473,8 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
               <p className="text-sm text-gray-600">Recibe alertas importantes sobre mantenimiento y estado del sistema.</p>
               {!isSupported && <p className="mt-2 text-xs text-red-500">Tu navegador no soporta notificaciones.</p>}
               {permission === 'denied' && <p className="mt-2 text-xs text-orange-500">Permiso bloqueado. Debes habilitarlo en tu navegador.</p>}
+              {permission === 'granted' && !subscription && <p className="mt-2 text-xs text-amber-600">Permiso concedido, pero el dispositivo aún no tiene una suscripción activa.</p>}
+              {subscription && <p className="mt-2 text-xs text-green-600 break-all">Suscripción activa en este dispositivo.</p>}
             </div>
           </div>
 
