@@ -11,6 +11,8 @@ import { useEmisor } from '../contexts/EmisorContext';
 import { getEmisor, saveEmisor } from '../utils/emisorDb';
 import { hasCertificate } from '../utils/secureStorage';
 import { DeviceFingerprintDisplay } from './DeviceFingerprintDisplay';
+import { apiFetch } from '../utils/apiClient';
+import { TeamPanel } from './TeamPanel';
 
 interface MiCuentaProps {
   onBack?: () => void;
@@ -18,7 +20,7 @@ interface MiCuentaProps {
 
 const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
   const { isSupported, permission, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
-  const { businessId, setBusinessId } = useEmisor();
+  const { businessId, emisores, reload } = useEmisor();
   const canManage = true;
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showEmisorConfig, setShowEmisorConfig] = useState(false);
@@ -67,6 +69,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     hasCert: false,
     hasPassword: false
   });
+  const selectedEmisor = emisores.find((item) => item.business_id === businessId) || null;
   
   const restoreFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -78,14 +81,70 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     const loadLocal = async () => {
       const storedAmbiente = localStorage.getItem('dte_ambiente') || '00';
       const localEmisor = await getEmisor();
-      if (!localEmisor) {
-        setBusinessData({ nombre: 'Sin emisor', nit: 'No definido', ambiente: storedAmbiente });
-      } else {
-        const nit = (localEmisor.nit || '').replace(/[\s-]/g, '');
-        if (nit) {
-          setBusinessId(nit);
+
+      if (businessId) {
+        try {
+          const remote = await apiFetch<{ success: boolean; business: {
+            id: string;
+            nit?: string;
+            nombre?: string;
+            nombre_comercial?: string;
+            telefono?: string;
+            correo?: string;
+            dir_departamento?: string;
+            dir_municipio?: string;
+            dir_complemento?: string;
+            cod_actividad?: string;
+            desc_actividad?: string;
+            tipo_establecimiento?: string | null;
+            cod_estable_mh?: string | null;
+            cod_punto_venta_mh?: string | null;
+            nrc?: string;
+            logo_url?: string | null;
+          } }>(`/api/business/businesses/${businessId}`);
+
+          setBusinessData({
+            nombre: remote.business.nombre_comercial || remote.business.nombre || selectedEmisor?.nombre || 'Empresa',
+            nit: remote.business.nit || 'No definido',
+            ambiente: storedAmbiente,
+          });
+
+          setEmisorForm((prev) => ({
+            ...prev,
+            nit: remote.business.nit || prev.nit,
+            nrc: remote.business.nrc || prev.nrc,
+            nombre: remote.business.nombre || prev.nombre,
+            nombreComercial: remote.business.nombre_comercial || prev.nombreComercial,
+            actividadEconomica: remote.business.cod_actividad || prev.actividadEconomica,
+            descActividad: remote.business.desc_actividad || prev.descActividad,
+            tipoEstablecimiento: remote.business.tipo_establecimiento || prev.tipoEstablecimiento,
+            departamento: remote.business.dir_departamento || prev.departamento,
+            municipio: remote.business.dir_municipio || prev.municipio,
+            direccion: remote.business.dir_complemento || prev.direccion,
+            telefono: remote.business.telefono || prev.telefono,
+            correo: remote.business.correo || prev.correo,
+            codEstableMH: remote.business.cod_estable_mh ?? prev.codEstableMH,
+            codPuntoVentaMH: remote.business.cod_punto_venta_mh ?? prev.codPuntoVentaMH,
+            logoUrl: remote.business.logo_url || prev.logoUrl,
+          }));
+        } catch (error) {
+          console.warn('No se pudo cargar el negocio remoto; usando fallback local.', error);
         }
-        setBusinessData({ nombre: localEmisor.nombreComercial || localEmisor.nombre || 'Empresa', nit: nit || localEmisor.nit, ambiente: storedAmbiente });
+      }
+
+      if (!localEmisor) {
+        setBusinessData((prev) => ({
+          nombre: prev.nombre || selectedEmisor?.nombre || 'Sin emisor',
+          nit: prev.nit || 'No definido',
+          ambiente: storedAmbiente,
+        }));
+      } else {
+        const nit = (localEmisor.nit || '').replace(/[-\s]/g, '');
+        setBusinessData((prev) => ({
+          nombre: prev.nombre || localEmisor.nombreComercial || localEmisor.nombre || 'Empresa',
+          nit: prev.nit || nit || localEmisor.nit,
+          ambiente: storedAmbiente,
+        }));
         setEmisorForm((prev) => ({
           ...prev,
           ...localEmisor,
@@ -98,7 +157,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     };
 
     loadLocal();
-  }, [permission, showEmisorConfig, setBusinessId]);
+  }, [permission, showEmisorConfig, businessId, selectedEmisor?.nombre]);
 
   const handleOpenConfig = () => {
     setShowEmisorConfig(true);
@@ -124,14 +183,15 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
         codPuntoVentaMH: emisorForm.codPuntoVentaMH,
         logo: emisorForm.logoUrl || undefined,
       });
-      const nit = (emisorForm.nit || '').replace(/[\s-]/g, '');
-      if (nit) {
-        setBusinessId(nit);
-      }
       localStorage.setItem('emisor_nombre', emisorForm.nombreComercial || emisorForm.nombre || '');
+      await reload();
       notify('Datos del emisor guardados', 'success');
       setShowEmisorConfig(false);
-      setBusinessData((prev) => ({ ...prev, nombre: emisorForm.nombreComercial || emisorForm.nombre || prev.nombre, nit: nit || prev.nit }));
+      setBusinessData((prev) => ({
+        ...prev,
+        nombre: emisorForm.nombreComercial || emisorForm.nombre || prev.nombre,
+        nit: (emisorForm.nit || '').replace(/[\s-]/g, '') || prev.nit
+      }));
     } catch (error) {
       console.error(error);
       notify('Error guardando emisor', 'error');
@@ -217,7 +277,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
           <div>
             <p className="text-sm font-semibold text-gray-900">Estado de configuración</p>
             <p className="text-sm text-gray-600">
-              {businessId ? 'Emisor seleccionado: puedes configurar datos y credenciales.' : 'Aún no hay emisor asociado a tu cuenta.'}
+              {businessId ? 'Emisor seleccionado: puedes configurar datos, credenciales y equipo.' : 'Aún no hay emisor asociado a tu cuenta.'}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -285,6 +345,10 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
                 <p className="text-gray-900 font-medium mt-1">{businessData.nit}</p>
               </div>
               <div>
+                <label className="text-xs text-gray-500 uppercase font-semibold">Business ID</label>
+                <p className="text-gray-900 font-medium mt-1 break-all">{businessId || 'No asignado'}</p>
+              </div>
+              <div>
                 <label className="text-xs text-gray-500 uppercase font-semibold">Ambiente</label>
                 <div className="mt-2">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -297,9 +361,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 text-sm text-gray-600">
-            Gestión de equipo deshabilitada en modo fingerprint-only.
-          </div>
+          <TeamPanel />
         </div>
 
         <div className="space-y-6">
