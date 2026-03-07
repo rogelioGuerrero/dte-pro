@@ -52,9 +52,9 @@ export const GeneradorSimple: React.FC = () => {
     };
 
     // Item simple calculado aquí mismo
-    const precioNum = Number(precio);
+    const precioNum = redondear(Number(precio), 2);
     const cantidadNum = Number(cantidad);
-    const totalLinea = redondear(precioNum * cantidadNum, 8);
+    const totalLinea = redondear(precioNum * cantidadNum, 2);
 
     const item = {
       numItem: 1,

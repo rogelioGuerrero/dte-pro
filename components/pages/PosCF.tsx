@@ -94,11 +94,11 @@ const PosCF: React.FC = () => {
     }
 
     const items = cart.map((item, idx) => {
-      const precioConIva = Number(item.producto.precioSugerido || 0);
+      const precioConIva = redondear(Number(item.producto.precioSugerido || 0), 2);
       const cantidad = Number(item.cantidad || 1);
 
       // FE 01: mantener precio final (incluye IVA) en ventaGravada y precioUni; backend recalcula IVA
-      const precioUni = redondear(precioConIva, 8);
+      const precioUni = precioConIva;
       const ventaGravada = redondear(precioConIva * cantidad, 2);
       const ivaItem = 0; // no enviar IVA desde frontend
 
