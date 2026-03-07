@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Users, Shield, Mail } from 'lucide-react';
 import { apiFetch } from '../utils/apiClient';
 import { useEmisor } from '../contexts/EmisorContext';
+import { useAuth } from '../contexts/AuthContext';
 import { normalizeRole, Role } from '../utils/roleAccess';
 import { notify } from '../utils/notifications';
 
@@ -31,13 +32,15 @@ interface InviteResponse {
 
 export const TeamPanel: React.FC = () => {
   const { businessId, currentRole } = useEmisor();
+  const { user } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<Role>('operator');
 
-  const canManage = currentRole === 'owner' || currentRole === 'admin';
+  const isPlatformAdmin = Boolean(user && businessId && !currentRole);
+  const canManage = currentRole === 'owner' || currentRole === 'admin' || isPlatformAdmin;
 
   const load = async () => {
     if (!businessId) return;
@@ -107,7 +110,7 @@ export const TeamPanel: React.FC = () => {
           <Users className="w-5 h-5 text-gray-500" />
           <h2 className="text-lg font-medium text-gray-900">Equipo</h2>
         </div>
-        {!canManage && <span className="text-xs text-gray-500">Solo lectura (rol {currentRole || 'sin rol'})</span>}
+        {!canManage && <span className="text-xs text-gray-500">Solo lectura (rol {currentRole || 'sin rol local'})</span>}
       </div>
       <div className="p-6 space-y-6">
         <div className="space-y-3">
@@ -144,7 +147,7 @@ export const TeamPanel: React.FC = () => {
           <form onSubmit={handleInvite} className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-indigo-900">Invitar usuario</h3>
-              <p className="text-xs text-indigo-700 mt-1">Solo `owner` y `admin` pueden invitar usuarios a este negocio.</p>
+              <p className="text-xs text-indigo-700 mt-1">Solo `owner`, `admin` o un admin de plataforma pueden invitar usuarios a este negocio.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="md:col-span-2">

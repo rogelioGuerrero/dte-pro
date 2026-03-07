@@ -28,8 +28,9 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
   const { isSupported, permission, subscription, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
   const { user, isConfigured, signOut } = useAuth();
   const { businessId, emisores, reload, currentRole } = useEmisor();
-  const canManageLocal = currentRole === 'owner' || currentRole === 'admin' || !currentRole;
-  const canManageRemote = currentRole === 'owner' || currentRole === 'admin';
+  const isPlatformAdmin = Boolean(user && businessId && !currentRole);
+  const canManageLocal = currentRole === 'owner' || currentRole === 'admin' || isPlatformAdmin || !currentRole;
+  const canManageRemote = currentRole === 'owner' || currentRole === 'admin' || isPlatformAdmin;
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showEmisorConfig, setShowEmisorConfig] = useState(false);
   const [emisorForm, setEmisorForm] = useState<Omit<EmisorData, 'id'> & { logoUrl?: string }>({
@@ -358,7 +359,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
           <div>
             <p className="text-sm font-semibold text-gray-900">Estado de configuración</p>
             <p className="text-sm text-gray-600">
-              {businessId ? 'Si eres owner o admin, desde aquí puedes administrar a distancia la tienda actualmente seleccionada. Los cambios globales aplican a todos los equipos de esa tienda, no a las demás.' : 'Aún no hay emisor asociado a tu cuenta.'}
+              {businessId ? 'Si eres owner, admin o admin de plataforma, desde aquí puedes administrar a distancia la tienda actualmente seleccionada. Los cambios globales aplican a todos los equipos de esa tienda, no a las demás.' : 'Aún no hay emisor asociado a tu cuenta.'}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -392,6 +393,9 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
             <p className="text-xs text-gray-600 mt-1">
               Todo lo que cambies en administración remota afecta a este emisor (`{businessId}`) y a sus usuarios. Si manejas varias tiendas, cada una se configura por separado.
             </p>
+            {isPlatformAdmin && (
+              <p className="text-xs text-indigo-700 mt-2">Tu sesión está operando como admin de plataforma para esta tienda aunque no exista un rol local en `business_users`.</p>
+            )}
           </div>
         )}
 
@@ -440,7 +444,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
           <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 sm:p-5">
             <h2 className="text-base font-semibold text-blue-900">Cómo funciona la administración global</h2>
             <p className="text-sm text-blue-800 mt-2">
-              Si entras con un usuario `owner` o `admin`, puedes cambiar módulos, tabs y equipo desde cualquier lugar. Esos cambios se guardan por negocio y aplican a todos los usuarios de la tienda seleccionada.
+              Si entras con un usuario `owner`, `admin` o admin de plataforma, puedes cambiar módulos, tabs y equipo desde cualquier lugar. Esos cambios se guardan por negocio y aplican a todos los usuarios de la tienda seleccionada.
             </p>
             <p className="text-xs text-blue-700 mt-2">
               Si administras varias tiendas, repites el ajuste en cada emisor. Solo lo técnico del dispositivo queda local: permisos del navegador, algunas credenciales del equipo y ajustes de soporte.
@@ -460,7 +464,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
               <div className="p-6 space-y-5">
                 {!canManageRemote && (
                   <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    Solo `owner` o `admin` pueden cambiar la configuración global del negocio. Con tu rol actual esta sección queda en solo lectura.
+                    Solo `owner`, `admin` o un admin de plataforma pueden cambiar la configuración global del negocio. Con tu rol actual esta sección queda en solo lectura.
                   </div>
                 )}
                 <div>
