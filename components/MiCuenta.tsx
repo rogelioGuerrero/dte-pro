@@ -12,29 +12,21 @@ import { getEmisor, saveEmisor } from '../utils/emisorDb';
 import { hasCertificate } from '../utils/secureStorage';
 import { DeviceFingerprintDisplay } from './DeviceFingerprintDisplay';
 import { apiFetch } from '../utils/apiClient';
-import { TeamPanel } from './TeamPanel';
 import { useAuth } from '../contexts/AuthContext';
-import { APP_TAB_LABELS, MANAGED_APP_TABS, ManagedAppTab } from '../utils/appTabs';
-import { BusinessSettings, normalizeBusinessSettings, saveBusinessSettingsToBackend } from '../utils/businessSettings';
 import { EmisorSelector } from './EmisorSelector';
 
 interface MiCuentaProps {
   onBack?: () => void;
-  onOpenAdvancedSettings?: () => void;
-  businessSettings?: BusinessSettings;
-  onBusinessSettingsChange?: (updater: (current: BusinessSettings) => BusinessSettings) => void;
 }
 
-const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, businessSettings, onBusinessSettingsChange }) => {
+const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
   const { isSupported, permission, subscription, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
   const { user, isConfigured, signOut } = useAuth();
-  const { businessId, operationalBusinessId, emisores, reload, currentRole, setBusinessId, selectedEmisor } = useEmisor();
+  const { businessId, operationalBusinessId, emisores, reload, currentRole, selectedEmisor } = useEmisor();
   const isPlatformAdmin = Boolean(user && businessId && !currentRole);
   const canManageLocal = currentRole === 'owner' || currentRole === 'admin' || isPlatformAdmin || !currentRole;
-  const canManageRemote = (currentRole === 'owner' || currentRole === 'admin' || isPlatformAdmin) && Boolean(operationalBusinessId);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showEmisorConfig, setShowEmisorConfig] = useState(false);
-  const [manualBusinessId, setManualBusinessId] = useState('');
   const [emisorForm, setEmisorForm] = useState<Omit<EmisorData, 'id'> & { logoUrl?: string }>({
     nit: '',
     nrc: '',
@@ -80,18 +72,8 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
     hasCert: false,
     hasPassword: false
   });
-  const [remoteDraft, setRemoteDraft] = useState<BusinessSettings | null>(businessSettings || null);
-  const [isSavingRemoteSettings, setIsSavingRemoteSettings] = useState(false);
   
   const restoreFileInputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    setRemoteDraft(businessSettings || null);
-  }, [businessSettings]);
-
-  useEffect(() => {
-    setManualBusinessId(businessId || '');
-  }, [businessId]);
 
   const handleSignOut = async () => {
     try {
@@ -100,52 +82,6 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
     } catch (error) {
       console.error(error);
       notify('No se pudo cerrar sesión', 'error');
-    }
-  };
-
-  const handleRemoteFeatureToggle = (tab: ManagedAppTab, enabled: boolean) => {
-    setRemoteDraft((current) => {
-      if (!current) return current;
-      const nextFeatures = {
-        ...current.features,
-        [tab]: enabled,
-      };
-      const defaultStillVisible = nextFeatures[current.defaultTab];
-      const nextDefaultTab = defaultStillVisible
-        ? current.defaultTab
-        : MANAGED_APP_TABS.find((candidate) => nextFeatures[candidate]) || 'factura';
-
-      return normalizeBusinessSettings({
-        ...current,
-        features: nextFeatures,
-        defaultTab: nextDefaultTab,
-      });
-    });
-  };
-
-  const handleRemoteDefaultTabChange = (tab: ManagedAppTab) => {
-    setRemoteDraft((current) => current ? normalizeBusinessSettings({ ...current, defaultTab: tab }) : current);
-  };
-
-  const handleRemoteSave = async () => {
-    if (!remoteDraft || !operationalBusinessId || !onBusinessSettingsChange) return;
-
-    setIsSavingRemoteSettings(true);
-    try {
-      const normalized = normalizeBusinessSettings({
-        ...remoteDraft,
-        businessId: operationalBusinessId,
-        source: 'remote',
-      });
-      const saved = await saveBusinessSettingsToBackend(normalized);
-      onBusinessSettingsChange(() => saved);
-      setRemoteDraft(saved);
-      notify('Configuración remota del negocio actualizada', 'success');
-    } catch (error) {
-      console.error(error);
-      notify('No se pudo guardar la configuración remota del negocio', 'error');
-    } finally {
-      setIsSavingRemoteSettings(false);
     }
   };
 
@@ -364,15 +300,15 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
           <div>
             <p className="text-sm font-semibold text-gray-900">Estado de configuración</p>
             <p className="text-sm text-gray-600">
-              {businessId ? 'Administra la tienda seleccionada desde aquí.' : 'Primero elige una tienda o escribe su código.'}
+              {businessId ? 'Tu emisor ya está vinculado a esta cuenta.' : 'Estamos buscando el emisor asociado a tu cuenta.'}
             </p>
-            {businessId && !operationalBusinessId && (
+            {!businessId && user && (
               <p className="text-xs text-amber-700 mt-2">
-                El backend aún devuelve este emisor por NIT en `/businesses/me`. Para sincronización remota completa todavía hace falta el UUID real del negocio.
+                Si este mensaje persiste, revisaremos la vinculación del emisor en backend. No deberías tener que escribir datos manualmente si tu negocio ya existe.
               </p>
             )}
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex gap-2">
             {canManageLocal && (
               <button
                 onClick={handleOpenConfig}
@@ -381,18 +317,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
               >
                 <Settings className="w-4 h-4" />
-                Configurar emisor
-              </button>
-            )}
-            {onOpenAdvancedSettings && (
-              <button
-                onClick={onOpenAdvancedSettings}
-                disabled={!canManageLocal}
-                title="Ajustes de este equipo"
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50"
-              >
-                <Settings className="w-4 h-4" />
-                Configuración local del dispositivo
+                Editar datos del emisor
               </button>
             )}
           </div>
@@ -406,28 +331,6 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
             </div>
             {emisores.length > 0 && <EmisorSelector className="flex-wrap" />}
           </div>
-
-          {emisores.length === 0 && user && (
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
-              <input
-                type="text"
-                value={manualBusinessId}
-                onChange={(e) => setManualBusinessId(e.target.value)}
-                placeholder="Pega aquí el código de la tienda"
-                title="Usa el businessId de la tienda que quieres administrar"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => setBusinessId(manualBusinessId.trim() || null)}
-                disabled={!manualBusinessId.trim()}
-                title="Abrir esta tienda"
-                className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60"
-              >
-                Abrir tienda
-              </button>
-            </div>
-          )}
         </div>
 
         {businessId && (
@@ -468,9 +371,9 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
             <p className="text-xs text-gray-600 mt-1">Certificado y contraseña para firma/transmisión.</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase">3. Equipo</p>
-            <p className="text-sm font-medium text-gray-900 mt-1">{businessId ? 'Disponible' : 'Pendiente'}</p>
-            <p className="text-xs text-gray-600 mt-1">Roles y usuarios que operan este negocio.</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase">3. POS CF</p>
+            <p className="text-sm font-medium text-gray-900 mt-1">{businessId && credentialsStatus.hasCert ? 'Listo para prueba' : 'Pendiente'}</p>
+            <p className="text-xs text-gray-600 mt-1">Usaremos este emisor para comenzar las pruebas del punto de venta.</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs font-semibold text-gray-500 uppercase">4. Push</p>
@@ -487,80 +390,6 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <DeviceFingerprintDisplay />
-          <div className="flex items-center justify-between rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
-            <div>
-              <h2 className="text-sm font-semibold text-blue-900">Administración remota</h2>
-              <p className="text-xs text-blue-700 mt-1">Los cambios aplican a la tienda activa.</p>
-            </div>
-            <span className="text-xs text-blue-700" title="Si cambias de tienda, ajustas otra configuración">Ayuda</span>
-          </div>
-          {businessSettings && remoteDraft && onBusinessSettingsChange && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-medium text-gray-900">Administración remota del negocio</h2>
-                  <p className="text-sm text-gray-500 mt-1">Visible para toda la tienda activa.</p>
-                </div>
-                <div className={`text-xs font-medium px-2.5 py-1 rounded-full ${businessSettings.source === 'remote' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
-                  {businessSettings.source === 'remote' ? 'Sincronizado con backend' : 'Usando fallback local'}
-                </div>
-              </div>
-              <div className="p-6 space-y-5">
-                {!canManageRemote && (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    Elige una tienda con acceso para editar esta sección.
-                  </div>
-                )}
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Tab inicial</p>
-                  <select
-                    value={remoteDraft.defaultTab}
-                    onChange={(e) => handleRemoteDefaultTabChange(e.target.value as ManagedAppTab)}
-                    disabled={!canManageRemote}
-                    className="mt-2 w-full md:w-72 px-3 py-2 border border-gray-300 rounded-lg"
-                  >
-                    {MANAGED_APP_TABS.filter((tab) => remoteDraft.features[tab]).map((tab) => (
-                      <option key={tab} value={tab}>{APP_TAB_LABELS[tab]}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Módulos visibles</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                    {MANAGED_APP_TABS.map((tab) => (
-                      <label key={tab} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-200">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{APP_TAB_LABELS[tab]}</div>
-                          <div className="text-xs text-gray-500">{tab}</div>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={remoteDraft.features[tab]}
-                          onChange={(e) => handleRemoteFeatureToggle(tab, e.target.checked)}
-                          disabled={!canManageRemote}
-                          className="h-4 w-4"
-                        />
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-3 items-center justify-between pt-2">
-                  <p className="text-xs text-gray-500">
-                    Se guarda por tienda.
-                  </p>
-                  <button
-                    onClick={handleRemoteSave}
-                    disabled={isSavingRemoteSettings || !businessId || !canManageRemote}
-                    title="Guardar cambios para la tienda activa"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <Settings className="w-4 h-4" />
-                    {isSavingRemoteSettings ? 'Guardando...' : 'Guardar cambios remotos'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
           {isConfigured && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="border-b border-gray-200 px-6 py-4 flex items-center gap-3">
@@ -585,19 +414,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
                 <Store className="w-5 h-5 text-gray-500" />
                 <h2 className="text-lg font-medium text-gray-900">Negocio</h2>
               </div>
-              {canManageLocal ? (
-                <button
-                  onClick={handleOpenConfig}
-                  disabled={false}
-                  title="Editar datos del negocio seleccionado"
-                  className="text-indigo-700 hover:text-indigo-800 text-sm font-medium flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
-                >
-                  <Settings className="w-4 h-4" />
-                  Editar
-                </button>
-              ) : (
-                <span className="text-xs text-gray-500">Selecciona una tienda</span>
-              )}
+              <span className="text-xs text-gray-500">Datos sincronizados según la sesión activa</span>
             </div>
             <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
@@ -610,7 +427,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
               </div>
               <div>
                 <label className="text-xs text-gray-500 uppercase font-semibold">Business ID</label>
-                <p className="text-gray-900 font-medium mt-1 break-all">{businessId || 'No asignado'}</p>
+                <p className="text-gray-900 font-medium mt-1 break-all">{operationalBusinessId || 'No asignado'}</p>
               </div>
               <div>
                 <label className="text-xs text-gray-500 uppercase font-semibold">Ambiente</label>
@@ -624,8 +441,6 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
               </div>
             </div>
           </div>
-
-          <TeamPanel />
         </div>
 
         <div className="space-y-6">

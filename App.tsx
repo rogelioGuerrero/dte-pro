@@ -283,9 +283,6 @@ const App: React.FC = () => {
         {activeTab === 'micuenta' && (
           <MiCuenta
             onBack={() => setActiveTab('factura')}
-            onOpenAdvancedSettings={() => setShowAdminModal(true)}
-            businessSettings={businessSettings}
-            onBusinessSettingsChange={updateLocalSettings}
           />
         )}
         {activeTab === 'simple' && (businessId ? (

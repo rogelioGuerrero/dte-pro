@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../utils/apiClient';
 import { getBackendAuthToken } from '../utils/backendConfig';
+import { useAuth } from './AuthContext';
 
 export interface EmisorMembership {
   id?: string;
@@ -36,6 +37,7 @@ const findMembershipBySelection = (memberships: EmisorMembership[], selection: s
 };
 
 export const EmisorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { session, loading: authLoading } = useAuth();
   const [selectedBusinessKey, setSelectedBusinessKey] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY));
   const [emisores, setEmisores] = useState<EmisorMembership[]>([]);
   const [loading, setLoading] = useState(false);
@@ -83,8 +85,9 @@ export const EmisorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   useEffect(() => {
+    if (authLoading) return;
     load();
-  }, [load]);
+  }, [authLoading, session?.access_token, load]);
 
   useEffect(() => {
     const handleAuthChanged = () => {
