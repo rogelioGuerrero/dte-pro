@@ -340,10 +340,9 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
     if (item.esExento) {
       ventaExenta = totalLinea;
     } else if (tipoDoc === '01') {
-      // Factura: precio incluye IVA
-      const base = redondear(totalLinea / 1.13, 8);
-      ventaGravada = base;
-      ivaItem = redondear(totalLinea - base, 2);
+      // Factura: mantener precio final con IVA incluido; backend recalcula
+      ventaGravada = totalLinea;
+      ivaItem = 0;
     } else if (tipoDoc === '03') {
       // CCF: precio sin IVA
       ventaGravada = totalLinea;
@@ -354,7 +353,7 @@ const MobileFactura: React.FC<MobileFacturaProps> = ({
     }
 
     // Tributos: solo IVA 13% si hay venta gravada y es FE/CCF
-    const tributos = (ventaGravada > 0 && (tipoDoc === '01' || tipoDoc === '03')) ? ['20'] : null;
+    const tributos = (ventaGravada > 0 && tipoDoc === '03') ? ['20'] : null;
 
     return {
       ...item,
