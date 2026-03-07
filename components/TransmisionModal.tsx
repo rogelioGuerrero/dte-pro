@@ -18,7 +18,7 @@ import TemplateSelector from './TemplateSelector';
 import { construirDTEArchivado, guardarDTEEnHistorial } from '../utils/dteHistoryDb';
 import { generarLibroDesdeDTEs } from '../utils/librosAutoGenerator';
 import { getCertificate } from '../utils/secureStorage';
-import { limpiarDteParaFirma } from '../utils/firmaApiClient';
+import { limpiarDteParaFirma, transmitirDocumento } from '../utils/firmaApiClient';
 import { processDTE } from '../utils/mh/process';
 import { loadSettings } from '../utils/settings';
 import { 
@@ -26,8 +26,6 @@ import {
   EstadoTransmision
 } from '../utils/dteSignature';
 import { checkLicense } from '../utils/licenseValidator';
-import { leerP12, firmarDTEConP12 } from '../utils/p12Handler';
-import { transmitirDTESandbox } from '../utils/mh/sandboxClient';
 
 interface TransmisionModalProps {
   dte: DTEJSON;
@@ -62,18 +60,68 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
 
   const getFriendlyError = (raw: string | null): { friendly: string; raw: string } => {
     if (!raw) {
-      return { friendly: 'No pudimos completar la firma en este momento. Intenta nuevamente en unos segundos.', raw: '' };
+      return { friendly: 'No pudimos completar la transmisión en este momento. Intenta nuevamente en unos segundos.', raw: '' };
     }
 
     const isHtml = /<[^>]+>/.test(raw) || raw.toLowerCase().includes('doctype html') || raw.toLowerCase().includes('cloudflare');
     if (isHtml) {
       return {
-        friendly: 'El servicio de firma está temporalmente protegido (Cloudflare) o tardó en responder. Reintenta en 1-2 minutos o desde otra conexión.',
+        friendly: 'El backend de DTE está temporalmente protegido o tardó en responder. Reintenta en 1-2 minutos o desde otra conexión.',
         raw,
       };
     }
 
     return { friendly: raw, raw };
+  };
+
+  const toTransmisionResult = (payload: Awaited<ReturnType<typeof transmitirDocumento>>, fallbackDte: DTEJSON): TransmisionResult => {
+    const mh = payload.mhResponse;
+    const offline = payload.isOffline === true;
+    const estadoMh = mh?.estado;
+    const success = payload.transmitted === true && mh?.success === true;
+
+    if (offline) {
+      return {
+        success: false,
+        estado: 'CONTINGENCIA',
+        codigoGeneracion: mh?.codigoGeneracion || fallbackDte.identificacion.codigoGeneracion,
+        numeroControl: mh?.numeroControl || fallbackDte.identificacion.numeroControl,
+        fechaHoraRecepcion: mh?.fechaHoraRecepcion || new Date().toISOString(),
+        fechaHoraProcesamiento: mh?.fechaHoraProcesamiento,
+        mensaje: payload.contingencyReason || mh?.mensaje || 'Documento enviado a contingencia.',
+        advertencias: mh?.advertencias,
+        errores: mh?.errores?.map((err) => ({
+          codigo: err.codigo,
+          campo: err.campo,
+          descripcion: err.descripcion,
+          severidad: err.severidad === 'ADVERTENCIA' ? 'ADVERTENCIA' : 'ERROR',
+          valorActual: err.valorActual,
+          valorEsperado: err.valorEsperado,
+        })),
+        enlaceConsulta: mh?.enlaceConsulta,
+      };
+    }
+
+    return {
+      success,
+      estado: estadoMh || 'RECHAZADO',
+      codigoGeneracion: mh?.codigoGeneracion || fallbackDte.identificacion.codigoGeneracion,
+      selloRecepcion: mh?.selloRecepcion,
+      numeroControl: mh?.numeroControl || fallbackDte.identificacion.numeroControl,
+      fechaHoraRecepcion: mh?.fechaHoraRecepcion,
+      fechaHoraProcesamiento: mh?.fechaHoraProcesamiento,
+      mensaje: mh?.mensaje,
+      advertencias: mh?.advertencias,
+      errores: mh?.errores?.map((err) => ({
+        codigo: err.codigo,
+        campo: err.campo,
+        descripcion: err.descripcion,
+        severidad: err.severidad === 'ADVERTENCIA' ? 'ADVERTENCIA' : 'ERROR',
+        valorActual: err.valorActual,
+        valorEsperado: err.valorEsperado,
+      })),
+      enlaceConsulta: mh?.enlaceConsulta,
+    };
   };
 
   const iniciarTransmision = async () => {
@@ -123,31 +171,26 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
       const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
 
       const stored = await getCertificate();
-      if (!stored?.certificate || !stored?.password) {
-        throw new Error('Debes cargar tu certificado (.p12/.pfx) en Mi Cuenta antes de transmitir.');
+      if (!stored?.password) {
+        throw new Error('Debes guardar la contraseña del certificado en Mi Cuenta antes de transmitir.');
       }
 
-      const parsed = await leerP12(stored.certificate, stored.password);
-      if (!parsed.success || !parsed.privateKey || !parsed.certificatePem) {
-        throw new Error(parsed.error || 'No se pudo leer el certificado');
-      }
-
-      const signed = await firmarDTEConP12(dteLimpio as unknown as object, parsed.privateKey, parsed.certificatePem);
-      if (!signed.success || !signed.jws) {
-        throw new Error(signed.error || 'No se pudo firmar el documento');
-      }
-
-      setJwsFirmado(signed.jws);
       setEstado('transmitiendo');
 
-      const transmisionResult = await transmitirDTESandbox(signed.jws, ambienteFinal);
+      const backendResponse = await transmitirDocumento({
+        dte: dteLimpio,
+        passwordPri: stored.password,
+        ambiente: ambienteFinal,
+      });
+      const transmisionResult = toTransmisionResult(backendResponse, processed.dte);
+      setJwsFirmado(backendResponse.signature || null);
       setResultado(transmisionResult);
 
-      if (transmisionResult.success) {
+      if (backendResponse.isOffline || transmisionResult.success) {
         setEstado('procesado');
         
         // Guardar en historial local
-        await guardarDTEEnHistorial(processed.dte, transmisionResult, ambienteFinal, signed.jws);
+        await guardarDTEEnHistorial(processed.dte, transmisionResult, ambienteFinal, backendResponse.signature || undefined);
         
         if (transmisionResult.selloRecepcion) {
           onSuccess(transmisionResult.selloRecepcion, transmisionResult);
@@ -169,78 +212,40 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
   };
 
   const handleEmitirContingencia = async () => {
-    // Validar restricción: solo Factura (01)
     if (dte.identificacion.tipoDte !== '01') {
       alert('Por seguridad, el modo de contingencia solo está habilitado para Facturas (01) en este momento.');
       return;
     }
 
     try {
-      setEstado('firmando');
+      setEstado('transmitiendo');
       setError(null);
 
-      // 1. Convertir a contingencia
       const dteContingencia = convertirAContingencia(dte);
       const processed = processDTE(dteContingencia);
       setDteTransmitido(processed.dte);
       
       const ambienteFinal = (processed.dte?.identificacion?.ambiente === '01' ? '01' : '00') as '00' | '01';
-
-      // 2. Firmar nuevamente (necesitamos password)
       const stored = await getCertificate();
-      const passwordPri = stored?.password
-        ? stored.password
-        : (window.prompt('Modo Contingencia: Ingresa la contraseña/PIN del certificado para firmar:') || '').trim();
-      
-      if (!passwordPri) {
-        setEstado('rechazado');
-        return;
-      }
+      const passwordPri = stored?.password || '';
 
-      const formatNitConGuiones = (rawNit: string) => {
-        const clean = rawNit.replace(/[\s-]/g, '');
-        if (clean.length === 14) {
-          return `${clean.substring(0, 4)}-${clean.substring(4, 10)}-${clean.substring(10, 13)}-${clean.substring(13, 14)}`;
-        }
-        return rawNit;
-      };
+      if (!passwordPri) {
+        throw new Error('Debes guardar la contraseña del certificado en Mi Cuenta antes de transmitir.');
+      }
 
       const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
-      formatNitConGuiones((processed.dte?.emisor?.nit || '').toString().trim());
-
-      const parsed = await leerP12(stored?.certificate || new ArrayBuffer(0), passwordPri);
-      if (!parsed.success || !parsed.privateKey || !parsed.certificatePem) {
-        throw new Error(parsed.error || 'No se pudo leer el certificado');
-      }
-
-      const signed = await firmarDTEConP12(dteLimpio as unknown as object, parsed.privateKey, parsed.certificatePem);
-      if (!signed.success || !signed.jws) {
-        throw new Error(signed.error || 'No se pudo firmar el documento');
-      }
-
-      setJwsFirmado(signed.jws);
-
-      // 3. Crear resultado simulado de contingencia
-      const resultContingencia: TransmisionResult = {
-        success: false, // No transmitido a MH aún
-        estado: 'CONTINGENCIA',
-        codigoGeneracion: processed.dte.identificacion.codigoGeneracion,
-        numeroControl: processed.dte.identificacion.numeroControl,
-        fechaHoraRecepcion: new Date().toISOString(),
-        mensaje: 'Documento generado en Contingencia (Offline). Pendiente de transmisión.',
-        errores: [],
-        advertencias: [{
-          codigo: 'CONTINGENCIA',
-          descripcion: 'Documento emitido en modo diferido por falla de conexión.',
-          severidad: 'ALTA'
-        }]
-      };
+      const backendResponse = await transmitirDocumento({
+        dte: dteLimpio,
+        passwordPri,
+        ambiente: ambienteFinal,
+      });
+      const resultContingencia = toTransmisionResult(backendResponse, processed.dte);
 
       setResultado(resultContingencia);
-      setEstado('procesado'); // Lo marcamos como procesado (guardado localmente)
+      setJwsFirmado(backendResponse.signature || null);
+      setEstado((backendResponse.isOffline || resultContingencia.success) ? 'procesado' : 'rechazado');
 
-      // 4. Guardar en historial
-      await guardarDTEHistory(processed.dte, resultContingencia, ambienteFinal, signed.jws);
+      await guardarDTEHistory(processed.dte, resultContingencia, ambienteFinal, backendResponse.signature || null);
 
     } catch (err) {
       setEstado('error');

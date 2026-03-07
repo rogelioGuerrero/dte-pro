@@ -5,12 +5,72 @@ export interface FirmaApiResponse {
   error?: string;
 }
 
-const BASE_URL = 'https://api-firma.onrender.com';
-const CONTEXT_PATH = '/firma';
+export interface MHError {
+  codigo: string;
+  campo?: string;
+  descripcion: string;
+  severidad?: string;
+  valorEsperado?: string;
+  valorActual?: string;
+}
+
+export interface MHWarning {
+  codigo: string;
+  campo?: string;
+  descripcion: string;
+  severidad?: 'BAJA' | 'MEDIA' | 'ALTA';
+}
+
+export interface MHResponse {
+  success: boolean;
+  estado?: 'PROCESADO' | 'ACEPTADO' | 'ACEPTADO_CON_ADVERTENCIAS' | 'RECHAZADO';
+  codigoGeneracion?: string;
+  selloRecepcion?: string;
+  numeroControl?: string;
+  fechaHoraRecepcion?: string;
+  fechaHoraProcesamiento?: string;
+  mensaje?: string;
+  enlaceConsulta?: string;
+  advertencias?: MHWarning[];
+  errores?: MHError[];
+}
+
+export interface SignDTERequest {
+  dte: Record<string, unknown>;
+  passwordPri: string;
+}
+
+export interface SignDTEResponse {
+  signed?: boolean;
+  signature?: string;
+  dte?: Record<string, unknown>;
+}
+
+export interface TransmitDTERequest {
+  dte: Record<string, unknown>;
+  passwordPri: string;
+  ambiente?: '00' | '01';
+}
+
+export interface TransmitDTEResponse {
+  transmitted?: boolean;
+  mhResponse?: MHResponse;
+  signature?: string;
+  isOffline?: boolean;
+  contingencyReason?: string | null;
+}
+
+const BASE_URL = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_DTE_URL || '') as string;
+const CONTEXT_PATH: string = '';
 
 const buildUrl = (path: string): string => {
+  if (!BASE_URL) {
+    throw new Error('Backend URL no configurada. Define VITE_BACKEND_URL o VITE_API_DTE_URL en tus variables de entorno.');
+  }
   const cleanBase = BASE_URL.replace(/\/+$/, '');
-  const cleanContext = CONTEXT_PATH.startsWith('/') ? CONTEXT_PATH : `/${CONTEXT_PATH}`;
+  const cleanContext = CONTEXT_PATH
+    ? (CONTEXT_PATH.startsWith('/') ? CONTEXT_PATH : `/${CONTEXT_PATH}`)
+    : '';
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return `${cleanBase}${cleanContext}${cleanPath}`;
 };
@@ -37,7 +97,7 @@ export const wakeFirmaService = async (opts?: {
   const baseDelayMs = opts?.baseDelayMs ?? 1000;
   const timeoutMs = opts?.timeoutMs ?? 15000;
 
-  const url = buildUrl('/firmardocumento/status');
+  const url = buildUrl('/api/dte/sign');
 
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -46,14 +106,14 @@ export const wakeFirmaService = async (opts?: {
 
     try {
       const res = await fetch(url, {
-        method: 'GET',
+        method: 'OPTIONS',
         headers: {
           Accept: 'application/json',
         },
         signal: controller.signal,
       });
 
-      if (!res.ok) {
+      if (!res.ok && res.status !== 204 && res.status !== 405) {
         const txt = await res.text().catch(() => '');
         if (isRetriableHttpStatus(res.status) && attempt < retries) {
           await sleep(baseDelayMs * Math.pow(2, attempt));
@@ -86,7 +146,6 @@ export const wakeFirmaService = async (opts?: {
 };
 
 export const firmarDocumento = async (params: {
-  nit: string;
   passwordPri: string;
   dteJson: unknown;
   timeoutMs?: number;
@@ -96,10 +155,7 @@ export const firmarDocumento = async (params: {
   const timeoutMs = params.timeoutMs ?? 30000;
   const retries = params.retries ?? 2;
   const baseDelayMs = params.baseDelayMs ?? 1000;
-  const url = buildUrl('/firmardocumento/');
-
-  // Normalizar NIT: asegurar string sin espacios ni caracteres extra
-  const nit = String(params.nit).replace(/[\s-]/g, '').trim();
+  const url = buildUrl('/api/dte/sign');
 
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -114,16 +170,15 @@ export const firmarDocumento = async (params: {
           Accept: 'application/json',
         },
         body: JSON.stringify({
-          nit,
           passwordPri: params.passwordPri,
-          dteJson: params.dteJson,
+          dte: params.dteJson,
         }),
         signal: controller.signal,
       });
 
       const contentType = res.headers.get('content-type') || '';
-      const payload: FirmaApiResponse | string = contentType.includes('application/json')
-        ? ((await res.json().catch(() => ({}))) as FirmaApiResponse)
+      const payload: SignDTEResponse | FirmaApiResponse | string = contentType.includes('application/json')
+        ? ((await res.json().catch(() => ({}))) as SignDTEResponse | FirmaApiResponse)
         : await res.text().catch(() => '');
 
       if (!res.ok) {
@@ -142,10 +197,10 @@ export const firmarDocumento = async (params: {
       }
 
       if (typeof payload === 'string') {
-        throw new Error(`Respuesta inesperada del servicio de firma: ${payload}`);
+        throw new Error(`Respuesta inesperada del backend de firma: ${payload}`);
       }
 
-      if (payload.status === 'ERROR') {
+      if ('status' in payload && payload.status === 'ERROR') {
         const errorBody = typeof payload.body === 'object' && payload.body !== null ? payload.body : {};
         const errorMsg = Array.isArray(errorBody.mensaje)
           ? errorBody.mensaje.join('; ')
@@ -154,11 +209,7 @@ export const firmarDocumento = async (params: {
         throw new Error(`Error del servicio de firma (${codigo}): ${errorMsg}`);
       }
 
-      if (payload.status !== 'OK') {
-        throw new Error(`Respuesta inesperada del servicio de firma: status=${payload.status}`);
-      }
-
-      const jws = payload.body;
+      const jws = 'signature' in payload ? payload.signature : undefined;
       if (typeof jws !== 'string' || !jws) {
         throw new Error(`Firma sin body o body no es string. Respuesta: ${JSON.stringify(payload)}`);
       }
@@ -183,6 +234,54 @@ export const firmarDocumento = async (params: {
   }
 
   throw lastError instanceof Error ? lastError : new Error('No se pudo firmar el documento');
+};
+
+export const transmitirDocumento = async (params: {
+  dte: Record<string, unknown>;
+  passwordPri: string;
+  ambiente?: '00' | '01';
+  timeoutMs?: number;
+}): Promise<TransmitDTEResponse> => {
+  const timeoutMs = params.timeoutMs ?? 45000;
+  const url = buildUrl('/api/dte/transmit');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(new Error('Timeout transmitiendo documento')), timeoutMs);
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        dte: params.dte,
+        passwordPri: params.passwordPri,
+        ambiente: params.ambiente ?? '00',
+      }),
+      signal: controller.signal,
+    });
+
+    const contentType = res.headers.get('content-type') || '';
+    const payload = contentType.includes('application/json')
+      ? ((await res.json().catch(() => ({}))) as TransmitDTEResponse)
+      : await res.text().catch(() => '');
+
+    if (!res.ok) {
+      const detail = typeof payload === 'string'
+        ? payload
+        : payload?.mhResponse?.mensaje || JSON.stringify(payload);
+      throw new Error(detail || `Transmisión falló (HTTP ${res.status})`);
+    }
+
+    if (typeof payload === 'string') {
+      throw new Error(`Respuesta inesperada del backend: ${payload}`);
+    }
+
+    return payload;
+  } finally {
+    clearTimeout(timeout);
+  }
 };
 
 export const limpiarDteParaFirma = <T extends Record<string, unknown>>(dte: T): T => {

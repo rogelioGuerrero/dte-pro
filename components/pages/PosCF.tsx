@@ -8,10 +8,7 @@ import { getEmisor } from '../../utils/emisorDb';
 import { useEmisor } from '../../contexts/EmisorContext';
 import { checkLicense } from '../../utils/licenseValidator';
 import { getCertificate } from '../../utils/secureStorage';
-import { leerP12, firmarDTEConP12 } from '../../utils/p12Handler';
-import { transmitirDTESandbox } from '../../utils/mh/sandboxClient';
-import { limpiarDteParaFirma } from '../../utils/firmaApiClient';
-import { apiFetch } from '../../utils/apiClient';
+import { limpiarDteParaFirma, type TransmitDTEResponse, transmitirDocumento } from '../../utils/firmaApiClient';
 
 interface CartItem {
   producto: Producto;
@@ -30,7 +27,7 @@ const PosCF: React.FC = () => {
   const [correoReceptor, setCorreoReceptor] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [resultadoJSON, setResultadoJSON] = useState<string>('');
-  const [respuestaMH, setRespuestaMH] = useState<any>(null);
+  const [respuestaMH, setRespuestaMH] = useState<TransmitDTEResponse | { error: string } | null>(null);
 
   useEffect(() => {
     setProductos(inventarioService.getProductos());
@@ -194,53 +191,33 @@ const PosCF: React.FC = () => {
         return;
       }
 
-      // Enviar DTE a backend para procesamiento y firma
-      try {
-        const response = await apiFetch<any>('/api/dte/generate-and-sign', {
-          method: 'POST',
-          body: {
-            businessId: activeBusinessId,
-            dte,
-            receptorCorreo: correoReceptor.trim() || null,
-          },
-        });
+      const stored = await getCertificate();
+      if (!stored?.password) {
+        addToast('Guarda la contraseña del certificado en Mi Cuenta antes de transmitir.', 'error');
+        return;
+      }
 
-        setRespuestaMH(response);
-        if (response.success) {
-          addToast('DTE generado y firmado exitosamente', 'success');
-        } else {
-          addToast(response.message || 'Error en la generación del DTE', 'error');
-        }
-      } catch (backendError: any) {
-        console.warn('Backend no disponible, usando modo sandbox local:', backendError);
-        
-        // Fallback a modo sandbox local si backend no responde
-        const stored = await getCertificate();
-        if (!stored?.certificate || !stored?.password) {
-          addToast('Carga tu certificado (.p12/.pfx) en Mi Cuenta antes de transmitir.', 'error');
-          return;
-        }
+      const dteLimpio = limpiarDteParaFirma(dte as any);
+      const result = await transmitirDocumento({
+        dte: dteLimpio,
+        passwordPri: stored.password,
+        ambiente: '00',
+      });
 
-        const parsed = await leerP12(stored.certificate, stored.password);
-        if (!parsed.success || !parsed.privateKey || !parsed.certificatePem) {
-          throw new Error(parsed.error || 'No se pudo leer el certificado');
-        }
+      setRespuestaMH(result);
 
-        const dteLimpio = limpiarDteParaFirma(dte as any);
-        const signed = await firmarDTEConP12(dteLimpio as any, parsed.privateKey, parsed.certificatePem);
-        if (!signed.success || !signed.jws) {
-          throw new Error(signed.error || 'No se pudo firmar el documento');
-        }
+      const estado = result.mhResponse?.estado;
+      const ok = result.transmitted === true && result.mhResponse?.success === true;
 
-        const result = await transmitirDTESandbox(signed.jws, '00');
-        setRespuestaMH(result);
-        if (result.success && result.estado === 'PROCESADO') {
-          addToast('DTE procesado exitosamente (modo sandbox)', 'success');
-        } else {
-          addToast(result.mensaje || 'Error en la transmisión', 'error');
-        }
+      if (ok && (estado === 'PROCESADO' || estado === 'ACEPTADO' || estado === 'ACEPTADO_CON_ADVERTENCIAS')) {
+        addToast('DTE procesado exitosamente', 'success');
+      } else if (result.isOffline) {
+        addToast(result.contingencyReason || 'Documento enviado a contingencia', 'info');
+      } else {
+        addToast(result.mhResponse?.mensaje || 'Error en la transmisión', 'error');
       }
     } catch (e: any) {
+      setRespuestaMH({ error: e?.message || 'Error al transmitir' });
       addToast(e?.message || 'Error al transmitir', 'error');
     } finally {
       setIsSending(false);
@@ -411,34 +388,22 @@ const PosCF: React.FC = () => {
         {respuestaMH && (
           <div className="border rounded-lg p-3 text-sm text-gray-800 space-y-2">
             {(() => {
-              const transmision = respuestaMH.data?.transmisionResult;
-              const mhStatus = transmision?.mhStatus
-                || transmision?.estado
-                || respuestaMH.data?.mhStatus
-                || respuestaMH.estado;
-              const mhMessage = transmision?.mhMessage
-                || transmision?.descripcionMsg
-                || respuestaMH.data?.mhMessage
-                || respuestaMH.descripcionMsg
-                || respuestaMH.error?.userMessage;
-              const emailSent = respuestaMH.data?.emailSent;
-              const emailError = respuestaMH.data?.emailError;
+              const mh = 'mhResponse' in respuestaMH ? respuestaMH.mhResponse : undefined;
+              const mhStatus = mh?.estado;
+              const mhMessage = 'error' in respuestaMH ? respuestaMH.error : mh?.mensaje;
               return (
                 <>
-                  <div className="font-semibold">Hacienda: {mhStatus || transmision?.estado || 'Sin estado'}</div>
-                  <div className="text-gray-600">{mhMessage || transmision?.descripcionMsg || 'Mensaje no disponible'}</div>
-                  {transmision?.selloRecepcion && (
-                    <div className="text-xs text-gray-500 break-all">Sello: {transmision.selloRecepcion}</div>
+                  <div className="font-semibold">Hacienda: {mhStatus || 'Sin estado'}</div>
+                  <div className="text-gray-600">{mhMessage || 'Mensaje no disponible'}</div>
+                  {mh?.selloRecepcion && (
+                    <div className="text-xs text-gray-500 break-all">Sello: {mh.selloRecepcion}</div>
                   )}
-                  {transmision?.codigoGeneracion && (
-                    <div className="text-xs text-gray-500 break-all">Código: {transmision.codigoGeneracion}</div>
+                  {mh?.codigoGeneracion && (
+                    <div className="text-xs text-gray-500 break-all">Código: {mh.codigoGeneracion}</div>
                   )}
-                  <div className="pt-1">
-                    {emailSent === true && <span className="text-emerald-700 font-semibold">Correo enviado.</span>}
-                    {emailSent === false && (
-                      <span className="text-amber-700 font-semibold">Correo no enviado: {emailError || 'Sin correo de receptor/emisor'}</span>
-                    )}
-                  </div>
+                  {'mhResponse' in respuestaMH && respuestaMH.isOffline && (
+                    <div className="pt-1 text-amber-700 font-semibold">Contingencia: {respuestaMH.contingencyReason || 'Documento pendiente de normalización.'}</div>
+                  )}
                   <pre className="mt-2 max-h-40 overflow-auto bg-gray-50 border border-gray-100 rounded p-2 text-[11px] text-gray-800">
                     {JSON.stringify(respuestaMH, null, 2)}
                   </pre>

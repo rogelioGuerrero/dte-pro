@@ -9,15 +9,6 @@ const __dirname = path.dirname(__filename)
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  server: {
-    proxy: {
-      '/api/mh': {
-        target: 'https://api-firma.onrender.com/firma',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/mh/, ''),
-      },
-    },
-  },
   resolve: {
     alias: {
       'node:async_hooks': path.resolve(__dirname, './utils/shims/async_hooks.ts'),

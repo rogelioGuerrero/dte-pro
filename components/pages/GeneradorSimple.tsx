@@ -5,9 +5,7 @@ import { Copy, Send } from 'lucide-react';
 
 import { checkLicense } from '../../utils/licenseValidator';
 import { getCertificate } from '../../utils/secureStorage';
-import { leerP12, firmarDTEConP12 } from '../../utils/p12Handler';
-import { transmitirDTESandbox } from '../../utils/mh/sandboxClient';
-import { limpiarDteParaFirma } from '../../utils/firmaApiClient';
+import { limpiarDteParaFirma, transmitirDocumento, type TransmitDTEResponse } from '../../utils/firmaApiClient';
 
 export const GeneradorSimple: React.FC = () => {
   const { addToast } = useToast();
@@ -15,7 +13,7 @@ export const GeneradorSimple: React.FC = () => {
   const [cantidad, setCantidad] = useState<number>(1);
   const [descripcion, setDescripcion] = useState<string>('limpi');
   const [resultadoJSON, setResultadoJSON] = useState<string>('');
-  const [respuestaMH, setRespuestaMH] = useState<any>(null);
+  const [respuestaMH, setRespuestaMH] = useState<TransmitDTEResponse | { error: string } | null>(null);
   const [isTransmitting, setIsTransmitting] = useState(false);
 
   const emisor = {
@@ -133,28 +131,28 @@ export const GeneradorSimple: React.FC = () => {
 
     try {
       const stored = await getCertificate();
-      if (!stored?.certificate || !stored?.password) {
-        addToast('Carga tu certificado (.p12/.pfx) en Mi Cuenta antes de transmitir.', 'error');
+      if (!stored?.password) {
+        addToast('Guarda la contraseña del certificado en Mi Cuenta antes de transmitir.', 'error');
         return;
       }
 
-      const parsed = await leerP12(stored.certificate, stored.password);
-      if (!parsed.success || !parsed.privateKey || !parsed.certificatePem) {
-        throw new Error(parsed.error || 'No se pudo leer el certificado');
-      }
-
       const dteLimpio = limpiarDteParaFirma(dteParaEnviar as any);
-      const signed = await firmarDTEConP12(dteLimpio as any, parsed.privateKey, parsed.certificatePem);
-      if (!signed.success || !signed.jws) {
-        throw new Error(signed.error || 'No se pudo firmar el documento');
-      }
-
-      const result = await transmitirDTESandbox(signed.jws, '00');
+      const result = await transmitirDocumento({
+        dte: dteLimpio,
+        passwordPri: stored.password,
+        ambiente: '00',
+      });
       setRespuestaMH(result);
-      if (result.success && result.estado === 'PROCESADO') {
+
+      const estado = result.mhResponse?.estado;
+      const ok = result.transmitted === true && result.mhResponse?.success === true;
+
+      if (ok && (estado === 'PROCESADO' || estado === 'ACEPTADO' || estado === 'ACEPTADO_CON_ADVERTENCIAS')) {
         addToast('DTE procesado por Hacienda', 'success');
+      } else if (result.isOffline) {
+        addToast(result.contingencyReason || 'Documento enviado a contingencia', 'info');
       } else {
-        addToast(result.mensaje || 'Error en la transmisión', 'error');
+        addToast(result.mhResponse?.mensaje || 'Error en la transmisión', 'error');
       }
     } catch (error: any) {
       setRespuestaMH({ error: error.message });
@@ -234,19 +232,19 @@ export const GeneradorSimple: React.FC = () => {
           </div>
 
           {respuestaMH && (
-            <div className={`border rounded-xl overflow-hidden shadow-sm ${respuestaMH.estado === 'PROCESADO' ? 'border-green-300' : 'border-red-300'}`}>
-              <div className={`px-4 py-3 border-b ${respuestaMH.estado === 'PROCESADO' ? 'bg-green-50' : 'bg-red-50'}`}>
-                <h2 className={`text-lg font-bold ${respuestaMH.estado === 'PROCESADO' ? 'text-green-800' : 'text-red-800'}`}>
-                  Hacienda: {respuestaMH.estado || 'Sin estado'}
+            <div className={`border rounded-xl overflow-hidden shadow-sm ${'mhResponse' in respuestaMH && respuestaMH.mhResponse?.success ? 'border-green-300' : 'border-red-300'}`}>
+              <div className={`px-4 py-3 border-b ${'mhResponse' in respuestaMH && respuestaMH.mhResponse?.success ? 'bg-green-50' : 'bg-red-50'}`}>
+                <h2 className={`text-lg font-bold ${'mhResponse' in respuestaMH && respuestaMH.mhResponse?.success ? 'text-green-800' : 'text-red-800'}`}>
+                  Hacienda: {('mhResponse' in respuestaMH ? respuestaMH.mhResponse?.estado : undefined) || 'Sin estado'}
                 </h2>
-                <p className={`text-sm ${respuestaMH.estado === 'PROCESADO' ? 'text-green-600' : 'text-red-600'}`}>
-                  {respuestaMH.descripcionMsg || respuestaMH.error || 'Mensaje no disponible'}
+                <p className={`text-sm ${'mhResponse' in respuestaMH && respuestaMH.mhResponse?.success ? 'text-green-600' : 'text-red-600'}`}>
+                  {('error' in respuestaMH ? respuestaMH.error : respuestaMH.mhResponse?.mensaje) || 'Mensaje no disponible'}
                 </p>
-                {respuestaMH.data?.selloRecepcion && (
-                  <p className="text-xs text-gray-500 break-all">Sello: {respuestaMH.data.selloRecepcion}</p>
+                {'mhResponse' in respuestaMH && respuestaMH.mhResponse?.selloRecepcion && (
+                  <p className="text-xs text-gray-500 break-all">Sello: {respuestaMH.mhResponse.selloRecepcion}</p>
                 )}
-                {respuestaMH.data?.codigoGeneracion && (
-                  <p className="text-xs text-gray-500 break-all">Código: {respuestaMH.data.codigoGeneracion}</p>
+                {'mhResponse' in respuestaMH && respuestaMH.mhResponse?.codigoGeneracion && (
+                  <p className="text-xs text-gray-500 break-all">Código: {respuestaMH.mhResponse.codigoGeneracion}</p>
                 )}
               </div>
               <pre className="bg-gray-50 p-4 overflow-x-auto text-xs text-gray-800 max-h-64">

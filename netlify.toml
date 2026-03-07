@@ -18,16 +18,6 @@
   port = 8888
 
 [[redirects]]
-  from = "/api/mh/transmitir"
-  to = "/.netlify/functions/mh-transmitir"
-  status = 200
-
-[[redirects]]
-  from = "/api/mh/consulta/*"
-  to = "/.netlify/functions/mh-consulta/:splat"
-  status = 200
-
-[[redirects]]
   from = "/api/pending-clients"
   to = "/.netlify/functions/pending-clients"
   status = 200

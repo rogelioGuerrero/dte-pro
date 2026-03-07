@@ -3,9 +3,8 @@ import { DTEState } from "./state";
 import { convertirAContingencia } from "../dteGenerator";
 import { updateTaxAccumulator, createEmptyAccumulator, getPeriodFromDate } from "../tax/taxCalculator";
 import { getAccumulator, saveAccumulator } from "../tax/taxStorage";
-import { firmarDocumento, limpiarDteParaFirma, wakeFirmaService } from "../firmaApiClient";
+import { firmarDocumento, limpiarDteParaFirma, transmitirDocumento, wakeFirmaService } from "../firmaApiClient";
 import { processDTE } from "../mh/process";
-import { transmitirDTESandbox } from "../mh/sandboxClient";
 import { TransmisionResult } from "../dteSignature";
 
 // --- NODES ---
@@ -58,11 +57,9 @@ const signNode = async (state: DTEState): Promise<Partial<DTEState>> => {
 
     const processed = processDTE(state.dte);
     const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
-    const nitEmisor = (state.dte.emisor?.nit || '').toString().replace(/[\s-]/g, '').trim();
 
     // Ejecutar firma real
     const jwsFirmado = await firmarDocumento({
-      nit: nitEmisor,
       passwordPri: state.passwordPri,
       dteJson: dteLimpio,
     });
@@ -86,13 +83,60 @@ const signNode = async (state: DTEState): Promise<Partial<DTEState>> => {
 const transmitNode = async (state: DTEState): Promise<Partial<DTEState>> => {
   console.log("📡 Transmisor: Enviando a Ministerio de Hacienda...");
   
-  if (!state.signature) return { status: 'failed', validationErrors: ["No hay firma JWS"] };
+  if (!state.dte || !state.passwordPri) return { status: 'failed', validationErrors: ["Faltan datos para transmitir"] };
 
   try {
     const ambiente = state.ambiente || '00';
+    const processed = processDTE(state.dte);
+    const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
     
-    // Transmisión real
-    const result = await transmitirDTESandbox(state.signature, ambiente);
+    const backendResponse = await transmitirDocumento({
+      dte: dteLimpio,
+      passwordPri: state.passwordPri,
+      ambiente,
+    });
+
+    const mh = backendResponse.mhResponse;
+    const result: TransmisionResult = backendResponse.isOffline
+      ? {
+          success: false,
+          estado: 'CONTINGENCIA',
+          codigoGeneracion: mh?.codigoGeneracion || processed.dte.identificacion.codigoGeneracion,
+          numeroControl: mh?.numeroControl || processed.dte.identificacion.numeroControl,
+          fechaHoraRecepcion: mh?.fechaHoraRecepcion || new Date().toISOString(),
+          fechaHoraProcesamiento: mh?.fechaHoraProcesamiento,
+          mensaje: backendResponse.contingencyReason || mh?.mensaje || 'Documento enviado a contingencia',
+          advertencias: mh?.advertencias,
+          errores: mh?.errores?.map(e => ({
+            codigo: e.codigo,
+            campo: e.campo,
+            descripcion: e.descripcion,
+            severidad: 'ERROR',
+            valorActual: e.valorActual,
+            valorEsperado: e.valorEsperado,
+          })),
+          enlaceConsulta: mh?.enlaceConsulta,
+        }
+      : {
+          success: backendResponse.transmitted === true && mh?.success === true,
+          estado: mh?.estado || 'RECHAZADO',
+          codigoGeneracion: mh?.codigoGeneracion || processed.dte.identificacion.codigoGeneracion,
+          selloRecepcion: mh?.selloRecepcion,
+          numeroControl: mh?.numeroControl || processed.dte.identificacion.numeroControl,
+          fechaHoraRecepcion: mh?.fechaHoraRecepcion,
+          fechaHoraProcesamiento: mh?.fechaHoraProcesamiento,
+          mensaje: mh?.mensaje,
+          advertencias: mh?.advertencias,
+          errores: mh?.errores?.map(e => ({
+            codigo: e.codigo,
+            campo: e.campo,
+            descripcion: e.descripcion,
+            severidad: 'ERROR',
+            valorActual: e.valorActual,
+            valorEsperado: e.valorEsperado,
+          })),
+          enlaceConsulta: mh?.enlaceConsulta,
+        };
     
     if (result.success) {
       console.log("✅ MH: Recibido exitosamente.", result.selloRecepcion);
@@ -105,6 +149,16 @@ const transmitNode = async (state: DTEState): Promise<Partial<DTEState>> => {
       // Manejo de errores
       console.error("❌ MH Rechazo/Error:", result);
       
+      if (backendResponse.isOffline) {
+        return {
+          status: 'contingency',
+          isOffline: true,
+          contingencyReason: backendResponse.contingencyReason || 'Falla de comunicación con MH',
+          mhResponse: result,
+          signature: backendResponse.signature || state.signature,
+        };
+      }
+
       // Detectar problemas de conexión o errores 500 para contingencia
       const isCommError = result.errores?.some(e => e.codigo === 'COM-ERR' || e.codigo.startsWith('HTTP-'));
       
@@ -153,10 +207,8 @@ const contingencyNode = async (state: DTEState): Promise<Partial<DTEState>> => {
     // Volver a procesar y firmar el DTE de contingencia
     const processed = processDTE(dteContingencia);
     const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
-    const nitEmisor = (state.dte.emisor?.nit || '').toString().replace(/[\s-]/g, '').trim();
 
     const jwsContingencia = await firmarDocumento({
-      nit: nitEmisor,
       passwordPri: state.passwordPri,
       dteJson: dteLimpio,
     });
