@@ -309,9 +309,9 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, businessId, bu
                 {activeTab === 'negocio' && (
                   <div className="space-y-5">
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-700">Módulos visibles</h4>
+                      <h4 className="text-sm font-semibold text-gray-700">Ajustes técnicos del negocio</h4>
                       <p className="text-xs text-gray-500 mt-1">
-                        Este control es local por ahora. Luego se sincronizará con el endpoint de business settings del backend.
+                        La gestión global del negocio ahora se hace desde <strong>Mi Cuenta</strong>. Esta pantalla queda como herramienta secundaria de soporte y configuración avanzada.
                       </p>
                     </div>
 
@@ -349,7 +349,7 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, businessId, bu
                       <label className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-200">
                         <div>
                           <div className="text-sm font-medium text-gray-900">Push habilitado</div>
-                          <div className="text-xs text-gray-500">Prepara la UI para campañas y suscripciones.</div>
+                          <div className="text-xs text-gray-500">Bandera global del negocio para campañas y suscripciones.</div>
                         </div>
                         <input
                           type="checkbox"
@@ -362,7 +362,7 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, businessId, bu
                       <label className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-200">
                         <div>
                           <div className="text-sm font-medium text-gray-900">Fingerprint habilitado</div>
-                          <div className="text-xs text-gray-500">Solo como bandera de producto; no fuerza autenticación todavía.</div>
+                          <div className="text-xs text-gray-500">Bandera técnica del producto; no sustituye la gestión principal desde Mi Cuenta.</div>
                         </div>
                         <input
                           type="checkbox"

@@ -27,8 +27,9 @@ interface MiCuentaProps {
 const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, businessSettings, onBusinessSettingsChange }) => {
   const { isSupported, permission, subscription, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
   const { user, isConfigured, signOut } = useAuth();
-  const { businessId, emisores, reload } = useEmisor();
-  const canManage = true;
+  const { businessId, emisores, reload, currentRole } = useEmisor();
+  const canManageLocal = true;
+  const canManageRemote = currentRole === 'owner' || currentRole === 'admin';
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showEmisorConfig, setShowEmisorConfig] = useState(false);
   const [emisorForm, setEmisorForm] = useState<Omit<EmisorData, 'id'> & { logoUrl?: string }>({
@@ -357,13 +358,13 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
           <div>
             <p className="text-sm font-semibold text-gray-900">Estado de configuración</p>
             <p className="text-sm text-gray-600">
-              {businessId ? 'Emisor seleccionado: puedes configurar datos, credenciales y equipo.' : 'Aún no hay emisor asociado a tu cuenta.'}
+              {businessId ? 'Desde aquí controlas el negocio: facturación, POS, inventario, equipo y operación diaria.' : 'Aún no hay emisor asociado a tu cuenta.'}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <button
               onClick={handleOpenConfig}
-              disabled={!canManage}
+              disabled={!canManageLocal}
               className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
             >
               <Settings className="w-4 h-4" />
@@ -394,7 +395,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs font-semibold text-gray-500 uppercase">1. Emisor</p>
             <p className="text-sm font-medium text-gray-900 mt-1">{businessId ? 'Listo para configurar' : 'Pendiente'}</p>
-            <p className="text-xs text-gray-600 mt-1">{businessId ? 'Datos del negocio y códigos MH.' : 'Vincula un emisor a tu cuenta.'}</p>
+            <p className="text-xs text-gray-600 mt-1">{businessId ? 'Datos fiscales y comerciales del emisor.' : 'Vincula un emisor a tu cuenta.'}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs font-semibold text-gray-500 uppercase">2. Credenciales</p>
@@ -406,7 +407,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs font-semibold text-gray-500 uppercase">3. Equipo</p>
             <p className="text-sm font-medium text-gray-900 mt-1">{businessId ? 'Disponible' : 'Pendiente'}</p>
-            <p className="text-xs text-gray-600 mt-1">Roles y usuarios por emisor.</p>
+            <p className="text-xs text-gray-600 mt-1">Roles y usuarios que operan este negocio.</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs font-semibold text-gray-500 uppercase">4. Push</p>
@@ -428,18 +429,24 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
               <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-medium text-gray-900">Administración remota del negocio</h2>
-                  <p className="text-sm text-gray-500 mt-1">Esto sí está pensado para gestionarlo a distancia: módulos, tabs y arranque del negocio.</p>
+                  <p className="text-sm text-gray-500 mt-1">Esto es global para este negocio y aplica a todos los usuarios que entren con este emisor.</p>
                 </div>
                 <div className={`text-xs font-medium px-2.5 py-1 rounded-full ${businessSettings.source === 'remote' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
                   {businessSettings.source === 'remote' ? 'Sincronizado con backend' : 'Usando fallback local'}
                 </div>
               </div>
               <div className="p-6 space-y-5">
+                {!canManageRemote && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    Solo `owner` o `admin` pueden cambiar la configuración global del negocio. Con tu rol actual esta sección queda en solo lectura.
+                  </div>
+                )}
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase">Tab inicial</p>
                   <select
                     value={remoteDraft.defaultTab}
                     onChange={(e) => handleRemoteDefaultTabChange(e.target.value as ManagedAppTab)}
+                    disabled={!canManageRemote}
                     className="mt-2 w-full md:w-72 px-3 py-2 border border-gray-300 rounded-lg"
                   >
                     {MANAGED_APP_TABS.filter((tab) => remoteDraft.features[tab]).map((tab) => (
@@ -460,6 +467,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
                           type="checkbox"
                           checked={remoteDraft.features[tab]}
                           onChange={(e) => handleRemoteFeatureToggle(tab, e.target.checked)}
+                          disabled={!canManageRemote}
                           className="h-4 w-4"
                         />
                       </label>
@@ -472,7 +480,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
                   </p>
                   <button
                     onClick={handleRemoteSave}
-                    disabled={isSavingRemoteSettings || !businessId}
+                    disabled={isSavingRemoteSettings || !businessId || !canManageRemote}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <Settings className="w-4 h-4" />
@@ -480,7 +488,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
                   </button>
                 </div>
                 <p className="text-xs text-gray-500">
-                  La <strong>Configuración local del dispositivo</strong> sigue aparte para no cargar al dueño de la tienda con opciones técnicas.
+                  La <strong>Configuración local del dispositivo</strong> queda aparte solo para soporte técnico o ajustes de este navegador/equipo.
                 </p>
               </div>
             </div>
@@ -509,7 +517,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
                 <Store className="w-5 h-5 text-gray-500" />
                 <h2 className="text-lg font-medium text-gray-900">Negocio</h2>
               </div>
-              {canManage ? (
+              {canManageLocal ? (
                 <button
                   onClick={handleOpenConfig}
                   disabled={false}
