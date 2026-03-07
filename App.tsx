@@ -285,6 +285,7 @@ const App: React.FC = () => {
             onBack={() => setActiveTab('factura')}
             onOpenAdvancedSettings={() => setShowAdminModal(true)}
             businessSettings={businessSettings}
+            onBusinessSettingsChange={updateLocalSettings}
           />
         )}
         {activeTab === 'simple' && (businessId ? (

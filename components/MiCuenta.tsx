@@ -14,15 +14,17 @@ import { DeviceFingerprintDisplay } from './DeviceFingerprintDisplay';
 import { apiFetch } from '../utils/apiClient';
 import { TeamPanel } from './TeamPanel';
 import { useAuth } from '../contexts/AuthContext';
-import { BusinessSettings, buildFeatureSummary } from '../utils/businessSettings';
+import { APP_TAB_LABELS, MANAGED_APP_TABS, ManagedAppTab } from '../utils/appTabs';
+import { BusinessSettings, normalizeBusinessSettings, saveBusinessSettingsToBackend } from '../utils/businessSettings';
 
 interface MiCuentaProps {
   onBack?: () => void;
   onOpenAdvancedSettings?: () => void;
   businessSettings?: BusinessSettings;
+  onBusinessSettingsChange?: (updater: (current: BusinessSettings) => BusinessSettings) => void;
 }
 
-const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, businessSettings }) => {
+const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, businessSettings, onBusinessSettingsChange }) => {
   const { isSupported, permission, subscription, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
   const { user, isConfigured, signOut } = useAuth();
   const { businessId, emisores, reload } = useEmisor();
@@ -75,9 +77,14 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
     hasPassword: false
   });
   const selectedEmisor = emisores.find((item) => item.business_id === businessId) || null;
-  const visibleModules = businessSettings ? buildFeatureSummary(businessSettings) : [];
+  const [remoteDraft, setRemoteDraft] = useState<BusinessSettings | null>(businessSettings || null);
+  const [isSavingRemoteSettings, setIsSavingRemoteSettings] = useState(false);
   
   const restoreFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setRemoteDraft(businessSettings || null);
+  }, [businessSettings]);
 
   const handleSignOut = async () => {
     try {
@@ -86,6 +93,52 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
     } catch (error) {
       console.error(error);
       notify('No se pudo cerrar sesión', 'error');
+    }
+  };
+
+  const handleRemoteFeatureToggle = (tab: ManagedAppTab, enabled: boolean) => {
+    setRemoteDraft((current) => {
+      if (!current) return current;
+      const nextFeatures = {
+        ...current.features,
+        [tab]: enabled,
+      };
+      const defaultStillVisible = nextFeatures[current.defaultTab];
+      const nextDefaultTab = defaultStillVisible
+        ? current.defaultTab
+        : MANAGED_APP_TABS.find((candidate) => nextFeatures[candidate]) || 'factura';
+
+      return normalizeBusinessSettings({
+        ...current,
+        features: nextFeatures,
+        defaultTab: nextDefaultTab,
+      });
+    });
+  };
+
+  const handleRemoteDefaultTabChange = (tab: ManagedAppTab) => {
+    setRemoteDraft((current) => current ? normalizeBusinessSettings({ ...current, defaultTab: tab }) : current);
+  };
+
+  const handleRemoteSave = async () => {
+    if (!remoteDraft || !businessId || !onBusinessSettingsChange) return;
+
+    setIsSavingRemoteSettings(true);
+    try {
+      const normalized = normalizeBusinessSettings({
+        ...remoteDraft,
+        businessId,
+        source: 'remote',
+      });
+      const saved = await saveBusinessSettingsToBackend(normalized);
+      onBusinessSettingsChange(() => saved);
+      setRemoteDraft(saved);
+      notify('Configuración remota del negocio actualizada', 'success');
+    } catch (error) {
+      console.error(error);
+      notify('No se pudo guardar la configuración remota del negocio', 'error');
+    } finally {
+      setIsSavingRemoteSettings(false);
     }
   };
 
@@ -322,7 +375,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50"
               >
                 <Settings className="w-4 h-4" />
-                Configurar módulos y tabs
+                Configuración local del dispositivo
               </button>
             )}
           </div>
@@ -370,40 +423,64 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <DeviceFingerprintDisplay />
-          {onOpenAdvancedSettings && businessSettings && (
+          {businessSettings && remoteDraft && onBusinessSettingsChange && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-medium text-gray-900">Módulos y tabs</h2>
-                  <p className="text-sm text-gray-500 mt-1">Aquí puedes ver qué se muestra hoy y abrir la configuración avanzada.</p>
+                  <h2 className="text-lg font-medium text-gray-900">Administración remota del negocio</h2>
+                  <p className="text-sm text-gray-500 mt-1">Esto sí está pensado para gestionarlo a distancia: módulos, tabs y arranque del negocio.</p>
                 </div>
-                <button
-                  onClick={onOpenAdvancedSettings}
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
-                >
-                  <Settings className="w-4 h-4" />
-                  Abrir configuración
-                </button>
+                <div className={`text-xs font-medium px-2.5 py-1 rounded-full ${businessSettings.source === 'remote' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+                  {businessSettings.source === 'remote' ? 'Sincronizado con backend' : 'Usando fallback local'}
+                </div>
               </div>
-              <div className="p-6 space-y-4">
+              <div className="p-6 space-y-5">
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase">Tab inicial</p>
-                  <p className="text-sm font-medium text-gray-900 mt-1">{businessSettings.defaultTab}</p>
+                  <select
+                    value={remoteDraft.defaultTab}
+                    onChange={(e) => handleRemoteDefaultTabChange(e.target.value as ManagedAppTab)}
+                    className="mt-2 w-full md:w-72 px-3 py-2 border border-gray-300 rounded-lg"
+                  >
+                    {MANAGED_APP_TABS.filter((tab) => remoteDraft.features[tab]).map((tab) => (
+                      <option key={tab} value={tab}>{APP_TAB_LABELS[tab]}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase">Módulos visibles</p>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {visibleModules.length > 0 ? visibleModules.map((item) => (
-                      <span key={item} className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium border border-indigo-100">
-                        {item}
-                      </span>
-                    )) : (
-                      <span className="text-sm text-gray-500">No hay módulos visibles configurados.</span>
-                    )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                    {MANAGED_APP_TABS.map((tab) => (
+                      <label key={tab} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-200">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{APP_TAB_LABELS[tab]}</div>
+                          <div className="text-xs text-gray-500">{tab}</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={remoteDraft.features[tab]}
+                          onChange={(e) => handleRemoteFeatureToggle(tab, e.target.checked)}
+                          className="h-4 w-4"
+                        />
+                      </label>
+                    ))}
                   </div>
                 </div>
+                <div className="flex flex-wrap gap-3 items-center justify-between pt-2">
+                  <p className="text-xs text-gray-500">
+                    Los cambios se guardan en backend por negocio y se reflejan en todos los equipos cuando sincronizan.
+                  </p>
+                  <button
+                    onClick={handleRemoteSave}
+                    disabled={isSavingRemoteSettings || !businessId}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <Settings className="w-4 h-4" />
+                    {isSavingRemoteSettings ? 'Guardando...' : 'Guardar cambios remotos'}
+                  </button>
+                </div>
                 <p className="text-xs text-gray-500">
-                  La edición se hace en <strong>Configuración Avanzada &gt; Negocio</strong>.
+                  La <strong>Configuración local del dispositivo</strong> sigue aparte para no cargar al dueño de la tienda con opciones técnicas.
                 </p>
               </div>
             </div>
