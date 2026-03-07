@@ -3,13 +3,14 @@ import { LayoutDashboard, Users, FileText, History, Boxes, PieChart, Zap } from 
 import { isTabAllowed } from '../utils/userMode';
 import { isTabAllowedForRole, firstAllowedTab, Role, normalizeRole } from '../utils/roleAccess';
 import { useEmisor } from '../contexts/EmisorContext';
-
-type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta' | 'simple' | 'poscf';
+import { BusinessSettings, DEFAULT_BUSINESS_SETTINGS, isManagedTabEnabled } from '../utils/businessSettings';
+import { AppTab } from '../utils/appTabs';
 
 interface NavigationTabsProps {
   activeTab: string;
   onTabChange: (tab: AppTab) => void;
   isMobile?: boolean;
+  businessSettings?: BusinessSettings;
 }
 
 const TABS_CONFIG = [
@@ -26,12 +27,17 @@ const TABS_CONFIG = [
 export const NavigationTabs: React.FC<NavigationTabsProps> = ({ 
   activeTab, 
   onTabChange, 
-  isMobile = false 
+  isMobile = false,
+  businessSettings = DEFAULT_BUSINESS_SETTINGS,
 }) => {
   const { currentRole } = useEmisor();
   const role: Role = normalizeRole(currentRole);
   // Filtrar pestañas según el modo de usuario
-  const allowedTabs = TABS_CONFIG.filter(tab => isTabAllowed(tab.key) && isTabAllowedForRole(tab.key, role));
+  const allowedTabs = TABS_CONFIG.filter((tab) => (
+    isTabAllowed(tab.key)
+    && isTabAllowedForRole(tab.key, role)
+    && isManagedTabEnabled(businessSettings, tab.key as AppTab)
+  ));
 
   // Encontrar la primera pestaña permitida si la actual no está permitida (y no es micuenta)
   React.useEffect(() => {

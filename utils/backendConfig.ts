@@ -37,3 +37,30 @@ export const buildBackendHeaders = ({ token, businessId, adminSecret }: AuthHead
 
   return headers;
 };
+
+export const getBackendAuthToken = (): string | null => {
+  const envToken = import.meta.env.VITE_JWT_TOKEN as string | undefined;
+  if (envToken && envToken.trim()) {
+    return envToken.trim();
+  }
+
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const storageKeys = [
+    'dte_jwt_token',
+    'auth_token',
+    'access_token',
+    'sb-access-token'
+  ];
+
+  for (const key of storageKeys) {
+    const value = window.localStorage.getItem(key);
+    if (value && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+};

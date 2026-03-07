@@ -22,8 +22,9 @@ import ForceUpdateModal from './components/ForceUpdateModal';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import MiCuenta from './components/MiCuenta';
 import { useEmisor } from './contexts/EmisorContext';
-
-type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta' | 'simple' | 'poscf';
+import { useBusinessSettings } from './hooks/useBusinessSettings';
+import { APP_TAB_LABELS, AppTab } from './utils/appTabs';
+import { isManagedTabEnabled } from './utils/businessSettings';
 
 const Placeholder: React.FC = () => (
   <div className="border border-dashed border-gray-300 rounded-xl p-6 text-center text-sm text-gray-500 bg-white/60">
@@ -59,6 +60,7 @@ const App: React.FC = () => {
   const [showUserModeSetup, setShowUserModeSetup] = useState(false);
   const [forceUpdateInfo, setForceUpdateInfo] = useState<{ minVersion: string; message?: string } | null>(null);
   const { businessId } = useEmisor();
+  const { settings: businessSettings, defaultTab, updateLocalSettings } = useBusinessSettings(businessId);
   const clickCountRef = useRef(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -137,6 +139,21 @@ const App: React.FC = () => {
     if (activeTab === 'products') setActiveTab('inventory');
   }, [activeTab]);
 
+  useEffect(() => {
+    if (activeTab === 'micuenta') return;
+    if (!isManagedTabEnabled(businessSettings, activeTab)) {
+      setActiveTab(defaultTab);
+    }
+  }, [activeTab, businessSettings, defaultTab]);
+
+  useEffect(() => {
+    setActiveTab((current) => {
+      if (current === 'micuenta') return current;
+      if (isManagedTabEnabled(businessSettings, current)) return current;
+      return defaultTab;
+    });
+  }, [businessId, businessSettings, defaultTab]);
+
   // Cerrar dropdown de backup al hacer clic fuera (obsoleto, removido menú de backup)
   useEffect(() => {
     // Empty effect to satisfy hooks rules if needed, or we could remove it. 
@@ -210,17 +227,13 @@ const App: React.FC = () => {
               activeTab={activeTab}
               onTabChange={setActiveTab}
               isMobile={false}
+              businessSettings={businessSettings}
             />
           </nav>
           
           {/* Mobile: Current tab indicator */}
           <div className="md:hidden text-sm font-medium text-gray-600">
-            {activeTab === 'batch' && 'Libros IVA'}
-            {activeTab === 'clients' && 'Clientes'}
-            {activeTab === 'inventory' && 'Inventario'}
-            {activeTab === 'factura' && 'Facturar'}
-            {activeTab === 'historial' && 'Historial'}
-            {activeTab === 'micuenta' && 'Mi Cuenta'}
+            {APP_TAB_LABELS[activeTab]}
           </div>
           
           {/* Right Actions */}
@@ -287,6 +300,7 @@ const App: React.FC = () => {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             isMobile={true}
+            businessSettings={businessSettings}
           />
         </div>
       </nav>
@@ -324,7 +338,13 @@ const App: React.FC = () => {
           </div>
         </div>
       </footer>
-      <AdminModal isOpen={showAdminModal} onClose={() => setShowAdminModal(false)} />
+      <AdminModal
+        isOpen={showAdminModal}
+        onClose={() => setShowAdminModal(false)}
+        businessId={businessId}
+        businessSettings={businessSettings}
+        onBusinessSettingsChange={updateLocalSettings}
+      />
       {showLicenseManager && (
         <LicenseManager 
           onClose={() => setShowLicenseManager(false)}

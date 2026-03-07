@@ -5,22 +5,28 @@ import { loadSettings, saveSettings, AppSettings } from '../utils/settings';
 import { validateAdminPin, hasAdminPin } from '../utils/adminPin';
 import { getUserModeConfig, setUserMode, UserMode } from '../utils/userMode';
 import { generateSecret, getTotpUri, verifyToken, saveSecret, hasTotpConfigured, clearTotpConfig, getStoredSecret } from '../utils/auth/totp';
+import { notify } from '../utils/notifications';
+import { APP_TAB_LABELS, ManagedAppTab, MANAGED_APP_TABS } from '../utils/appTabs';
+import { BusinessSettings, normalizeBusinessSettings, saveBusinessSettingsToBackend } from '../utils/businessSettings';
 
 interface AdminModalProps {
   isOpen: boolean;
   onClose: () => void;
+  businessId: string | null;
+  businessSettings: BusinessSettings;
+  onBusinessSettingsChange: (updater: (current: BusinessSettings) => BusinessSettings) => void;
 }
 
- 
-
-const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
+const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, businessId, businessSettings, onBusinessSettingsChange }) => {
   const [settings, setSettings] = useState<AppSettings>(loadSettings());
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [activeTab, setActiveTab] = useState('general');
   const [error, setError] = useState('');
   const [currentMode, setCurrentMode] = useState<UserMode>('negocio');
-  
+  const [draftBusinessSettings, setDraftBusinessSettings] = useState<BusinessSettings>(businessSettings);
+  const [isSavingBusinessSettings, setIsSavingBusinessSettings] = useState(false);
+
   // TOTP State
   const [isTotpEnabled, setIsTotpEnabled] = useState(false);
   const [showTotpSetup, setShowTotpSetup] = useState(false);
@@ -28,7 +34,6 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [setupToken, setSetupToken] = useState('');
 
-  // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
       setSettings(loadSettings());
@@ -37,13 +42,14 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
       setError('');
       setActiveTab('general');
       setCurrentMode(getUserModeConfig().mode);
+      setDraftBusinessSettings(businessSettings);
       setIsTotpEnabled(hasTotpConfigured());
       setShowTotpSetup(false);
       setNewSecret('');
       setQrCodeUrl('');
       setSetupToken('');
     }
-  }, [isOpen]);
+  }, [isOpen, businessSettings]);
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,9 +112,72 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    const nextSettings = normalizeBusinessSettings({
+      ...draftBusinessSettings,
+      businessId,
+      source: 'local',
+      updatedAt: new Date().toISOString(),
+    });
+
     saveSettings(settings);
-    onClose();
+    onBusinessSettingsChange(() => nextSettings);
+    setIsSavingBusinessSettings(true);
+
+    try {
+      if (!businessId) {
+        notify('Configuración del negocio guardada localmente. Selecciona un emisor para sincronizar.', 'info');
+        onClose();
+        return;
+      }
+
+      const remoteSettings = await saveBusinessSettingsToBackend(nextSettings);
+      onBusinessSettingsChange(() => remoteSettings);
+      notify('Configuración del negocio sincronizada con el backend', 'success');
+      onClose();
+    } catch (error) {
+      console.error(error);
+      notify('Configuración guardada localmente. La sincronización remota quedó pendiente.', 'info');
+      onClose();
+    } finally {
+      setIsSavingBusinessSettings(false);
+    }
+  };
+
+  const handleFeatureToggle = (tab: ManagedAppTab, enabled: boolean) => {
+    setDraftBusinessSettings((current) => {
+      const nextFeatures = {
+        ...current.features,
+        [tab]: enabled,
+      };
+      const hasEnabledDefault = nextFeatures[current.defaultTab];
+      const nextDefaultTab = hasEnabledDefault
+        ? current.defaultTab
+        : MANAGED_APP_TABS.find((candidate) => nextFeatures[candidate]) || 'factura';
+
+      return {
+        ...current,
+        features: nextFeatures,
+        defaultTab: nextDefaultTab,
+      };
+    });
+  };
+
+  const handleDefaultTabChange = (tab: ManagedAppTab) => {
+    setDraftBusinessSettings((current) => ({
+      ...current,
+      defaultTab: tab,
+    }));
+  };
+
+  const handleCapabilityToggle = (key: 'pushEnabled' | 'fingerprintEnabled' | 'advancedConfigEnabled', value: boolean) => {
+    setDraftBusinessSettings((current) => ({
+      ...current,
+      capabilities: {
+        ...current.capabilities,
+        [key]: value,
+      },
+    }));
   };
 
   const handleModeChange = (mode: UserMode) => {
@@ -119,6 +188,7 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
+    { id: 'negocio', label: 'Negocio', icon: Settings },
     { id: 'modo', label: 'Modo de Uso', icon: LayoutTemplate },
     { id: 'security', label: 'Seguridad', icon: ShieldCheck },
   ];
@@ -223,9 +293,84 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                       <p className="text-sm text-gray-600 mb-2">
                         <strong>Modo Actual:</strong> {hasAdminPin() ? 'Producción' : 'Desarrollo'}
                       </p>
+                      <p className="text-sm text-gray-600 mb-2">
+                        <strong>Business ID:</strong> {businessId || 'Sin emisor seleccionado'}
+                      </p>
+                      <p className="text-sm text-gray-600 mb-2">
+                        <strong>Plan:</strong> {draftBusinessSettings.planLabel}
+                      </p>
                       <p className="text-xs text-gray-500">
                         Versión del sistema: {import.meta.env.VITE_APP_VERSION || '1.0.0'}
                       </p>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'negocio' && (
+                  <div className="space-y-5">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700">Módulos visibles</h4>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Este control es local por ahora. Luego se sincronizará con el endpoint de business settings del backend.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      {MANAGED_APP_TABS.map((tab) => (
+                        <label key={tab} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-200">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{APP_TAB_LABELS[tab]}</div>
+                            <div className="text-xs text-gray-500">{tab}</div>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={draftBusinessSettings.features[tab]}
+                            onChange={(e) => handleFeatureToggle(tab, e.target.checked)}
+                            className="h-4 w-4"
+                          />
+                        </label>
+                      ))}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Tab inicial</label>
+                      <select
+                        value={draftBusinessSettings.defaultTab}
+                        onChange={(e) => handleDefaultTabChange(e.target.value as ManagedAppTab)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      >
+                        {MANAGED_APP_TABS.filter((tab) => draftBusinessSettings.features[tab]).map((tab) => (
+                          <option key={tab} value={tab}>{APP_TAB_LABELS[tab]}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-200">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">Push habilitado</div>
+                          <div className="text-xs text-gray-500">Prepara la UI para campañas y suscripciones.</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={draftBusinessSettings.capabilities.pushEnabled}
+                          onChange={(e) => handleCapabilityToggle('pushEnabled', e.target.checked)}
+                          className="h-4 w-4"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-200">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">Fingerprint habilitado</div>
+                          <div className="text-xs text-gray-500">Solo como bandera de producto; no fuerza autenticación todavía.</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={draftBusinessSettings.capabilities.fingerprintEnabled}
+                          onChange={(e) => handleCapabilityToggle('fingerprintEnabled', e.target.checked)}
+                          className="h-4 w-4"
+                        />
+                      </label>
                     </div>
                   </div>
                 )}
@@ -369,10 +514,11 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                 </button>
                 <button
                   onClick={handleSave}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                  disabled={isSavingBusinessSettings}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <Save className="w-4 h-4" />
-                  Guardar
+                  {isSavingBusinessSettings ? 'Guardando...' : 'Guardar'}
                 </button>
               </div>
             </div>
