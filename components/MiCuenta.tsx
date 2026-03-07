@@ -358,7 +358,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
           <div>
             <p className="text-sm font-semibold text-gray-900">Estado de configuración</p>
             <p className="text-sm text-gray-600">
-              {businessId ? 'Si eres owner o admin, desde aquí puedes administrar este negocio a distancia y los cambios globales aplican a todos los equipos.' : 'Aún no hay emisor asociado a tu cuenta.'}
+              {businessId ? 'Si eres owner o admin, desde aquí puedes administrar a distancia la tienda actualmente seleccionada. Los cambios globales aplican a todos los equipos de esa tienda, no a las demás.' : 'Aún no hay emisor asociado a tu cuenta.'}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -384,6 +384,16 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
             )}
           </div>
         </div>
+
+        {businessId && (
+          <div className="mt-4 rounded-xl border border-indigo-200 bg-white px-4 py-3">
+            <p className="text-xs font-semibold text-indigo-700 uppercase">Tienda seleccionada</p>
+            <p className="text-sm font-medium text-gray-900 mt-1">{selectedEmisor?.nombre || businessData.nombre || 'Negocio actual'}</p>
+            <p className="text-xs text-gray-600 mt-1">
+              Todo lo que cambies en administración remota afecta a este emisor (`{businessId}`) y a sus usuarios. Si manejas varias tiendas, cada una se configura por separado.
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -430,10 +440,10 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
           <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 sm:p-5">
             <h2 className="text-base font-semibold text-blue-900">Cómo funciona la administración global</h2>
             <p className="text-sm text-blue-800 mt-2">
-              Si entras con un usuario `owner` o `admin`, puedes cambiar módulos, tabs y equipo desde cualquier lugar. Esos cambios se guardan por negocio y aplican a todos los usuarios de este emisor.
+              Si entras con un usuario `owner` o `admin`, puedes cambiar módulos, tabs y equipo desde cualquier lugar. Esos cambios se guardan por negocio y aplican a todos los usuarios de la tienda seleccionada.
             </p>
             <p className="text-xs text-blue-700 mt-2">
-              Solo lo técnico del dispositivo queda local: permisos del navegador, algunas credenciales del equipo y ajustes de soporte.
+              Si administras varias tiendas, repites el ajuste en cada emisor. Solo lo técnico del dispositivo queda local: permisos del navegador, algunas credenciales del equipo y ajustes de soporte.
             </p>
           </div>
           {businessSettings && remoteDraft && onBusinessSettingsChange && (
