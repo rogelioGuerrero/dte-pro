@@ -60,6 +60,8 @@ export interface TransmitDTEResponse {
   signature?: string;
   isOffline?: boolean;
   contingencyReason?: string | null;
+  message?: string;
+  error?: string | { message?: string };
 }
 
 const BASE_URL = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_DTE_URL || '') as string;
@@ -86,6 +88,44 @@ const isRetriableHttpStatus = (status: number): boolean => {
 const buildAuthHeaders = (): Record<string, string> => {
   const token = getBackendAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const getTransmitFallbackMessage = (payload: TransmitDTEResponse): string => {
+  if (typeof payload.message === 'string' && payload.message.trim()) {
+    return payload.message.trim();
+  }
+
+  if (typeof payload.error === 'string' && payload.error.trim()) {
+    return payload.error.trim();
+  }
+
+  if (payload.error && typeof payload.error === 'object' && typeof payload.error.message === 'string' && payload.error.message.trim()) {
+    return payload.error.message.trim();
+  }
+
+  return 'El backend rechazó o no pudo completar la transmisión, pero no devolvió detalle del error.';
+};
+
+const normalizeTransmitResponse = (payload: TransmitDTEResponse): TransmitDTEResponse => {
+  if (payload.mhResponse || payload.transmitted || payload.isOffline) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    mhResponse: {
+      success: false,
+      estado: 'RECHAZADO',
+      mensaje: getTransmitFallbackMessage(payload),
+      errores: [
+        {
+          codigo: 'BACKEND-EMPTY',
+          descripcion: getTransmitFallbackMessage(payload),
+          severidad: 'ERROR',
+        },
+      ],
+    },
+  };
 };
 
 const cloneObject = <T>(value: T): T => {
@@ -295,7 +335,7 @@ export const transmitirDocumento = async (params: {
       throw new Error(`Respuesta inesperada del backend: ${payload}`);
     }
 
-    return payload;
+    return normalizeTransmitResponse(payload);
   } finally {
     clearTimeout(timeout);
   }
