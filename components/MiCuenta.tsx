@@ -28,7 +28,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
   const { isSupported, permission, subscription, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
   const { user, isConfigured, signOut } = useAuth();
   const { businessId, emisores, reload, currentRole } = useEmisor();
-  const canManageLocal = true;
+  const canManageLocal = currentRole === 'owner' || currentRole === 'admin' || !currentRole;
   const canManageRemote = currentRole === 'owner' || currentRole === 'admin';
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showEmisorConfig, setShowEmisorConfig] = useState(false);
@@ -333,7 +333,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Mi Cuenta</h1>
-          <p className="text-sm text-gray-600 mt-1">Configura tu negocio y habilita la transmisión.</p>
+          <p className="text-sm text-gray-600 mt-1">Administra tu negocio y deja al equipo enfocado en facturar, POS e inventario.</p>
         </div>
         <div className="flex items-center gap-3">
           {isConfigured && user && (
@@ -358,21 +358,24 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
           <div>
             <p className="text-sm font-semibold text-gray-900">Estado de configuración</p>
             <p className="text-sm text-gray-600">
-              {businessId ? 'Desde aquí controlas el negocio: facturación, POS, inventario, equipo y operación diaria.' : 'Aún no hay emisor asociado a tu cuenta.'}
+              {businessId ? 'Si eres owner o admin, desde aquí puedes administrar este negocio a distancia y los cambios globales aplican a todos los equipos.' : 'Aún no hay emisor asociado a tu cuenta.'}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <button
-              onClick={handleOpenConfig}
-              disabled={!canManageLocal}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
-            >
-              <Settings className="w-4 h-4" />
-              Configurar emisor
-            </button>
+            {canManageLocal && (
+              <button
+                onClick={handleOpenConfig}
+                disabled={!canManageLocal}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
+              >
+                <Settings className="w-4 h-4" />
+                Configurar emisor
+              </button>
+            )}
             {onOpenAdvancedSettings && (
               <button
                 onClick={onOpenAdvancedSettings}
+                disabled={!canManageLocal}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50"
               >
                 <Settings className="w-4 h-4" />
@@ -424,6 +427,15 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <DeviceFingerprintDisplay />
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 sm:p-5">
+            <h2 className="text-base font-semibold text-blue-900">Cómo funciona la administración global</h2>
+            <p className="text-sm text-blue-800 mt-2">
+              Si entras con un usuario `owner` o `admin`, puedes cambiar módulos, tabs y equipo desde cualquier lugar. Esos cambios se guardan por negocio y aplican a todos los usuarios de este emisor.
+            </p>
+            <p className="text-xs text-blue-700 mt-2">
+              Solo lo técnico del dispositivo queda local: permisos del navegador, algunas credenciales del equipo y ajustes de soporte.
+            </p>
+          </div>
           {businessSettings && remoteDraft && onBusinessSettingsChange && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-3">
@@ -527,7 +539,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
                   Editar
                 </button>
               ) : (
-                <span className="text-xs text-gray-500">Solo lectura</span>
+                <span className="text-xs text-gray-500">Solo lectura para este rol</span>
               )}
             </div>
             <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
