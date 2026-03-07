@@ -11,6 +11,7 @@ import { getCertificate } from '../../utils/secureStorage';
 import { leerP12, firmarDTEConP12 } from '../../utils/p12Handler';
 import { transmitirDTESandbox } from '../../utils/mh/sandboxClient';
 import { limpiarDteParaFirma } from '../../utils/firmaApiClient';
+import { apiFetch } from '../../utils/apiClient';
 
 interface CartItem {
   producto: Producto;
@@ -193,29 +194,51 @@ const PosCF: React.FC = () => {
         return;
       }
 
-      const stored = await getCertificate();
-      if (!stored?.certificate || !stored?.password) {
-        addToast('Carga tu certificado (.p12/.pfx) en Mi Cuenta antes de transmitir.', 'error');
-        return;
-      }
+      // Enviar DTE a backend para procesamiento y firma
+      try {
+        const response = await apiFetch<any>('/api/dte/generate-and-sign', {
+          method: 'POST',
+          body: {
+            businessId: activeBusinessId,
+            dte,
+            receptorCorreo: correoReceptor.trim() || null,
+          },
+        });
 
-      const parsed = await leerP12(stored.certificate, stored.password);
-      if (!parsed.success || !parsed.privateKey || !parsed.certificatePem) {
-        throw new Error(parsed.error || 'No se pudo leer el certificado');
-      }
+        setRespuestaMH(response);
+        if (response.success) {
+          addToast('DTE generado y firmado exitosamente', 'success');
+        } else {
+          addToast(response.message || 'Error en la generación del DTE', 'error');
+        }
+      } catch (backendError: any) {
+        console.warn('Backend no disponible, usando modo sandbox local:', backendError);
+        
+        // Fallback a modo sandbox local si backend no responde
+        const stored = await getCertificate();
+        if (!stored?.certificate || !stored?.password) {
+          addToast('Carga tu certificado (.p12/.pfx) en Mi Cuenta antes de transmitir.', 'error');
+          return;
+        }
 
-      const dteLimpio = limpiarDteParaFirma(dte as any);
-      const signed = await firmarDTEConP12(dteLimpio as any, parsed.privateKey, parsed.certificatePem);
-      if (!signed.success || !signed.jws) {
-        throw new Error(signed.error || 'No se pudo firmar el documento');
-      }
+        const parsed = await leerP12(stored.certificate, stored.password);
+        if (!parsed.success || !parsed.privateKey || !parsed.certificatePem) {
+          throw new Error(parsed.error || 'No se pudo leer el certificado');
+        }
 
-      const result = await transmitirDTESandbox(signed.jws, '00');
-      setRespuestaMH(result);
-      if (result.success && result.estado === 'PROCESADO') {
-        addToast('DTE procesado exitosamente', 'success');
-      } else {
-        addToast(result.mensaje || 'Error en la transmisión', 'error');
+        const dteLimpio = limpiarDteParaFirma(dte as any);
+        const signed = await firmarDTEConP12(dteLimpio as any, parsed.privateKey, parsed.certificatePem);
+        if (!signed.success || !signed.jws) {
+          throw new Error(signed.error || 'No se pudo firmar el documento');
+        }
+
+        const result = await transmitirDTESandbox(signed.jws, '00');
+        setRespuestaMH(result);
+        if (result.success && result.estado === 'PROCESADO') {
+          addToast('DTE procesado exitosamente (modo sandbox)', 'success');
+        } else {
+          addToast(result.mensaje || 'Error en la transmisión', 'error');
+        }
       }
     } catch (e: any) {
       addToast(e?.message || 'Error al transmitir', 'error');

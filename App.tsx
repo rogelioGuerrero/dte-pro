@@ -118,13 +118,14 @@ const App: React.FC = () => {
   }, []);
 
   // Inicializar push notifications
-  const { isSupported, permission, subscribeToPush } = usePushNotifications();
+  const { isSupported, permission } = usePushNotifications();
   
   useEffect(() => {
-    if (isSupported && permission === 'granted') {
-      // Auto-suscribir si ya tiene permiso
-      subscribeToPush();
-    }
+    // Temporarily disabled auto-subscription due to backend 500 error
+    // if (isSupported && permission === 'granted') {
+    //   // Auto-suscribir si ya tiene permiso
+    //   subscribeToPush();
+    // }
     // Ignoramos subscribeToPush en las dependencias para evitar bucles infinitos
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSupported, permission]);
