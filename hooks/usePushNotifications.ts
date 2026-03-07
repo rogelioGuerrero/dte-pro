@@ -1,5 +1,4 @@
 ﻿import { useEffect, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { useEmisor } from '../contexts/EmisorContext';
 
 interface PushSubscription {
@@ -11,8 +10,7 @@ interface PushSubscription {
 }
 
 export const usePushNotifications = () => {
-  const { session } = useAuth();
-  const { businessId } = useEmisor();
+  useEmisor();
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -96,34 +94,8 @@ export const usePushNotifications = () => {
     }
   };
 
-  const sendSubscriptionToBackend = async (subscription: PushSubscription) => {
-    try {
-      const token = session?.access_token;
-
-      if (!token || !businessId) {
-        return;
-      }
-
-      const apiUrl = import.meta.env.VITE_API_DTE_URL || '';
-      const response = await fetch(`${apiUrl}/api/push/subscribe`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'x-business-id': businessId,
-        },
-        body: JSON.stringify({
-          subscription,
-          userAgent: navigator.userAgent,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Error suscribiéndose a push notifications');
-      }
-    } catch (error) {
-      console.error('Error sending subscription to backend:', error);
-    }
+  const sendSubscriptionToBackend = async (_subscription: PushSubscription) => {
+    return;
   };
 
   const unsubscribeFromPush = async (): Promise<boolean> => {
@@ -135,22 +107,6 @@ export const usePushNotifications = () => {
 
       if (pushSubscription) {
         await pushSubscription.unsubscribe();
-
-        const token = session?.access_token;
-        if (token && businessId) {
-          const apiUrl = import.meta.env.VITE_API_DTE_URL || '';
-          await fetch(`${apiUrl}/api/push/unsubscribe`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-              'x-business-id': businessId,
-            },
-            body: JSON.stringify({
-              endpoint: subscription.endpoint,
-            }),
-          });
-        }
       }
 
       setSubscription(null);

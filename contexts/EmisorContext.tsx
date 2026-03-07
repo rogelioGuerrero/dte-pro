@@ -1,12 +1,4 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { useAuth } from './AuthContext';
-import { apiFetch } from '../utils/apiClient';
-
-type BusinessRow = {
-  business_id: string;
-  nombre?: string | null;
-  role?: string | null;
-};
 
 interface EmisorContextValue {
   businessId: string | null;
@@ -21,10 +13,9 @@ const STORAGE_KEY = 'dte_business_id';
 const EmisorContext = createContext<EmisorContextValue | undefined>(undefined);
 
 export const EmisorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
   const [businessId, setBusinessIdState] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY));
   const [emisores, setEmisores] = useState<{ business_id: string; nombre?: string; role?: string | null }[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
 
   useEffect(() => {
     if (businessId) {
@@ -35,55 +26,26 @@ export const EmisorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [businessId]);
 
   const load = async () => {
-    if (!user) {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    setBusinessIdState(stored);
+    if (stored) {
+      setEmisores([{ business_id: stored, nombre: stored, role: null }]);
+    } else {
       setEmisores([]);
-      setBusinessIdState(null);
-      return;
-    }
-    setLoading(true);
-    try {
-      const raw = await apiFetch<unknown>('/api/business/businesses/me');
-      const rows = Array.isArray(raw)
-        ? (raw as BusinessRow[])
-        : (Array.isArray((raw as any)?.data)
-            ? ((raw as any).data as BusinessRow[])
-            : (Array.isArray((raw as any)?.rows)
-                ? ((raw as any).rows as BusinessRow[])
-                : []));
-
-      if (!Array.isArray(rows)) {
-        throw new Error('Respuesta inválida: se esperaba un arreglo de emisores');
-      }
-
-      const mapped = rows.map((row) => ({
-        business_id: row.business_id,
-        nombre: row.nombre || undefined,
-        role: row.role || null,
-      }));
-      setEmisores(mapped);
-      if (!businessId && mapped.length > 0) {
-        setBusinessIdState(mapped[0].business_id);
-      }
-    } catch (err) {
-      console.error('Error cargando emisores', err);
-      setEmisores([]);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
     load();
-  }, [user]);
+  }, []);
 
   const setBusinessId = (id: string | null) => {
     setBusinessIdState(id);
   };
 
   const currentRole = useMemo(() => {
-    if (!businessId) return null;
-    return emisores.find((e) => e.business_id === businessId)?.role || null;
-  }, [businessId, emisores]);
+    return null;
+  }, []);
 
   const value = useMemo<EmisorContextValue>(
     () => ({ businessId, setBusinessId, emisores, loading, reload: load, currentRole }),

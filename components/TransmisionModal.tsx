@@ -18,15 +18,16 @@ import TemplateSelector from './TemplateSelector';
 import { construirDTEArchivado, guardarDTEEnHistorial } from '../utils/dteHistoryDb';
 import { generarLibroDesdeDTEs } from '../utils/librosAutoGenerator';
 import { getCertificate } from '../utils/secureStorage';
-import { firmarDocumento, limpiarDteParaFirma, wakeFirmaService } from '../utils/firmaApiClient';
+import { limpiarDteParaFirma } from '../utils/firmaApiClient';
 import { processDTE } from '../utils/mh/process';
 import { loadSettings } from '../utils/settings';
 import { 
   TransmisionResult,
   EstadoTransmision
 } from '../utils/dteSignature';
-import { useAuth } from '../contexts/AuthContext';
-import { useEmisor } from '../contexts/EmisorContext';
+import { checkLicense } from '../utils/licenseValidator';
+import { leerP12, firmarDTEConP12 } from '../utils/p12Handler';
+import { transmitirDTESandbox } from '../utils/mh/sandboxClient';
 
 interface TransmisionModalProps {
   dte: DTEJSON;
@@ -50,8 +51,6 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
   ambiente = '00',
   logoUrl,
 }) => {
-  const { session } = useAuth();
-  const { businessId } = useEmisor();
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [estado, setEstado] = useState<EstadoTransmision>('pendiente');
@@ -84,6 +83,11 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
     setIsConnectionError(false);
 
     try {
+      const licensed = await checkLicense();
+      if (!licensed) {
+        throw new Error('Licencia requerida para transmitir desde este dispositivo. Activa tu licencia en Mi Cuenta.');
+      }
+
       const processed = processDTE(dte);
       setDteTransmitido(processed.dte);
       const ambienteFinal = (processed.dte?.identificacion?.ambiente === '01' ? '01' : '00') as '00' | '01';
@@ -110,66 +114,40 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
         return rawNit;
       };
 
-      // La contraseña se obtiene del backend usando el NIT del emisor (garantizando formato con guiones)
+      // Validar NIT del emisor
       const nitEmisor = formatNitConGuiones((processed.dte?.emisor?.nit || '').toString().trim());
       if (!nitEmisor || nitEmisor.replace(/[\s-]/g, '').length < 9 || nitEmisor.replace(/[\s-]/g, '') === '00000000000000') {
         throw new Error('NIT del emisor inválido o no configurado. Revisa la configuración del emisor.');
       }
 
-      await wakeFirmaService({ retries: 3, baseDelayMs: 1000, timeoutMs: 15000 });
-
       const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
 
-      // Enviar al backend para que obtenga la contraseña y firme
-      if (!session?.access_token) {
-        throw new Error('Sesión requerida. Inicia sesión nuevamente.');
-      }
-      if (!businessId) {
-        throw new Error('Selecciona un emisor antes de transmitir.');
+      const stored = await getCertificate();
+      if (!stored?.certificate || !stored?.password) {
+        throw new Error('Debes cargar tu certificado (.p12/.pfx) en Mi Cuenta antes de transmitir.');
       }
 
-      const response = await fetch('https://api-dte.onrender.com/api/dte/process', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'x-business-id': businessId
-        },
-        body: JSON.stringify({
-          dte: dteLimpio,
-          nit: nitEmisor,
-          ambiente: (dteLimpio as any).identificacion?.ambiente || '00',
-          flowType: 'emission',
-          business_id: businessId
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Error del backend al procesar DTE');
+      const parsed = await leerP12(stored.certificate, stored.password);
+      if (!parsed.success || !parsed.privateKey || !parsed.certificatePem) {
+        throw new Error(parsed.error || 'No se pudo leer el certificado');
       }
 
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error?.userMessage || 'Error del backend');
+      const signed = await firmarDTEConP12(dteLimpio as unknown as object, parsed.privateKey, parsed.certificatePem);
+      if (!signed.success || !signed.jws) {
+        throw new Error(signed.error || 'No se pudo firmar el documento');
       }
 
-      setJwsFirmado(result.data?.jwsFirmado || '');
+      setJwsFirmado(signed.jws);
       setEstado('transmitiendo');
 
-      // El backend ya hizo la transmisión, usar resultado directo
-      const transmisionResult = result.data?.transmisionResult;
-      
-      // Debug: log completo para ver errores MH
-      console.log('TransmisionResult completo:', JSON.stringify(transmisionResult, null, 2));
-      
+      const transmisionResult = await transmitirDTESandbox(signed.jws, ambienteFinal);
       setResultado(transmisionResult);
-      
+
       if (transmisionResult.success) {
         setEstado('procesado');
         
         // Guardar en historial local
-        await guardarDTEHistory(processed.dte, transmisionResult, ambienteFinal, jwsFirmado);
+        await guardarDTEEnHistorial(processed.dte, transmisionResult, ambienteFinal, signed.jws);
         
         if (transmisionResult.selloRecepcion) {
           onSuccess(transmisionResult.selloRecepcion, transmisionResult);
@@ -228,15 +206,19 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
       };
 
       const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
-      const nitEmisor = formatNitConGuiones((processed.dte?.emisor?.nit || '').toString().trim());
+      formatNitConGuiones((processed.dte?.emisor?.nit || '').toString().trim());
 
-      const jwsContingencia = await firmarDocumento({
-        nit: nitEmisor,
-        passwordPri,
-        dteJson: dteLimpio,
-      });
+      const parsed = await leerP12(stored?.certificate || new ArrayBuffer(0), passwordPri);
+      if (!parsed.success || !parsed.privateKey || !parsed.certificatePem) {
+        throw new Error(parsed.error || 'No se pudo leer el certificado');
+      }
 
-      setJwsFirmado(jwsContingencia);
+      const signed = await firmarDTEConP12(dteLimpio as unknown as object, parsed.privateKey, parsed.certificatePem);
+      if (!signed.success || !signed.jws) {
+        throw new Error(signed.error || 'No se pudo firmar el documento');
+      }
+
+      setJwsFirmado(signed.jws);
 
       // 3. Crear resultado simulado de contingencia
       const resultContingencia: TransmisionResult = {
@@ -258,7 +240,7 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
       setEstado('procesado'); // Lo marcamos como procesado (guardado localmente)
 
       // 4. Guardar en historial
-      await guardarDTEHistory(processed.dte, resultContingencia, ambienteFinal, jwsContingencia);
+      await guardarDTEHistory(processed.dte, resultContingencia, ambienteFinal, signed.jws);
 
     } catch (err) {
       setEstado('error');

@@ -21,9 +21,8 @@ import {
 import { tiposDocumento } from '../utils/dteGenerator';
 import { descargarPDFConPlantilla, TemplateName } from '../utils/pdfTemplates';
 import { notify } from '../utils/notifications';
-import { supabase } from '../utils/supabaseClient';
-import { useAuth } from '../contexts/AuthContext';
 import { useEmisor } from '../contexts/EmisorContext';
+import { obtenerCacheDTE, type DTECacheRecord } from '../utils/dteHistoryDb';
 
 interface DTEDashboardProps {
   onClose?: () => void;
@@ -64,7 +63,6 @@ type DTEStats = {
 };
 
 const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
-  const { user } = useAuth();
   const { businessId } = useEmisor();
 
   const [registros, setRegistros] = useState<DTERow[]>([]);
@@ -100,39 +98,47 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
     setLoading(true);
 
     try {
-      let query = supabase
-        .from('dte_responses')
-        .select(
-          `codigo_generacion,numero_control,tipo_dte,fecha_emision,hora_emision,monto_total,monto_gravado,monto_iva,receptor_nombre,receptor_documento,estado,sello_recepcion,dte_json,emisor_nombre,emisor_nit,ambiente,fecha_hora_procesamiento`,
-          { count: 'exact' }
-        )
-        .eq('business_id', businessId)
-        .order('fecha_hora_procesamiento', { ascending: false });
+      const offset = (paginaActual - 1) * ITEMS_POR_PAGINA;
+      const mappedTipo = tipoDte || undefined;
+      const mappedEstado = estado || undefined;
+      const mappedBusqueda = busqueda || undefined;
 
-      if (tipoDte) query = query.eq('tipo_dte', tipoDte);
-      if (estado) query = query.eq('estado', estado);
-      if (fechaDesde) query = query.gte('fecha_emision', fechaDesde);
-      if (fechaHasta) query = query.lte('fecha_emision', fechaHasta);
-      if (busqueda) {
-        const pattern = `%${busqueda}%`;
-        query = query.or(
-          `codigo_generacion.ilike.${pattern},numero_control.ilike.${pattern},receptor_nombre.ilike.${pattern},receptor_documento.ilike.${pattern}`
-        );
-      }
+      const { registros: localRows, total } = await obtenerCacheDTE({
+        fechaDesde: fechaDesde || undefined,
+        fechaHasta: fechaHasta || undefined,
+        tipoDte: mappedTipo,
+        estado: mappedEstado,
+        busqueda: mappedBusqueda,
+        limite: ITEMS_POR_PAGINA,
+        offset,
+      });
 
-      const from = (paginaActual - 1) * ITEMS_POR_PAGINA;
-      const to = from + ITEMS_POR_PAGINA - 1;
-      query = query.range(from, to);
+      const toRow = (r: DTECacheRecord): DTERow => ({
+        codigo_generacion: r.codigoGeneracion,
+        numero_control: r.numeroControl,
+        tipo_dte: r.tipoDte,
+        fecha_emision: r.fechaEmision,
+        hora_emision: r.horaEmision || null,
+        monto_total: r.montoTotal,
+        monto_gravado: r.montoGravado,
+        monto_iva: r.montoIva,
+        receptor_nombre: r.receptorNombre || null,
+        receptor_documento: r.receptorDocumento || null,
+        estado: r.estado,
+        sello_recepcion: r.selloRecepcion || null,
+        dte_json: r.dteJson,
+        emisor_nombre: r.emisorNombre,
+        emisor_nit: r.emisorNit,
+        ambiente: r.ambiente,
+        fecha_hora_procesamiento: r.fechaTransmision || null,
+      });
 
-      const { data, error, count } = await query;
-      if (error) throw error;
-
-      setRegistros(data || []);
-      setTotalRegistros(count ?? data?.length ?? 0);
+      setRegistros(localRows.map(toRow));
+      setTotalRegistros(total);
 
       // Calcular stats simples con registros cargados (limitados) para UI rápida
       const statsLocales: DTEStats = {
-        totalEmitidos: count ?? data?.length ?? 0,
+        totalEmitidos: total,
         totalAceptados: 0,
         totalRechazados: 0,
         totalPendientes: 0,
@@ -142,43 +148,37 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
         porMes: {},
       };
 
-      (data || []).forEach((r: DTERow) => {
+      localRows.forEach((r: DTECacheRecord) => {
         if (r.estado === 'ACEPTADO') statsLocales.totalAceptados += 1;
         if (r.estado === 'RECHAZADO') statsLocales.totalRechazados += 1;
         if (r.estado === 'PENDIENTE') statsLocales.totalPendientes += 1;
         if (r.estado === 'ACEPTADO') {
-          statsLocales.montoTotalEmitido += r.monto_total || 0;
-          statsLocales.montoTotalIva += r.monto_iva || 0;
+          statsLocales.montoTotalEmitido += r.montoTotal || 0;
+          statsLocales.montoTotalIva += r.montoIva || 0;
         }
-        statsLocales.porTipo[r.tipo_dte] = (statsLocales.porTipo[r.tipo_dte] || 0) + 1;
-        const mes = (r.fecha_emision || '').substring(0, 7);
+        statsLocales.porTipo[r.tipoDte] = (statsLocales.porTipo[r.tipoDte] || 0) + 1;
+        const mes = (r.fechaEmision || '').substring(0, 7);
         if (mes) {
           if (!statsLocales.porMes[mes]) statsLocales.porMes[mes] = { cantidad: 0, monto: 0 };
           statsLocales.porMes[mes].cantidad += 1;
-          if (r.estado === 'ACEPTADO') statsLocales.porMes[mes].monto += r.monto_total || 0;
+          if (r.estado === 'ACEPTADO') statsLocales.porMes[mes].monto += r.montoTotal || 0;
         }
       });
 
+      const tipos = Array.from(new Set(localRows.map((r) => r.tipoDte))).filter(Boolean);
+      setTiposDisponibles(tipos as string[]);
       setStats(statsLocales);
-      if (statsLocales && Object.keys(statsLocales.porTipo).length > 0) {
-        setTiposDisponibles(Object.keys(statsLocales.porTipo));
-      }
     } catch (error) {
-      console.error('Error cargando historial:', error);
-      notify('No se pudo cargar el historial', 'error');
+      console.error('Error cargando datos:', error);
+      notify('Error cargando historial de DTE', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!user) {
-      setRegistros([]);
-      setTotalRegistros(0);
-      return;
-    }
     cargarDatos();
-  }, [user, businessId, paginaActual, filtrosMemo]);
+  }, [businessId, paginaActual, filtrosMemo]);
 
   const totalPaginas = Math.ceil(totalRegistros / ITEMS_POR_PAGINA);
 
@@ -186,24 +186,18 @@ const DTEDashboard: React.FC<DTEDashboardProps> = ({ logoUrl }) => {
     setExportando(true);
     try {
       if (!businessId) throw new Error('Sin emisor activo');
-      let query = supabase
-        .from('dte_responses')
-        .select('*')
-        .eq('business_id', businessId);
-      if (tipoDte) query = query.eq('tipo_dte', tipoDte);
-      if (estado) query = query.eq('estado', estado);
-      if (fechaDesde) query = query.gte('fecha_emision', fechaDesde);
-      if (fechaHasta) query = query.lte('fecha_emision', fechaHasta);
-      if (busqueda) {
-        const pattern = `%${busqueda}%`;
-        query = query.or(
-          `codigo_generacion.ilike.${pattern},numero_control.ilike.${pattern},receptor_nombre.ilike.${pattern},receptor_documento.ilike.${pattern}`
-        );
-      }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      const json = JSON.stringify({ version: 'supabase', registros: data || [] }, null, 2);
+      const { registros: allRows } = await obtenerCacheDTE({
+        fechaDesde: fechaDesde || undefined,
+        fechaHasta: fechaHasta || undefined,
+        tipoDte: tipoDte || undefined,
+        estado: estado || undefined,
+        busqueda: busqueda || undefined,
+        limite: 50000,
+        offset: 0,
+      });
+
+      const json = JSON.stringify({ version: 'local-cache', registros: allRows }, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

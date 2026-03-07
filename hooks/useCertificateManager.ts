@@ -1,8 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import { buildBackendHeaders } from '../utils/backendConfig';
 import { EmisorData } from '../utils/emisorDb';
-import { useAuth } from '../contexts/AuthContext';
-import { useEmisor } from '../contexts/EmisorContext';
+import { saveCertificate } from '../utils/secureStorage';
 
 export const useCertificateManager = (params: {
   onToast?: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -21,8 +19,6 @@ export const useCertificateManager = (params: {
   handleSaveCertificate: (emisor: Partial<EmisorData>, ambiente?: string) => Promise<void>;
   fileInputRef: React.RefObject<HTMLInputElement>;
 } => {
-  const { session } = useAuth();
-  const { businessId } = useEmisor();
   const [apiPassword, setApiPassword] = useState('');
   const [certificatePassword, setCertificatePassword] = useState('');
   const [showCertPassword, setShowCertPassword] = useState(false);
@@ -61,36 +57,9 @@ export const useCertificateManager = (params: {
     }
   };
 
-  const readFileAsBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          // El resultado viene como "data:application/x-pkcs12;base64,MIIJ..."
-          // Debemos limpiar el prefijo para enviar solo la cadena Base64 pura
-          const base64String = event.target?.result?.toString().split(',')[1];
-          if (!base64String) {
-            throw new Error('Error al leer el archivo');
-          }
-          resolve(base64String);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      reader.onerror = () => reject(new Error('Error al leer el archivo'));
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleSaveCertificate = async (emisor: Partial<EmisorData>, ambiente: string = '00') => {
-    const nit = emisor.nit || businessId || '';
+  const handleSaveCertificate = async (_emisor: Partial<EmisorData>, _ambiente: string = '00') => {
     if (!certificatePassword) {
       setCertificateError('La contraseña del certificado es requerida.');
-      return;
-    }
-
-    if (!apiPassword) {
-      setCertificateError('La clave API MH (api_password) es requerida para renovar el token.');
       return;
     }
     
@@ -98,77 +67,11 @@ export const useCertificateManager = (params: {
       setCertificateError('Debes seleccionar un archivo de certificado (.p12 o .pfx).');
       return;
     }
-    
-    if (!nit) {
-      setCertificateError('NIT es requerido para guardar el certificado en el servidor.');
-      return;
-    }
-
-    const nitSinGuiones = nit.replace(/[\s-]/g, '');
-    if (!(nitSinGuiones.length === 9 || nitSinGuiones.length === 14)) {
-      setCertificateError('NIT debe tener 9 o 14 dígitos (sin guiones).');
-      return;
-    }
 
     setIsSavingCert(true);
     try {
-      // Convertir archivo a Base64
-      const certificadoB64 = await readFileAsBase64(certificateFile);
-
-      const payload: Record<string, unknown> = {
-        nit: nitSinGuiones,
-        ambiente: ambiente || '00',
-        passwordPri: certificatePassword,
-        certificadoB64: certificadoB64,
-        apiPassword: apiPassword,
-        activo: true,
-      };
-
-      // Campos opcionales del emisor (solo si vienen)
-      if (emisor.nrc) payload.nrc = emisor.nrc;
-      if (emisor.nombre) payload.nombre = emisor.nombre;
-      if (emisor.nombreComercial) payload.nombreComercial = emisor.nombreComercial;
-      if (emisor.actividadEconomica) payload.codActividad = emisor.actividadEconomica;
-      if (emisor.descActividad) payload.descActividad = emisor.descActividad;
-      if (emisor.tipoEstablecimiento) payload.tipoEstablecimiento = emisor.tipoEstablecimiento;
-      if (emisor.codEstableMH !== undefined) payload.codEstableMH = emisor.codEstableMH;
-      if (emisor.codPuntoVentaMH !== undefined) payload.codPuntoVentaMH = emisor.codPuntoVentaMH;
-      if (emisor.departamento) payload.dir_departamento = emisor.departamento;
-      if (emisor.municipio) payload.dir_municipio = emisor.municipio;
-      if (emisor.direccion) payload.dir_complemento = emisor.direccion;
-      if (emisor.telefono) payload.telefono = emisor.telefono;
-      if (emisor.correo) payload.correo = emisor.correo;
-
-      // Logging para diagnóstico
-      console.log('Enviando credenciales MH:', {
-        nit: nitSinGuiones,
-        ambiente: ambiente || '00',
-        hasCert: !!certificadoB64,
-        certLength: certificadoB64?.length || 0,
-        certStart: certificadoB64?.substring(0, 20) + '...'
-      });
-
-      // Guardar certificado en Supabase (via backend)
-      const response = await fetch(`https://api-dte.onrender.com/api/business/credentials`, {
-        method: 'POST',
-        headers: buildBackendHeaders({ token: session?.access_token, businessId: nitSinGuiones }),
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || errorData.message || 'Error guardando credenciales en el servidor');
-      }
-
-      const result = await response.json();
-
-      // Validar explícitamente que el backend retorne hasCert: true
-      if (!result.success || !result.data?.hasCert || !result.data?.hasPassword) {
-        throw new Error(
-          result.error?.userMessage ||
-            'El servidor no confirmó el guardado del certificado y contraseña (hasCert/hasPassword).'
-        );
-      }
+      const arrayBuffer = await certificateFile.arrayBuffer();
+      await saveCertificate(arrayBuffer, certificatePassword);
 
       // Limpiar formulario después de guardar
       setApiPassword('');
@@ -178,7 +81,7 @@ export const useCertificateManager = (params: {
         fileInputRef.current.value = '';
       }
       
-      params.onToast?.('Certificado digital guardado correctamente en el servidor', 'success');
+      params.onToast?.('Certificado digital guardado correctamente en este dispositivo', 'success');
     } catch (error) {
       console.error('Error guardando certificado:', error);
       setCertificateError(error instanceof Error ? error.message : 'Error al guardar el certificado. Intenta de nuevo.');

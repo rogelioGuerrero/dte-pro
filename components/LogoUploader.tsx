@@ -1,7 +1,5 @@
 import { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Trash2, Loader2 } from 'lucide-react';
-import { supabase } from '../utils/supabaseClient';
-import { useEmisor } from '../contexts/EmisorContext';
 import { notify } from '../utils/notifications';
 
 interface LogoUploaderProps {
@@ -15,7 +13,6 @@ const LogoUploader: React.FC<LogoUploaderProps> = ({
   onLogoChange,
   compact = false
 }) => {
-  const { businessId } = useEmisor();
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -24,12 +21,24 @@ const LogoUploader: React.FC<LogoUploaderProps> = ({
   const MAX_SIZE = 500 * 1024; // 500KB
   const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'];
 
+  const readFileAsDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        if (typeof result !== 'string') {
+          reject(new Error('No se pudo leer el archivo'));
+          return;
+        }
+        resolve(result);
+      };
+      reader.onerror = () => reject(new Error('Error al leer el archivo'));
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleFile = async (file: File) => {
     setError(null);
-    if (!businessId) {
-      setError('Selecciona un emisor antes de subir logo');
-      return;
-    }
 
     if (!ALLOWED_TYPES.includes(file.type)) {
       setError('Formato no válido. Use PNG, JPG, SVG o WebP');
@@ -42,29 +51,16 @@ const LogoUploader: React.FC<LogoUploaderProps> = ({
     }
 
     setIsUploading(true);
-    const filePath = `logos/${businessId}/${Date.now()}-${file.name}`;
-    const { error: uploadError } = await supabase.storage
-      .from('business-logos')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (uploadError) {
-      console.error('Error subiendo logo:', uploadError);
-      setError('Error al subir logo. Intenta de nuevo.');
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      onLogoChange(dataUrl);
+      notify('Logo cargado exitosamente', 'success');
+    } catch (e: any) {
+      console.error('Error cargando logo:', e);
+      setError(e?.message || 'Error al cargar logo. Intenta de nuevo.');
+    } finally {
       setIsUploading(false);
-      return;
     }
-
-    const { data: publicUrlData } = supabase.storage
-      .from('business-logos')
-      .getPublicUrl(filePath);
-
-    const publicUrl = publicUrlData.publicUrl;
-    onLogoChange(publicUrl);
-    setIsUploading(false);
-    notify('Logo subido exitosamente', 'success');
   };
 
   const handleDrop = (e: React.DragEvent) => {

@@ -3,14 +3,14 @@ import { generarDTE, redondear } from '../../utils/dteGenerator';
 import { useToast } from '../Toast';
 import { Copy, Send } from 'lucide-react';
 
-import { BACKEND_CONFIG, buildBackendHeaders } from '../../utils/backendConfig';
-import { useAuth } from '../../contexts/AuthContext';
-import { useEmisor } from '../../contexts/EmisorContext';
+import { checkLicense } from '../../utils/licenseValidator';
+import { getCertificate } from '../../utils/secureStorage';
+import { leerP12, firmarDTEConP12 } from '../../utils/p12Handler';
+import { transmitirDTESandbox } from '../../utils/mh/sandboxClient';
+import { limpiarDteParaFirma } from '../../utils/firmaApiClient';
 
 export const GeneradorSimple: React.FC = () => {
   const { addToast } = useToast();
-  const { session } = useAuth();
-  const { businessId } = useEmisor();
   const [precio, setPrecio] = useState<number>(0);
   const [cantidad, setCantidad] = useState<number>(1);
   const [descripcion, setDescripcion] = useState<string>('limpi');
@@ -112,15 +112,9 @@ export const GeneradorSimple: React.FC = () => {
   };
 
   const transmitirMH = async () => {
-    const token = session?.access_token;
-    const activeBusinessId = businessId || emisor.nit.replace(/\s|-/g, '');
-
-    if (!token) {
-      addToast('Debes iniciar sesión para transmitir.', 'error');
-      return;
-    }
-    if (!activeBusinessId) {
-      addToast('Selecciona un emisor antes de transmitir.', 'error');
+    const licensed = await checkLicense();
+    if (!licensed) {
+      addToast('Licencia requerida para transmitir desde este dispositivo.', 'error');
       return;
     }
 
@@ -130,7 +124,7 @@ export const GeneradorSimple: React.FC = () => {
     setIsTransmitting(true);
     addToast('Transmitiendo a Hacienda...', 'info');
 
-    const nitEmisor = activeBusinessId.replace(/[\s-]/g, '');
+    const nitEmisor = emisor.nit.replace(/[\s-]/g, '');
     if (!(nitEmisor.length === 9 || nitEmisor.length === 14)) {
       addToast('NIT debe tener 9 o 14 dígitos (sin guiones) para transmitir.', 'error');
       setIsTransmitting(false);
@@ -138,34 +132,29 @@ export const GeneradorSimple: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${BACKEND_CONFIG.URL}/api/dte/process`, {
-        method: 'POST',
-        headers: buildBackendHeaders({ token, businessId: nitEmisor }),
-        body: JSON.stringify({
-          dte: dteParaEnviar,
-          nit: nitEmisor,
-          ambiente: '00', // Pruebas
-          flowType: 'emission',
-          business_id: nitEmisor, // Enviar también en el body por compatibilidad
-        })
-      });
+      const stored = await getCertificate();
+      if (!stored?.certificate || !stored?.password) {
+        addToast('Carga tu certificado (.p12/.pfx) en Mi Cuenta antes de transmitir.', 'error');
+        return;
+      }
 
-      const result = await response.json();
+      const parsed = await leerP12(stored.certificate, stored.password);
+      if (!parsed.success || !parsed.privateKey || !parsed.certificatePem) {
+        throw new Error(parsed.error || 'No se pudo leer el certificado');
+      }
 
-      // Normalizar campos provenientes del backend
-      const estado = result.data?.mhStatus || result.data?.transmisionResult?.estado || null;
-      const mensaje = result.data?.mhMessage || result.data?.transmisionResult?.descripcionMsg || result.error?.userMessage || null;
+      const dteLimpio = limpiarDteParaFirma(dteParaEnviar as any);
+      const signed = await firmarDTEConP12(dteLimpio as any, parsed.privateKey, parsed.certificatePem);
+      if (!signed.success || !signed.jws) {
+        throw new Error(signed.error || 'No se pudo firmar el documento');
+      }
 
-      setRespuestaMH({
-        ...result,
-        estado,
-        descripcionMsg: mensaje,
-      });
-
-      if (response.ok && result.success && estado === 'PROCESADO') {
+      const result = await transmitirDTESandbox(signed.jws, '00');
+      setRespuestaMH(result);
+      if (result.success && result.estado === 'PROCESADO') {
         addToast('DTE procesado por Hacienda', 'success');
       } else {
-        addToast(mensaje || 'Error en la transmisión', 'error');
+        addToast(result.mensaje || 'Error en la transmisión', 'error');
       }
     } catch (error: any) {
       setRespuestaMH({ error: error.message });

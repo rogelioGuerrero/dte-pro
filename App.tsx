@@ -21,8 +21,6 @@ import { LayoutDashboard, CheckCircle } from 'lucide-react';
 import ForceUpdateModal from './components/ForceUpdateModal';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import MiCuenta from './components/MiCuenta';
-import { EmisorSelector } from './components/EmisorSelector';
-import { useAuth } from './contexts/AuthContext';
 import { useEmisor } from './contexts/EmisorContext';
 
 type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta' | 'simple' | 'poscf';
@@ -60,8 +58,7 @@ const App: React.FC = () => {
   const [showLicenseManager, setShowLicenseManager] = useState(false);
   const [showUserModeSetup, setShowUserModeSetup] = useState(false);
   const [forceUpdateInfo, setForceUpdateInfo] = useState<{ minVersion: string; message?: string } | null>(null);
-  const { signOut, user } = useAuth();
-  const { loading: emisoresLoading, businessId } = useEmisor();
+  const { businessId } = useEmisor();
   const clickCountRef = useRef(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -168,15 +165,6 @@ const App: React.FC = () => {
     return <UserModeSetup onComplete={handleSetupComplete} />;
   }
 
-  // Cargando emisores
-  if (emisoresLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-600">
-        Cargando emisores...
-      </div>
-    );
-  }
-
   // Actualización requerida: bloquear el uso de la app hasta recargar
   if (forceUpdateInfo) {
     return (
@@ -237,7 +225,6 @@ const App: React.FC = () => {
           
           {/* Right Actions */}
           <div className="flex items-center gap-2">
-            <EmisorSelector className="hidden md:flex" />
             {/* Mi Cuenta Button */}
             <button
               onClick={() => setActiveTab('micuenta' as AppTab)}
@@ -254,24 +241,6 @@ const App: React.FC = () => {
               </div>
               <span className="hidden sm:inline">Mi Cuenta</span>
             </button>
-            {user ? (
-              <button
-                onClick={async () => {
-                  await signOut();
-                  window.location.reload();
-                }}
-                className="px-3 py-1.5 text-sm font-medium rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50"
-              >
-                Cerrar sesión
-              </button>
-            ) : (
-              <button
-                onClick={() => setActiveTab('micuenta' as AppTab)}
-                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
-              >
-                Iniciar sesión
-              </button>
-            )}
           </div>
         </div>
       </header>

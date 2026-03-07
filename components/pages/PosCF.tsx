@@ -3,11 +3,14 @@ import { ShoppingCart, Trash2, Plus, Minus, Send, Loader2 } from 'lucide-react';
 import { Producto } from '../../types/inventario';
 import { inventarioService } from '../../utils/inventario/inventarioService';
 import { useToast } from '../Toast';
-import { BACKEND_CONFIG, buildBackendHeaders } from '../../utils/backendConfig';
 import { generarDTE, redondear } from '../../utils/dteGenerator';
 import { getEmisor } from '../../utils/emisorDb';
-import { useAuth } from '../../contexts/AuthContext';
 import { useEmisor } from '../../contexts/EmisorContext';
+import { checkLicense } from '../../utils/licenseValidator';
+import { getCertificate } from '../../utils/secureStorage';
+import { leerP12, firmarDTEConP12 } from '../../utils/p12Handler';
+import { transmitirDTESandbox } from '../../utils/mh/sandboxClient';
+import { limpiarDteParaFirma } from '../../utils/firmaApiClient';
 
 interface CartItem {
   producto: Producto;
@@ -18,7 +21,6 @@ const formatCurrency = (n: number) => `$${(n || 0).toFixed(2)}`;
 
 const PosCF: React.FC = () => {
   const { addToast } = useToast();
-  const { session } = useAuth();
   const { businessId } = useEmisor();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>('todos');
@@ -177,42 +179,43 @@ const PosCF: React.FC = () => {
     }
     setIsSending(true);
     try {
-      const token = session?.access_token;
-    const { dte, nitSinGuiones } = await buildDTE();
+      const licensed = await checkLicense();
+      if (!licensed) {
+        addToast('Licencia requerida para transmitir desde este dispositivo.', 'error');
+        return;
+      }
 
-    if (!token) {
-      addToast('Debes iniciar sesión para transmitir.', 'error');
-      setIsSending(false);
-      return;
-    }
+      const { dte, nitSinGuiones } = await buildDTE();
 
-    const activeBusinessId = businessId || nitSinGuiones;
-    if (!activeBusinessId) {
-      addToast('Selecciona un emisor antes de transmitir.', 'error');
-      setIsSending(false);
-      return;
-    }
-      const response = await fetch(`${BACKEND_CONFIG.URL}/api/dte/process`, {
-        method: 'POST',
-        headers: buildBackendHeaders({ token, businessId: activeBusinessId }),
-        body: JSON.stringify({
-          dte,
-          nit: nitSinGuiones,
-          ambiente: '00',
-          flowType: 'emission',
-          business_id: activeBusinessId,
-        }),
-      });
+      const activeBusinessId = businessId || nitSinGuiones;
+      if (!activeBusinessId) {
+        addToast('Selecciona un emisor antes de transmitir.', 'error');
+        return;
+      }
 
-      const result = await response.json();
+      const stored = await getCertificate();
+      if (!stored?.certificate || !stored?.password) {
+        addToast('Carga tu certificado (.p12/.pfx) en Mi Cuenta antes de transmitir.', 'error');
+        return;
+      }
+
+      const parsed = await leerP12(stored.certificate, stored.password);
+      if (!parsed.success || !parsed.privateKey || !parsed.certificatePem) {
+        throw new Error(parsed.error || 'No se pudo leer el certificado');
+      }
+
+      const dteLimpio = limpiarDteParaFirma(dte as any);
+      const signed = await firmarDTEConP12(dteLimpio as any, parsed.privateKey, parsed.certificatePem);
+      if (!signed.success || !signed.jws) {
+        throw new Error(signed.error || 'No se pudo firmar el documento');
+      }
+
+      const result = await transmitirDTESandbox(signed.jws, '00');
       setRespuestaMH(result);
-      if (response.ok && result.success && result.data?.transmisionResult?.estado === 'PROCESADO') {
+      if (result.success && result.estado === 'PROCESADO') {
         addToast('DTE procesado exitosamente', 'success');
       } else {
-        addToast(
-          result.error?.userMessage || result.data?.transmisionResult?.descripcionMsg || 'Error en la transmisión',
-          'error'
-        );
+        addToast(result.mensaje || 'Error en la transmisión', 'error');
       }
     } catch (e: any) {
       addToast(e?.message || 'Error al transmitir', 'error');

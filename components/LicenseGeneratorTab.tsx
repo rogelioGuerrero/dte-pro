@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
 import { Shield, Key, Calendar, Mail, User, Smartphone, Copy, Check, ExternalLink } from 'lucide-react';
 import { notify } from '../utils/notifications';
-import { useAuth } from '../contexts/AuthContext';
-import { useEmisor } from '../contexts/EmisorContext';
 
 export const LicenseGeneratorTab: React.FC = () => {
-  const { session } = useAuth();
-  const { businessId } = useEmisor();
+  
   // Form State
   const [formData, setFormData] = useState({
     email: '',
@@ -29,6 +26,8 @@ export const LicenseGeneratorTab: React.FC = () => {
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
+    notify('Generación de licencias deshabilitada en modo fingerprint-only.', 'info');
+    return;
     setLoading(true);
     setGeneratedResult(null);
 
@@ -36,12 +35,7 @@ export const LicenseGeneratorTab: React.FC = () => {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + formData.daysValid);
 
-      const token = session?.access_token;
-      const adminSecret = localStorage.getItem('admin_secret');
-
-      if (!token) throw new Error('Sesión requerida. Inicia sesión nuevamente.');
-      if (!businessId) throw new Error('Selecciona un emisor antes de generar licencia.');
-      if (!adminSecret) throw new Error('No estás autenticado como administrador. Vuelve a ingresar el PIN maestro.');
+      const adminSecret = null;
 
       const payload = {
         id: crypto.randomUUID(),
@@ -60,9 +54,7 @@ export const LicenseGeneratorTab: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'x-business-id': businessId,
-          'x-admin-secret': adminSecret
+          'x-admin-secret': String(adminSecret || '')
         },
         body: JSON.stringify(payload)
       });

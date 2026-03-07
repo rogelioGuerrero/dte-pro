@@ -7,13 +7,10 @@ import { Settings } from 'lucide-react';
 import { EmisorConfigModal } from './EmisorConfigModal';
 import { useCertificateManager } from '../hooks/useCertificateManager';
 import { EmisorData } from '../utils/emisorDb';
-import { supabase } from '../utils/supabaseClient';
-import { useAuth } from '../contexts/AuthContext';
 import { useEmisor } from '../contexts/EmisorContext';
-import { normalizeRole } from '../utils/roleAccess';
-import { TeamPanel } from './TeamPanel';
-import { AuthGate } from './AuthGate';
-import { apiFetch } from '../utils/apiClient';
+import { getEmisor, saveEmisor } from '../utils/emisorDb';
+import { hasCertificate } from '../utils/secureStorage';
+import { DeviceFingerprintDisplay } from './DeviceFingerprintDisplay';
 
 interface MiCuentaProps {
   onBack?: () => void;
@@ -21,17 +18,10 @@ interface MiCuentaProps {
 
 const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
   const { isSupported, permission, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
-  const { user, session } = useAuth();
-  const { businessId, currentRole, reload: reloadEmisores, setBusinessId } = useEmisor();
-  const normalizedRole = normalizeRole(currentRole);
-  const canManage = normalizedRole === 'owner' || normalizedRole === 'admin';
+  const { businessId, setBusinessId } = useEmisor();
+  const canManage = true;
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showEmisorConfig, setShowEmisorConfig] = useState(false);
-  const [showAssociateEmisor, setShowAssociateEmisor] = useState(false);
-  const [associateMode, setAssociateMode] = useState<'create' | 'claim'>('create');
-  const [associateBusinessId, setAssociateBusinessId] = useState('');
-  const [associateNombre, setAssociateNombre] = useState('');
-  const [isAssociating, setIsAssociating] = useState(false);
   const [emisorForm, setEmisorForm] = useState<Omit<EmisorData, 'id'> & { logoUrl?: string }>({
     nit: '',
     nrc: '',
@@ -85,142 +75,63 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     const dismissed = localStorage.getItem('push-notification-dismissed');
     setNotificationsEnabled(permission === 'granted' && dismissed !== 'true');
 
-    const loadBusinessFromSupabase = async () => {
-      if (!user || !businessId) {
-        setBusinessData({ nombre: 'Sin emisor', nit: 'No definido', ambiente: localStorage.getItem('dte_ambiente') || '00' });
-        setCredentialsStatus({ hasCert: false, hasPassword: false });
-        return;
-      }
-
+    const loadLocal = async () => {
       const storedAmbiente = localStorage.getItem('dte_ambiente') || '00';
-      const { data, error } = await supabase
-        .from('businesses')
-        .select('id, nombre, nombre_comercial, correo, telefono, nrc, dir_departamento, dir_municipio, dir_complemento')
-        .eq('id', businessId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error cargando negocio:', error);
-        notify('No se pudo cargar el emisor', 'error');
-        return;
-      }
-
-      if (data) {
-        setBusinessData({
-          nombre: data.nombre_comercial || data.nombre || 'Empresa No Configurada',
-          nit: data.id,
-          ambiente: storedAmbiente
-        });
+      const localEmisor = await getEmisor();
+      if (!localEmisor) {
+        setBusinessData({ nombre: 'Sin emisor', nit: 'No definido', ambiente: storedAmbiente });
+      } else {
+        const nit = (localEmisor.nit || '').replace(/[\s-]/g, '');
+        if (nit) {
+          setBusinessId(nit);
+        }
+        setBusinessData({ nombre: localEmisor.nombreComercial || localEmisor.nombre || 'Empresa', nit: nit || localEmisor.nit, ambiente: storedAmbiente });
         setEmisorForm((prev) => ({
           ...prev,
-          nombre: data.nombre || '',
-          nombreComercial: data.nombre_comercial || '',
-          correo: data.correo || '',
-          telefono: data.telefono || '',
-          nrc: data.nrc || '',
-          departamento: data.dir_departamento || '',
-          municipio: data.dir_municipio || '',
-          direccion: data.dir_complemento || ''
+          ...localEmisor,
+          logoUrl: (localEmisor as any).logo || prev.logoUrl,
         }));
       }
+
+      const hasCert = await hasCertificate();
+      setCredentialsStatus({ hasCert, hasPassword: hasCert });
     };
 
-    const loadCredentialsFromSupabase = async () => {
-      if (!businessId) {
-        setCredentialsStatus({ hasCert: false, hasPassword: false });
-        return;
-      }
-      const { data, error } = await supabase
-        .from('mh_credentials')
-        .select('certificate_b64, password_pri')
-        .eq('business_id', businessId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error cargando credenciales MH:', error);
-        return;
-      }
-
-      setCredentialsStatus({
-        hasCert: !!data?.certificate_b64,
-        hasPassword: !!data?.password_pri,
-      });
-    };
-    
-    loadBusinessFromSupabase();
-    loadCredentialsFromSupabase();
-  }, [permission, showEmisorConfig, businessId, user]);
+    loadLocal();
+  }, [permission, showEmisorConfig, setBusinessId]);
 
   const handleOpenConfig = () => {
     setShowEmisorConfig(true);
   };
 
-  const handleAssociateEmisor = async () => {
-    setIsAssociating(true);
-    try {
-      const payload = {
-        business_id: associateBusinessId.trim(),
-        nombre: associateNombre.trim(),
-      };
-
-      const json = associateMode === 'create'
-        ? await apiFetch<any>('/api/business/businesses', { method: 'POST', body: payload })
-        : await apiFetch<any>('/api/business/business_users/claim', { method: 'POST', body: { business_id: associateBusinessId.trim() } });
-
-      const newBusinessId =
-        (json && typeof json.business_id === 'string' && json.business_id) ||
-        (json && json.businessUser && typeof json.businessUser.business_id === 'string' && json.businessUser.business_id) ||
-        null;
-
-      await reloadEmisores();
-      if (newBusinessId) {
-        setBusinessId(newBusinessId);
-      }
-
-      notify(associateMode === 'create' ? 'Emisor creado y asociado' : 'Emisor asociado', 'success');
-      setShowAssociateEmisor(false);
-      setAssociateBusinessId('');
-      setAssociateNombre('');
-    } catch (err: any) {
-      console.error(err);
-      notify(err?.message || 'No se pudo asociar el emisor', 'error');
-    } finally {
-      setIsAssociating(false);
-    }
-  };
-
   const handleSaveEmisor = async () => {
-    if (!businessId) {
-      notify('Selecciona un emisor para actualizar', 'error');
-      return;
-    }
-
     setIsSavingEmisor(true);
     try {
-      const payload: Record<string, unknown> = {
-        nombre: emisorForm.nombre?.trim() || null,
-        nombre_comercial: emisorForm.nombreComercial?.trim() || null,
-        correo: emisorForm.correo?.trim() || null,
-        telefono: emisorForm.telefono?.trim() || null,
-        nrc: emisorForm.nrc?.trim() || null,
-        dir_departamento: emisorForm.departamento?.trim() || null,
-        dir_municipio: emisorForm.municipio?.trim() || null,
-        dir_complemento: emisorForm.direccion?.trim() || null,
-        logo_url: emisorForm.logoUrl?.trim() || null,
-      };
-
-      const { error } = await supabase
-        .from('businesses')
-        .update(payload)
-        .eq('id', businessId);
-
-      if (error) {
-        throw error;
+      await saveEmisor({
+        nit: emisorForm.nit,
+        nrc: emisorForm.nrc,
+        nombre: emisorForm.nombre,
+        nombreComercial: emisorForm.nombreComercial,
+        actividadEconomica: emisorForm.actividadEconomica,
+        descActividad: emisorForm.descActividad,
+        tipoEstablecimiento: emisorForm.tipoEstablecimiento,
+        departamento: emisorForm.departamento,
+        municipio: emisorForm.municipio,
+        direccion: emisorForm.direccion,
+        telefono: emisorForm.telefono,
+        correo: emisorForm.correo,
+        codEstableMH: emisorForm.codEstableMH,
+        codPuntoVentaMH: emisorForm.codPuntoVentaMH,
+        logo: emisorForm.logoUrl || undefined,
+      });
+      const nit = (emisorForm.nit || '').replace(/[\s-]/g, '');
+      if (nit) {
+        setBusinessId(nit);
       }
-
+      localStorage.setItem('emisor_nombre', emisorForm.nombreComercial || emisorForm.nombre || '');
       notify('Datos del emisor guardados', 'success');
       setShowEmisorConfig(false);
-      setBusinessData((prev) => ({ ...prev, nombre: payload.nombre_comercial as string || payload.nombre as string || prev.nombre }));
+      setBusinessData((prev) => ({ ...prev, nombre: emisorForm.nombreComercial || emisorForm.nombre || prev.nombre, nit: nit || prev.nit }));
     } catch (error) {
       console.error(error);
       notify('Error guardando emisor', 'error');
@@ -287,14 +198,6 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     }
   };
 
-  if (!session) {
-    return (
-      <AuthGate>
-        <div />
-      </AuthGate>
-    );
-  }
-
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-fade-in">
       <div className="flex items-start justify-between gap-4">
@@ -320,18 +223,11 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
           <div className="flex flex-col sm:flex-row gap-2">
             <button
               onClick={handleOpenConfig}
-              disabled={!businessId || !canManage}
+              disabled={!canManage}
               className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
             >
               <Settings className="w-4 h-4" />
               Configurar emisor
-            </button>
-            <button
-              onClick={() => setShowAssociateEmisor(true)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50"
-            >
-              <Store className="w-4 h-4" />
-              Asociar emisor
             </button>
           </div>
         </div>
@@ -359,6 +255,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          <DeviceFingerprintDisplay />
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -368,14 +265,14 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
               {canManage ? (
                 <button
                   onClick={handleOpenConfig}
-                  disabled={!businessId}
+                  disabled={false}
                   className="text-indigo-700 hover:text-indigo-800 text-sm font-medium flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
                 >
                   <Settings className="w-4 h-4" />
                   Editar
                 </button>
               ) : (
-                <span className="text-xs text-gray-500">Solo lectura (rol {normalizedRole || 'sin rol'})</span>
+                <span className="text-xs text-gray-500">Solo lectura</span>
               )}
             </div>
             <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -400,13 +297,9 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
             </div>
           </div>
 
-          {businessId ? (
-            <TeamPanel />
-          ) : (
-            <div className="bg-white rounded-2xl border border-gray-200 p-4 text-sm text-gray-600">
-              Selecciona o asocia un emisor para ver y gestionar el equipo.
-            </div>
-          )}
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 text-sm text-gray-600">
+            Gestión de equipo deshabilitada en modo fingerprint-only.
+          </div>
         </div>
 
         <div className="space-y-6">
@@ -527,90 +420,6 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
           }
           fileInputRef={fileInputRef}
         />
-      )}
-
-      {showAssociateEmisor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Asociar emisor</h3>
-              <button
-                type="button"
-                onClick={() => setShowAssociateEmisor(false)}
-                className="text-sm font-medium text-gray-500 hover:text-gray-700"
-              >
-                Cerrar
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAssociateMode('create')}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium border ${associateMode === 'create' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
-                >
-                  Crear nuevo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAssociateMode('claim')}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium border ${associateMode === 'claim' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
-                >
-                  Asociar existente
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">NIT o UUID del emisor</label>
-                <input
-                  type="text"
-                  value={associateBusinessId}
-                  onChange={(e) => setAssociateBusinessId(e.target.value)}
-                  className="mt-1 w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-                  placeholder="0614-... o UUID"
-                />
-              </div>
-
-              {associateMode === 'create' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Nombre comercial</label>
-                  <input
-                    type="text"
-                    value={associateNombre}
-                    onChange={(e) => setAssociateNombre(e.target.value)}
-                    className="mt-1 w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Mi Tienda"
-                  />
-                </div>
-              )}
-
-              <p className="text-xs text-gray-500">
-                {associateMode === 'create'
-                  ? 'Crea un negocio nuevo y te lo asigna como owner.'
-                  : 'Asocia un negocio existente a tu cuenta (según reglas del backend).'}
-              </p>
-            </div>
-
-            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowAssociateEmisor(false)}
-                className="px-4 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={!associateBusinessId.trim() || isAssociating || (associateMode === 'create' && !associateNombre.trim())}
-                onClick={handleAssociateEmisor}
-                className="px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
-              >
-                {isAssociating ? 'Guardando...' : associateMode === 'create' ? 'Crear y asociar' : 'Asociar'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

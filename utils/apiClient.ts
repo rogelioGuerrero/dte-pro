@@ -1,5 +1,3 @@
-import { supabase } from './supabaseClient';
-
 const baseUrl = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_DTE_URL || '') as string;
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -8,14 +6,12 @@ export async function apiFetch<T>(path: string, options: { method?: HttpMethod; 
   if (!baseUrl) {
     throw new Error('Backend URL no configurada. Define VITE_BACKEND_URL (recomendado) o VITE_API_DTE_URL en tus variables de entorno.');
   }
-  const token = (await supabase.auth.getSession()).data.session?.access_token;
   const url = `${baseUrl}${path}`;
 
   const res = await fetch(url, {
     method: options.method || 'GET',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
     signal: options.signal,
