@@ -57,19 +57,9 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Acceso a DTE Pro</h1>
             <p className="text-sm text-gray-600 mt-2">
-              Ingresa el correo de tu usuario registrado para recibir un enlace mágico e iniciar sesión.
+              Escribe tu correo para entrar.
             </p>
           </div>
-        </div>
-
-        <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-900 space-y-2">
-          <p className="font-medium">Cómo entrar</p>
-          <p>
-            Si ya eres usuario o admin, escribe tu correo de Supabase y abre el enlace que llega a ese mismo correo. Esta pantalla <strong>no envía invitaciones</strong>; sirve para iniciar sesión.
-          </p>
-          <p className="text-xs text-indigo-700">
-            Si tu correo además está registrado en <code>public.platform_admins</code>, backend te reconocerá como admin de plataforma después del login.
-          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -93,6 +83,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
             type="submit"
             disabled={submitting || !email.trim()}
             className="w-full py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            title="Te enviaremos un enlace para entrar"
           >
             {submitting ? 'Enviando enlace...' : 'Iniciar sesión por correo'}
           </button>
@@ -100,14 +91,9 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
 
         {lastEmailSent && (
           <div className="rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-800">
-            Enlace enviado a <strong>{lastEmailSent}</strong>. Abre tu correo y vuelve a esta app desde el enlace mágico para completar el acceso.
+            Revisa tu correo: <strong>{lastEmailSent}</strong>
           </div>
         )}
-
-        <div className="text-xs text-gray-500 space-y-1">
-          <p>- Usa el mismo correo con el que te registraron en Supabase Auth.</p>
-          <p>- Si eres platform admin y aún no puedes administrar, falta que ese correo exista en <code>public.platform_admins</code> con <code>active=true</code>.</p>
-        </div>
       </div>
     </div>
   );

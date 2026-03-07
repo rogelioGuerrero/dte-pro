@@ -16,6 +16,7 @@ import { TeamPanel } from './TeamPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { APP_TAB_LABELS, MANAGED_APP_TABS, ManagedAppTab } from '../utils/appTabs';
 import { BusinessSettings, normalizeBusinessSettings, saveBusinessSettingsToBackend } from '../utils/businessSettings';
+import { EmisorSelector } from './EmisorSelector';
 
 interface MiCuentaProps {
   onBack?: () => void;
@@ -27,12 +28,13 @@ interface MiCuentaProps {
 const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, businessSettings, onBusinessSettingsChange }) => {
   const { isSupported, permission, subscription, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
   const { user, isConfigured, signOut } = useAuth();
-  const { businessId, emisores, reload, currentRole } = useEmisor();
+  const { businessId, emisores, reload, currentRole, setBusinessId } = useEmisor();
   const isPlatformAdmin = Boolean(user && businessId && !currentRole);
   const canManageLocal = currentRole === 'owner' || currentRole === 'admin' || isPlatformAdmin || !currentRole;
   const canManageRemote = currentRole === 'owner' || currentRole === 'admin' || isPlatformAdmin;
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showEmisorConfig, setShowEmisorConfig] = useState(false);
+  const [manualBusinessId, setManualBusinessId] = useState('');
   const [emisorForm, setEmisorForm] = useState<Omit<EmisorData, 'id'> & { logoUrl?: string }>({
     nit: '',
     nrc: '',
@@ -87,6 +89,10 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
   useEffect(() => {
     setRemoteDraft(businessSettings || null);
   }, [businessSettings]);
+
+  useEffect(() => {
+    setManualBusinessId(businessId || '');
+  }, [businessId]);
 
   const handleSignOut = async () => {
     try {
@@ -359,7 +365,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
           <div>
             <p className="text-sm font-semibold text-gray-900">Estado de configuración</p>
             <p className="text-sm text-gray-600">
-              {businessId ? 'Si eres owner, admin o admin de plataforma, desde aquí puedes administrar a distancia la tienda actualmente seleccionada. Los cambios globales aplican a todos los equipos de esa tienda, no a las demás.' : 'Aún no hay emisor asociado a tu cuenta.'}
+              {businessId ? 'Administra la tienda seleccionada desde aquí.' : 'Primero elige una tienda o escribe su código.'}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -367,6 +373,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
               <button
                 onClick={handleOpenConfig}
                 disabled={!canManageLocal}
+                title="Editar datos del negocio seleccionado"
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
               >
                 <Settings className="w-4 h-4" />
@@ -377,6 +384,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
               <button
                 onClick={onOpenAdvancedSettings}
                 disabled={!canManageLocal}
+                title="Ajustes de este equipo"
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50"
               >
                 <Settings className="w-4 h-4" />
@@ -386,16 +394,50 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
           </div>
         </div>
 
+        <div className="mt-4 rounded-xl border border-indigo-200 bg-white px-4 py-3 space-y-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold text-indigo-700 uppercase">Tienda activa</p>
+              <p className="text-sm font-medium text-gray-900 mt-1">{selectedEmisor?.nombre || businessData.nombre || 'Sin seleccionar'}</p>
+            </div>
+            {emisores.length > 0 && <EmisorSelector className="flex-wrap" />}
+          </div>
+
+          {emisores.length === 0 && user && (
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+              <input
+                type="text"
+                value={manualBusinessId}
+                onChange={(e) => setManualBusinessId(e.target.value)}
+                placeholder="Pega aquí el código de la tienda"
+                title="Usa el businessId de la tienda que quieres administrar"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => setBusinessId(manualBusinessId.trim() || null)}
+                disabled={!manualBusinessId.trim()}
+                title="Abrir esta tienda"
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60"
+              >
+                Abrir tienda
+              </button>
+            </div>
+          )}
+        </div>
+
         {businessId && (
-          <div className="mt-4 rounded-xl border border-indigo-200 bg-white px-4 py-3">
-            <p className="text-xs font-semibold text-indigo-700 uppercase">Tienda seleccionada</p>
-            <p className="text-sm font-medium text-gray-900 mt-1">{selectedEmisor?.nombre || businessData.nombre || 'Negocio actual'}</p>
-            <p className="text-xs text-gray-600 mt-1">
-              Todo lo que cambies en administración remota afecta a este emisor (`{businessId}`) y a sus usuarios. Si manejas varias tiendas, cada una se configura por separado.
-            </p>
-            {isPlatformAdmin && (
-              <p className="text-xs text-indigo-700 mt-2">Tu sesión está operando como admin de plataforma para esta tienda aunque no exista un rol local en `business_users`.</p>
-            )}
+          <div className="mt-4 rounded-xl border border-indigo-200 bg-white px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold text-indigo-700 uppercase">Código de tienda</p>
+              <p className="text-sm font-medium text-gray-900 mt-1 break-all">{businessId}</p>
+            </div>
+            <span
+              className={`px-2.5 py-1 rounded-full text-xs font-medium ${isPlatformAdmin ? 'bg-indigo-50 text-indigo-700' : 'bg-gray-100 text-gray-700'}`}
+              title={isPlatformAdmin ? 'Puedes administrar esta tienda aunque no tengas rol local' : 'Tu acceso depende del rol asignado a esta tienda'}
+            >
+              {isPlatformAdmin ? 'Admin global' : (currentRole || 'Tienda activa')}
+            </span>
           </div>
         )}
 
@@ -441,21 +483,19 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <DeviceFingerprintDisplay />
-          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 sm:p-5">
-            <h2 className="text-base font-semibold text-blue-900">Cómo funciona la administración global</h2>
-            <p className="text-sm text-blue-800 mt-2">
-              Si entras con un usuario `owner`, `admin` o admin de plataforma, puedes cambiar módulos, tabs y equipo desde cualquier lugar. Esos cambios se guardan por negocio y aplican a todos los usuarios de la tienda seleccionada.
-            </p>
-            <p className="text-xs text-blue-700 mt-2">
-              Si administras varias tiendas, repites el ajuste en cada emisor. Solo lo técnico del dispositivo queda local: permisos del navegador, algunas credenciales del equipo y ajustes de soporte.
-            </p>
+          <div className="flex items-center justify-between rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
+            <div>
+              <h2 className="text-sm font-semibold text-blue-900">Administración remota</h2>
+              <p className="text-xs text-blue-700 mt-1">Los cambios aplican a la tienda activa.</p>
+            </div>
+            <span className="text-xs text-blue-700" title="Si cambias de tienda, ajustas otra configuración">Ayuda</span>
           </div>
           {businessSettings && remoteDraft && onBusinessSettingsChange && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-medium text-gray-900">Administración remota del negocio</h2>
-                  <p className="text-sm text-gray-500 mt-1">Esto es global para este negocio y aplica a todos los usuarios que entren con este emisor.</p>
+                  <p className="text-sm text-gray-500 mt-1">Visible para toda la tienda activa.</p>
                 </div>
                 <div className={`text-xs font-medium px-2.5 py-1 rounded-full ${businessSettings.source === 'remote' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
                   {businessSettings.source === 'remote' ? 'Sincronizado con backend' : 'Usando fallback local'}
@@ -464,7 +504,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
               <div className="p-6 space-y-5">
                 {!canManageRemote && (
                   <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    Solo `owner`, `admin` o un admin de plataforma pueden cambiar la configuración global del negocio. Con tu rol actual esta sección queda en solo lectura.
+                    Elige una tienda con acceso para editar esta sección.
                   </div>
                 )}
                 <div>
@@ -502,20 +542,18 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
                 </div>
                 <div className="flex flex-wrap gap-3 items-center justify-between pt-2">
                   <p className="text-xs text-gray-500">
-                    Los cambios se guardan en backend por negocio y se reflejan en todos los equipos cuando sincronizan.
+                    Se guarda por tienda.
                   </p>
                   <button
                     onClick={handleRemoteSave}
                     disabled={isSavingRemoteSettings || !businessId || !canManageRemote}
+                    title="Guardar cambios para la tienda activa"
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <Settings className="w-4 h-4" />
                     {isSavingRemoteSettings ? 'Guardando...' : 'Guardar cambios remotos'}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500">
-                  La <strong>Configuración local del dispositivo</strong> queda aparte solo para soporte técnico o ajustes de este navegador/equipo.
-                </p>
               </div>
             </div>
           )}
@@ -547,13 +585,14 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, onOpenAdvancedSettings, bus
                 <button
                   onClick={handleOpenConfig}
                   disabled={false}
+                  title="Editar datos del negocio seleccionado"
                   className="text-indigo-700 hover:text-indigo-800 text-sm font-medium flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
                 >
                   <Settings className="w-4 h-4" />
                   Editar
                 </button>
               ) : (
-                <span className="text-xs text-gray-500">Solo lectura para este rol</span>
+                <span className="text-xs text-gray-500">Selecciona una tienda</span>
               )}
             </div>
             <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
