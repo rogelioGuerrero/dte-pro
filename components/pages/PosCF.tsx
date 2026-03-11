@@ -133,7 +133,7 @@ const PosCF: React.FC = () => {
       municipio: '',
       direccion: '',
       telefono: '',
-      email: '',
+      email: correoReceptor,
       esConsumidorFinal: true,
       nombreComercial: '',
       timestamp: Date.now(),
