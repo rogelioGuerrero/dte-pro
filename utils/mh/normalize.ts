@@ -51,7 +51,9 @@ export const normalizeDTE = (dte: DTEJSON): DTEJSON => {
       nombre: dte.receptor.nombre.trim(),
       codActividad: trimOrNull(dte.receptor.codActividad) as any,
       descActividad: trimOrNull(dte.receptor.descActividad) as any,
-      correo: trimOrNull(dte.receptor.correo) as any,
+      correo: dte.receptor.correo === null || dte.receptor.correo === undefined
+        ? null
+        : String(dte.receptor.correo).trim(),
       telefono: trimOrNull(dte.receptor.telefono) as any,
       direccion: dte.receptor.direccion
         ? {
