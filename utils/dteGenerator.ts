@@ -152,7 +152,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const emisorCorreo = normalizeRequiredText(datos.emisor.correo);
   const receptorNombre = normalizeRequiredText(datos.receptor.name, 'Consumidor Final');
   const receptorTelefono = normalizePhone(datos.receptor.telefono);
-  const receptorCorreo = receptorSinDocumento ? "" : normalizeOptionalText(datos.receptor.email) || "";
+  const receptorCorreo = normalizeOptionalText(datos.receptor.email);
 
   const dteJSON: DTEJSON = {
     identificacion: {
@@ -199,7 +199,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       descActividad: receptorDescActividad,
       direccion: receptorDireccion,
       telefono: receptorTelefono,
-      correo: receptorCorreo,
+      ...(receptorCorreo !== null ? { correo: receptorCorreo } : {}),
     },
     otrosDocumentos: null,
     ventaTercero: null,

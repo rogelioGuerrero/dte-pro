@@ -83,7 +83,7 @@ export interface DTEJSON {
       complemento: string;
     } | null;
     telefono: string | null;
-    correo: string | null;
+    correo?: string | null;
   };
   otrosDocumentos: null;
   ventaTercero: null;
