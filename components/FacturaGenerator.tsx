@@ -14,7 +14,7 @@ import { FacturaMainContent } from './FacturaMainContent';
 import { FacturaModals } from './FacturaModals';
 import { FacturaHeader } from './FacturaHeader';
 import { inventarioService } from '../utils/inventario/inventarioService';
-import { getUserModeConfig, hasFeature } from '../utils/userMode';
+import { getBillingStyle, getUserModeConfig, hasFeature } from '../utils/userMode';
 import { useStockByCode } from '../hooks/useStockByCode';
 import { requiereStripe } from '../catalogos/pagos';
 import { mergeProducts } from '../utils/inventoryAdapter';
@@ -22,6 +22,7 @@ import {
   getPresentacionesForCodigo as getPresentacionesForCodigoHelper,
 } from '../utils/facturaGeneratorInventoryHelpers';
 import type { ResolverItem } from './ResolveNoCodeModal';
+import type { ProductoFactura } from './inventario/SelectorProductosFactura';
 import {
   validateNIT,
   validateNRC,
@@ -49,6 +50,7 @@ const emptyItem: ItemForm = {
 
 const FacturaGenerator: React.FC = () => {
   const isModoProfesional = getUserModeConfig().mode === 'profesional';
+  const billingStyle = getBillingStyle();
   const defaultItem: ItemForm = isModoProfesional ? { ...emptyItem, tipoItem: 2 } : { ...emptyItem };
   const canUseCatalogoProductos = hasFeature('productos');
   const { toasts, addToast, removeToast } = useToast();
@@ -109,44 +111,8 @@ const FacturaGenerator: React.FC = () => {
     handlePrecioUniBlur,
   } = useFacturaItems({ defaultItem, tipoDocumento, products });
 
-  // Recalcular precios al cambiar tipo de documento
-  const handleSetTipoDocumento = (nuevoTipo: string) => {
-    const tipoAnterior = tipoDocumento;
-    setTipoDocumento(nuevoTipo);
-
-    if (tipoAnterior === nuevoTipo) return;
-
-    // Si no hay items o solo el default vacío, no hacer nada
-    if (items.length === 0 || (items.length === 1 && !items[0].codigo && items[0].precioUni === 0)) return;
-
-    const newItems = items.map(item => {
-      // Si es exento, no se toca el precio
-      if (item.esExento) return item;
-
-      let nuevoPrecio = item.precioUni;
-
-      // De Sin IVA (03) a Con IVA (01) -> Sumar IVA
-      if (tipoAnterior !== '01' && nuevoTipo === '01') {
-        nuevoPrecio = redondear(item.precioUni * 1.13, 8);
-      }
-      // De Con IVA (01) a Sin IVA (03) -> Restar IVA
-      else if (tipoAnterior === '01' && nuevoTipo !== '01') {
-        nuevoPrecio = redondear(item.precioUni / 1.13, 8);
-      }
-
-      return {
-        ...item,
-        precioUni: nuevoPrecio
-      };
-    });
-
-    setItems(newItems);
-    addToast(
-      nuevoTipo === '01' 
-        ? 'Precios actualizados a IVA incluido' 
-        : 'Precios actualizados a Sin IVA',
-      'info'
-    );
+  const handleSetTipoDocumento = (_value: string) => {
+    setTipoDocumento('03');
   };
 
   const {
@@ -240,13 +206,9 @@ const FacturaGenerator: React.FC = () => {
     }
   };
 
-  const receptorEsConsumidorFinal = selectedReceptor ? !selectedReceptor.nit.trim() : false;
+  const receptorEsConsumidorFinal = false;
 
-  const tipoDocumentoHint = tipoDocumento === '01'
-    ? '01: Ingresa precio con IVA incluido (13%).'
-    : tipoDocumento === '03'
-      ? '03: Ingresa precio sin IVA; se calculará 13%.'
-      : 'Ajusta precios según el tipo de documento.';
+  const tipoDocumentoHint = 'Crédito Fiscal (03): usa el mismo precio final de venta; el sistema separa base e IVA al generar el DTE.';
 
   const filteredClients = useMemo(() => {
     if (!clientSearch) return clients.slice(0, 10);
@@ -258,15 +220,7 @@ const FacturaGenerator: React.FC = () => {
     ).slice(0, 10);
   }, [clients, clientSearch]);
 
-  const tiposDocumentoFiltrados = useMemo(() => {
-    return tiposDocumento.filter(t => {
-      if (receptorEsConsumidorFinal) {
-        return ['01', '02', '10', '11'].includes(t.codigo);
-      } else {
-        return !['02', '10'].includes(t.codigo);
-      }
-    });
-  }, [receptorEsConsumidorFinal]);
+  const tiposDocumentoFiltrados = useMemo(() => tiposDocumento.filter(t => t.codigo === '03'), []);
 
   const filteredProductsForPicker = useMemo(() => {
     if (!productSearch) return products.slice(0, 20);
@@ -281,11 +235,6 @@ const FacturaGenerator: React.FC = () => {
     setSelectedReceptor(client);
     setShowClientSearch(false);
     setClientSearch('');
-
-    const receptorId = (client?.nit || '').replace(/[\s-]/g, '').trim();
-    if (!receptorId && tipoDocumento === '03') {
-      handleSetTipoDocumento('01');
-    }
   };
 
   const handleSaveEmisor = async () => {
@@ -304,20 +253,6 @@ const FacturaGenerator: React.FC = () => {
     }
   };
 
-  // Resetear tipo de documento cuando cambia el receptor (Auto-selección)
-  useEffect(() => {
-    if (selectedReceptor) {
-      // Si es consumidor final y el tipo actual no es permitido, cambiar a 01
-      if (receptorEsConsumidorFinal && !['01', '02', '10', '11'].includes(tipoDocumento)) {
-        handleSetTipoDocumento('01');
-      }
-      // Si es cliente con NIT y el tipo actual es 02 o 10, cambiar a 01
-      else if (!receptorEsConsumidorFinal && ['02', '10'].includes(tipoDocumento)) {
-        handleSetTipoDocumento('01');
-      }
-    }
-  }, [selectedReceptor, receptorEsConsumidorFinal]);
-
   const openProductPicker = (index: number) => {
     setProductPickerIndex(index);
     setProductSearch('');
@@ -329,8 +264,59 @@ const FacturaGenerator: React.FC = () => {
     setStockError('');
   };
 
+  const handleQuickAddProduct = (producto: ProductoFactura) => {
+    const normalizedCode = (producto.codigo || '').trim();
+    const quantityToAdd = producto.cantidad || 1;
+
+    if (normalizedCode) {
+      const existingIndex = items.findIndex((item) => (item.codigo || '').trim() === normalizedCode);
+      if (existingIndex >= 0) {
+        handleItemChange(existingIndex, 'cantidad', items[existingIndex].cantidad + quantityToAdd);
+        setStockError('');
+        return;
+      }
+    }
+
+    const productData: ProductData = {
+      key: `quick-${producto.id}`,
+      codigo: normalizedCode,
+      descripcion: producto.descripcion,
+      uniMedida: Number(producto.unidadMedida) || 99,
+      tipoItem: producto.tipoItem || 1,
+      precioUni: producto.precioUnitario || 0,
+      timestamp: Date.now(),
+    };
+
+    const newItem: ItemForm = {
+      ...defaultItem,
+      codigo: productData.codigo,
+      descripcion: productData.descripcion,
+      cantidad: quantityToAdd,
+      unidadVenta: 'UNIDAD',
+      factorConversion: 1,
+      precioUni: productData.precioUni,
+      tipoItem: productData.tipoItem,
+      uniMedida: productData.uniMedida,
+    };
+
+    const isDefaultEmptyRow =
+      items.length === 1 &&
+      !(items[0].codigo || '').trim() &&
+      !(items[0].descripcion || '').trim() &&
+      items[0].precioUni === 0;
+
+    if (isDefaultEmptyRow) {
+      setItems([newItem]);
+      setStockError('');
+      return;
+    }
+
+    setItems((prev) => [...prev, newItem]);
+    setStockError('');
+  };
+
   const handleItemDescriptionBlurWithStockClear = (index: number) => {
-    handleItemDescriptionBlur(index, tipoDocumento);
+    handleItemDescriptionBlur(index);
     setStockError('');
   };
 
@@ -390,9 +376,9 @@ const FacturaGenerator: React.FC = () => {
       ventaGravada = totalLinea;
       ivaItem = 0;
     } else if (tipoDocumento === '03') {
-      // CCF: precio sin IVA
-      ventaGravada = totalLinea;
-      ivaItem = redondear(totalLinea * 0.13, 2);
+      const totalFinal = totalLinea;
+      ventaGravada = redondear(totalFinal / 1.13, 8);
+      ivaItem = redondear(totalFinal - ventaGravada, 2);
     } else {
       // Otros documentos: sin IVA
       ventaGravada = totalLinea;
@@ -512,6 +498,7 @@ const FacturaGenerator: React.FC = () => {
         onItemDescriptionBlur={handleItemDescriptionBlurWithStockClear}
         onPrecioUniChange={handlePrecioUniChange}
         onPrecioUniBlur={handlePrecioUniBlur}
+        onQuickAddProduct={billingStyle === 'inventory_first' ? handleQuickAddProduct : undefined}
         getPresentacionesForCodigo={getPresentacionesForCodigo}
         getStockDisplayForCodigo={getStockDisplayForCodigo}
         redondear={redondear}

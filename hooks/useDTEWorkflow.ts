@@ -133,8 +133,9 @@ export function useDTEWorkflow({
           ventaGravada = totalLinea;
           ivaItem = 0;
         } else if (tipoDocumento === '03') {
-          ventaGravada = totalLinea;
-          ivaItem = redondear(totalLinea * 0.13, 2);
+          const totalFinal = totalLinea;
+          ventaGravada = redondear(totalFinal / 1.13, 8);
+          ivaItem = redondear(totalFinal - ventaGravada, 2);
         } else {
           ventaGravada = totalLinea;
         }
@@ -216,8 +217,6 @@ export function useDTEWorkflow({
         datosErrors.push(`Faltan datos del emisor: ${missingEmisor.join(', ')}`);
       }
 
-      const receptorDirOK = selectedReceptor.departamento && selectedReceptor.municipio && selectedReceptor.direccion;
-      const receptorContactoOK = selectedReceptor.telefono || selectedReceptor.email;
       const totalDoc = totalesPreview.totalPagar;
       if (tipoDocumento === '01') {
         const receptorId = (selectedReceptor.nit || '').replace(/\s|-/g, '');
@@ -226,8 +225,8 @@ export function useDTEWorkflow({
         }
       }
       if (tipoDocumento === '03') {
-        if (!selectedReceptor.nit || !selectedReceptor.nrc || !receptorDirOK || !receptorContactoOK) {
-          datosErrors.push('CCF (03) requiere NIT, NRC, dirección y contacto del receptor');
+        if (!filled(selectedReceptor.name)) {
+          datosErrors.push('Crédito Fiscal (03) requiere al menos el nombre del receptor');
         }
       }
 

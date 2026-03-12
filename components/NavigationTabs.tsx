@@ -5,6 +5,7 @@ import { isTabAllowedForRole, firstAllowedTab, Role, normalizeRole } from '../ut
 import { useEmisor } from '../contexts/EmisorContext';
 import { BusinessSettings, DEFAULT_BUSINESS_SETTINGS, isManagedTabEnabled } from '../utils/businessSettings';
 import { AppTab } from '../utils/appTabs';
+import Tooltip from './Tooltip';
 
 interface NavigationTabsProps {
   activeTab: string;
@@ -18,10 +19,10 @@ const TABS_CONFIG = [
   { key: 'fiscal', label: 'Impuestos', icon: PieChart, color: 'emerald' },
   { key: 'clients', label: 'Clientes', icon: Users, color: 'blue' },
   { key: 'inventory', label: 'Inventario', icon: Boxes, color: 'amber' },
-  { key: 'factura', label: 'Facturar', icon: FileText, color: 'green' },
+  { key: 'factura', label: 'Crédito Fiscal', icon: FileText, color: 'green', tooltip: 'Contribuyentes DTE-03' },
   { key: 'historial', label: 'Historial', icon: History, color: 'purple' },
   { key: 'simple', label: 'Test DTE', icon: Zap, color: 'pink' },
-  { key: 'poscf', label: 'POS CF', icon: Zap, color: 'emerald' }
+  { key: 'poscf', label: 'Facturas', icon: Zap, color: 'emerald', tooltip: 'Consumidor Final DTE-01' }
 ];
 
 export const NavigationTabs: React.FC<NavigationTabsProps> = ({ 
@@ -65,7 +66,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
         const Icon = tab.icon;
         const isActive = activeTab === tab.key;
         
-        return (
+        const button = (
           <button
             key={tab.key}
             onClick={() => onTabChange(tab.key as AppTab)}
@@ -79,6 +80,16 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
             {!isMobile && <span>{tab.label}</span>}
             {isMobile && <span className="text-[10px] mt-1 font-medium">{tab.label}</span>}
           </button>
+        );
+
+        if (!tab.tooltip || isMobile) {
+          return button;
+        }
+
+        return (
+          <Tooltip key={tab.key} content={tab.tooltip} position="bottom">
+            {button}
+          </Tooltip>
         );
       })}
     </>

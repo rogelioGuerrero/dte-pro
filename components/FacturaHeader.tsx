@@ -11,8 +11,8 @@ export const FacturaHeader: React.FC<FacturaHeaderProps> = ({ emisor, onOpenEmis
   return (
     <div className="flex items-center justify-between mb-4">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Generar Factura DTE</h2>
-        <p className="text-sm text-gray-500">Crea documentos tributarios electrónicos</p>
+        <h2 className="text-2xl font-bold text-gray-900">Generar Crédito Fiscal</h2>
+        <p className="text-sm text-gray-500">Contribuyentes DTE-03 con productos tomados desde inventario</p>
       </div>
       <div className="flex items-center gap-2">
         <Tooltip

@@ -34,7 +34,6 @@ interface FacturaItemsTableProps {
   getPresentacionesForCodigo: (codigo: string) => Presentacion[];
   getStockDisplayForCodigo: (codigo: string) => string;
   redondear: (value: number, decimals: number) => number;
-  tipoDocumento: string;
 }
 
 export const FacturaItemsTable: React.FC<FacturaItemsTableProps> = ({
@@ -50,9 +49,8 @@ export const FacturaItemsTable: React.FC<FacturaItemsTableProps> = ({
   getPresentacionesForCodigo,
   getStockDisplayForCodigo,
   redondear,
-  tipoDocumento,
 }) => {
-  const precioHeaderLabel = tipoDocumento === '01' ? 'Precio (C/IVA)' : 'Precio (S/IVA)';
+  const precioHeaderLabel = 'Precio Final';
 
   return (
     <div>
@@ -65,6 +63,10 @@ export const FacturaItemsTable: React.FC<FacturaItemsTableProps> = ({
           <Plus className="w-3 h-3" /> Agregar
         </button>
       </div>
+
+      <p className="mb-2 text-xs text-gray-500">
+        Usa <span className="font-medium">Catálogo</span> para agregar productos rápido. El precio visible es el precio final de venta.
+      </p>
 
       <div className="border border-gray-200 rounded-lg overflow-hidden">
         <table className="w-full text-sm">

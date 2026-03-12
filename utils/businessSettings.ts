@@ -1,5 +1,6 @@
 import { BACKEND_CONFIG, buildBackendHeaders, getBackendAuthToken } from './backendConfig';
 import { APP_TAB_LABELS, AppTab, ManagedAppTab, MANAGED_APP_TABS } from './appTabs';
+import { getPreferredDefaultTab, isTabAllowed } from './userMode';
 
 const STORAGE_PREFIX = 'dte_business_settings';
 
@@ -286,7 +287,24 @@ export function isManagedTabEnabled(settings: BusinessSettings, tab: AppTab): bo
 }
 
 export function getDefaultActiveTab(settings: BusinessSettings): AppTab {
-  return normalizeDefaultTab(settings.defaultTab, settings.features);
+  const preferred = getPreferredDefaultTab();
+
+  if (
+    preferred &&
+    MANAGED_APP_TABS.includes(preferred as ManagedAppTab) &&
+    settings.features[preferred as ManagedAppTab] &&
+    isTabAllowed(preferred)
+  ) {
+    return preferred as AppTab;
+  }
+
+  const normalized = normalizeDefaultTab(settings.defaultTab, settings.features);
+  if (isTabAllowed(normalized)) {
+    return normalized;
+  }
+
+  const firstVisible = MANAGED_APP_TABS.find((tab) => settings.features[tab] && isTabAllowed(tab));
+  return (firstVisible || 'factura') as AppTab;
 }
 
 export function buildFeatureSummary(settings: BusinessSettings): string[] {

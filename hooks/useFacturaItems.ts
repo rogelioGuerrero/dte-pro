@@ -25,7 +25,7 @@ interface UseFacturaItemsParams {
   products: ProductData[];
 }
 
-export function useFacturaItems({ defaultItem, tipoDocumento, products }: UseFacturaItemsParams) {
+export function useFacturaItems({ defaultItem, tipoDocumento: _tipoDocumento, products }: UseFacturaItemsParams) {
   const [items, setItems] = useState<ItemForm[]>([{ ...defaultItem }]);
 
   const handleAddItem = useCallback(() => {
@@ -47,10 +47,10 @@ export function useFacturaItems({ defaultItem, tipoDocumento, products }: UseFac
     });
   }, []);
 
-  const applyProductToItem = useCallback((index: number, p: ProductData, tipoDoc: string = tipoDocumento) => {
+  const applyProductToItem = useCallback((index: number, p: ProductData) => {
     setItems((prev) => {
       if (!prev[index]) return prev;
-      const precioAplicar = tipoDoc === '01' ? redondear(p.precioUni * 1.13, 8) : p.precioUni;
+      const precioAplicar = redondear(p.precioUni, 8);
       const copy = [...prev];
       copy[index] = {
         ...copy[index],
@@ -64,15 +64,15 @@ export function useFacturaItems({ defaultItem, tipoDocumento, products }: UseFac
       };
       return copy;
     });
-  }, [tipoDocumento]);
+  }, []);
 
-  const handleItemDescriptionBlur = useCallback((index: number, tipoDoc: string = tipoDocumento) => {
+  const handleItemDescriptionBlur = useCallback((index: number) => {
     setItems((prev) => {
       const current = prev[index];
       if (!current) return prev;
       const found = resolveProductForDescription({ raw: current.descripcion, products });
       if (!found) return prev;
-      const precioAplicar = tipoDoc === '01' ? redondear(found.precioUni * 1.13, 8) : found.precioUni;
+      const precioAplicar = redondear(found.precioUni, 8);
       const copy = [...prev];
       copy[index] = {
         ...copy[index],
@@ -84,7 +84,7 @@ export function useFacturaItems({ defaultItem, tipoDocumento, products }: UseFac
       };
       return copy;
     });
-  }, [products, tipoDocumento]);
+  }, [products]);
 
   const handlePrecioUniChange = useCallback((index: number, val: string) => {
     setItems((prev) => {

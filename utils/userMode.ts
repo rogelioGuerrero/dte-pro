@@ -3,6 +3,8 @@ export type UserMode = 'profesional' | 'negocio';
 export interface UserModeConfig {
   mode: UserMode;
   allowedTabs: string[];
+  preferredDefaultTab: string;
+  billingStyle: 'manual_first' | 'inventory_first';
   features: {
     librosIVA: boolean;
     facturacion: boolean;
@@ -17,7 +19,9 @@ export interface UserModeConfig {
 export const USER_MODE_CONFIGS: Record<UserMode, UserModeConfig> = {
   profesional: {
     mode: 'profesional',
-    allowedTabs: ['batch', 'fiscal', 'clients', 'factura', 'historial', 'simple', 'poscf'],
+    allowedTabs: ['batch', 'fiscal', 'clients', 'factura', 'historial', 'simple'],
+    preferredDefaultTab: 'factura',
+    billingStyle: 'manual_first',
     features: {
       librosIVA: true,
       facturacion: true,
@@ -31,6 +35,8 @@ export const USER_MODE_CONFIGS: Record<UserMode, UserModeConfig> = {
   negocio: {
     mode: 'negocio',
     allowedTabs: ['batch', 'fiscal', 'clients', 'products', 'inventory', 'factura', 'historial', 'simple', 'poscf'],
+    preferredDefaultTab: 'poscf',
+    billingStyle: 'inventory_first',
     features: {
       librosIVA: true,
       facturacion: true,
@@ -65,4 +71,12 @@ export function isTabAllowed(tabName: string): boolean {
 export function hasFeature(feature: keyof UserModeConfig['features']): boolean {
   const config = getUserModeConfig();
   return config.features[feature];
+}
+
+export function getPreferredDefaultTab(): string {
+  return getUserModeConfig().preferredDefaultTab;
+}
+
+export function getBillingStyle(): UserModeConfig['billingStyle'] {
+  return getUserModeConfig().billingStyle;
 }

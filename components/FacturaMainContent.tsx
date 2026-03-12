@@ -5,6 +5,7 @@ import { FacturaPaymentSection } from './FacturaPaymentSection';
 import { FacturaRightPanel } from './FacturaRightPanel';
 import { FacturaTipoDocumentoSelector } from './FacturaTipoDocumentoSelector';
 import { ReceptorPicker } from './ReceptorPicker';
+import SelectorProductosFactura, { ProductoFactura } from './inventario/SelectorProductosFactura';
 
 interface ItemForm {
   id: string;
@@ -45,6 +46,7 @@ interface FacturaMainContentProps {
   onItemDescriptionBlur: (index: number) => void;
   onPrecioUniChange: (index: number, value: string) => void;
   onPrecioUniBlur: (index: number) => void;
+  onQuickAddProduct?: (producto: ProductoFactura) => void;
   getPresentacionesForCodigo: (codigo: string) => any[];
   getStockDisplayForCodigo: (codigo: string) => string;
   redondear: (value: number, decimales: number) => number;
@@ -91,6 +93,7 @@ export const FacturaMainContent: React.FC<FacturaMainContentProps> = ({
   onItemDescriptionBlur,
   onPrecioUniChange,
   onPrecioUniBlur,
+  onQuickAddProduct,
   getPresentacionesForCodigo,
   getStockDisplayForCodigo,
   redondear,
@@ -145,10 +148,24 @@ export const FacturaMainContent: React.FC<FacturaMainContentProps> = ({
             <p className="text-xs text-gray-500 mt-1">{tipoDocumentoHint}</p>
           )}
 
+          {onQuickAddProduct && (
+            <SelectorProductosFactura
+              onProductoSeleccionado={onQuickAddProduct}
+              productosExistentes={items.map((item) => ({
+                id: item.id || item.codigo || item.descripcion,
+                codigo: item.codigo,
+                descripcion: item.descripcion,
+                tipoItem: item.tipoItem,
+                precioUnitario: item.precioUni,
+                unidadMedida: String(item.uniMedida || 99),
+                cantidad: item.cantidad,
+              }))}
+            />
+          )}
+
           {/* Items */}
           <FacturaItemsTable
             items={items}
-            tipoDocumento={tipoDocumento}
             canUseCatalogoProductos={canUseCatalogoProductos}
             onAddItem={onAddItem}
             onRemoveItem={onRemoveItem}

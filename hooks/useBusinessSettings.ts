@@ -8,6 +8,7 @@ import {
   saveBusinessSettingsToStorage,
 } from '../utils/businessSettings';
 import { AppTab } from '../utils/appTabs';
+import { getUserModeConfig } from '../utils/userMode';
 
 export function useBusinessSettings(businessId: string | null) {
   const [settings, setSettings] = useState<BusinessSettings>(() => normalizeBusinessSettings({
@@ -38,7 +39,10 @@ export function useBusinessSettings(businessId: string | null) {
     });
   }, []);
 
-  const defaultTab = useMemo<AppTab>(() => getDefaultActiveTab(settings), [settings]);
+  const defaultTab = useMemo<AppTab>(() => {
+    getUserModeConfig();
+    return getDefaultActiveTab(settings);
+  }, [settings]);
 
   return {
     settings,

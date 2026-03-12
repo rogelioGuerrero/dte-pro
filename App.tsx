@@ -25,6 +25,7 @@ import { useEmisor } from './contexts/EmisorContext';
 import { useBusinessSettings } from './hooks/useBusinessSettings';
 import { APP_TAB_LABELS, AppTab } from './utils/appTabs';
 import { isManagedTabEnabled } from './utils/businessSettings';
+import { isTabAllowed } from './utils/userMode';
 
 const Placeholder: React.FC = () => (
   <div className="border border-dashed border-gray-300 rounded-xl p-6 text-center text-sm text-gray-500 bg-white/60">
@@ -142,7 +143,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (activeTab === 'micuenta') return;
-    if (!isManagedTabEnabled(businessSettings, activeTab)) {
+    if (!isManagedTabEnabled(businessSettings, activeTab) || !isTabAllowed(activeTab)) {
       setActiveTab(defaultTab);
     }
   }, [activeTab, businessSettings, defaultTab]);
@@ -150,7 +151,7 @@ const App: React.FC = () => {
   useEffect(() => {
     setActiveTab((current) => {
       if (current === 'micuenta') return current;
-      if (isManagedTabEnabled(businessSettings, current)) return current;
+      if (isManagedTabEnabled(businessSettings, current) && isTabAllowed(current)) return current;
       return defaultTab;
     });
   }, [businessId, businessSettings, defaultTab]);

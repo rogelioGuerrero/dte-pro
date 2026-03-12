@@ -18,10 +18,10 @@ export const APP_TAB_LABELS: Record<AppTab, string> = {
   fiscal: 'Impuestos',
   clients: 'Clientes',
   inventory: 'Inventario',
-  factura: 'Facturar',
+  factura: 'Crédito Fiscal',
   historial: 'Historial',
   simple: 'Test DTE',
-  poscf: 'POS CF',
+  poscf: 'Facturas',
   micuenta: 'Mi Cuenta',
   products: 'Productos'
 };
