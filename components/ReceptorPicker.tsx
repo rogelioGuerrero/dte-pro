@@ -10,6 +10,7 @@ interface ReceptorPickerProps {
   setClientSearch: React.Dispatch<React.SetStateAction<string>>;
   filteredClients: ClientData[];
   onSelectReceptor: (client: ClientData) => void;
+  allowConsumidorFinal?: boolean;
 }
 
 export const ReceptorPicker: React.FC<ReceptorPickerProps> = ({
@@ -20,6 +21,7 @@ export const ReceptorPicker: React.FC<ReceptorPickerProps> = ({
   setClientSearch,
   filteredClients,
   onSelectReceptor,
+  allowConsumidorFinal = true,
 }) => {
   return (
     <div>
@@ -57,28 +59,30 @@ export const ReceptorPicker: React.FC<ReceptorPickerProps> = ({
               </div>
             </div>
             <div className="max-h-48 overflow-y-auto">
-              <button
-                onClick={() =>
-                  onSelectReceptor({
-                    nit: '',
-                    name: 'Consumidor Final',
-                    nrc: '',
-                    nombreComercial: '',
-                    actividadEconomica: '',
-                    descActividad: '',
-                    departamento: '',
-                    municipio: '',
-                    direccion: '',
-                    email: '',
-                    telefono: '',
-                    timestamp: Date.now(),
-                  })
-                }
-                className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors border-b border-gray-100"
-              >
-                <p className="text-sm font-medium text-gray-800 truncate">Consumidor Final</p>
-                <p className="text-xs text-gray-400">Sin documento</p>
-              </button>
+              {allowConsumidorFinal && (
+                <button
+                  onClick={() =>
+                    onSelectReceptor({
+                      nit: '',
+                      name: 'Consumidor Final',
+                      nrc: '',
+                      nombreComercial: '',
+                      actividadEconomica: '',
+                      descActividad: '',
+                      departamento: '',
+                      municipio: '',
+                      direccion: '',
+                      email: '',
+                      telefono: '',
+                      timestamp: Date.now(),
+                    })
+                  }
+                  className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors border-b border-gray-100"
+                >
+                  <p className="text-sm font-medium text-gray-800 truncate">Consumidor Final</p>
+                  <p className="text-xs text-gray-400">Sin documento</p>
+                </button>
+              )}
               {filteredClients.length === 0 ? (
                 <p className="p-3 text-sm text-gray-400 text-center">Sin resultados</p>
               ) : (

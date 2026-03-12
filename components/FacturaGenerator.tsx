@@ -32,6 +32,7 @@ import {
   formatMultilineTextInput,
 } from '../utils/validators';
 import { useEmisor } from '../contexts/EmisorContext';
+import { apiFetch } from '../utils/apiClient';
 
 const emptyItem: ItemForm = {
   id: '',
@@ -54,7 +55,7 @@ const FacturaGenerator: React.FC = () => {
   const defaultItem: ItemForm = isModoProfesional ? { ...emptyItem, tipoItem: 2 } : { ...emptyItem };
   const canUseCatalogoProductos = hasFeature('productos');
   const { toasts, addToast, removeToast } = useToast();
-  const { businessId } = useEmisor();
+  const { businessId, operationalBusinessId, selectedEmisor } = useEmisor();
 
   const [showQRCapture, setShowQRCapture] = useState(false);
   const [showStripeConnect, setShowStripeConnect] = useState(false);
@@ -179,7 +180,7 @@ const FacturaGenerator: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [operationalBusinessId, selectedEmisor?.nombre]);
 
   const loadData = async () => {
     // Sincronizar datos del inventario simplificado para asegurar frescura
@@ -197,16 +198,72 @@ const FacturaGenerator: React.FC = () => {
     // Fusionar ambas fuentes
     const finalProducts = mergeProducts(loadedProductsDb, inventoryProducts);
 
+    let nextEmisor = loadedEmisor;
+
+    if (operationalBusinessId) {
+      try {
+        const remote = await apiFetch<{ success: boolean; business: {
+          nit?: string;
+          nrc?: string;
+          nombre?: string;
+          nombre_comercial?: string;
+          telefono?: string;
+          correo?: string;
+          dir_departamento?: string;
+          dir_municipio?: string;
+          dir_complemento?: string;
+          cod_actividad?: string;
+          desc_actividad?: string;
+          tipo_establecimiento?: string | null;
+          cod_estable_mh?: string | null;
+          cod_punto_venta_mh?: string | null;
+          logo_url?: string | null;
+        } }>(`/api/business/businesses/${operationalBusinessId}`);
+
+        const remoteEmisor: Omit<EmisorData, 'id'> = {
+          nit: remote.business.nit || loadedEmisor?.nit || '',
+          nrc: remote.business.nrc || loadedEmisor?.nrc || '',
+          nombre: remote.business.nombre || selectedEmisor?.nombre || loadedEmisor?.nombre || '',
+          nombreComercial: remote.business.nombre_comercial || loadedEmisor?.nombreComercial || '',
+          actividadEconomica: remote.business.cod_actividad || loadedEmisor?.actividadEconomica || '',
+          descActividad: remote.business.desc_actividad || loadedEmisor?.descActividad || '',
+          tipoEstablecimiento: remote.business.tipo_establecimiento || loadedEmisor?.tipoEstablecimiento || '01',
+          departamento: remote.business.dir_departamento || loadedEmisor?.departamento || '',
+          municipio: remote.business.dir_municipio || loadedEmisor?.municipio || '',
+          direccion: remote.business.dir_complemento || loadedEmisor?.direccion || '',
+          telefono: remote.business.telefono || loadedEmisor?.telefono || '',
+          correo: remote.business.correo || loadedEmisor?.correo || '',
+          codEstableMH: remote.business.cod_estable_mh ?? loadedEmisor?.codEstableMH ?? null,
+          codPuntoVentaMH: remote.business.cod_punto_venta_mh ?? loadedEmisor?.codPuntoVentaMH ?? null,
+          logo: remote.business.logo_url || loadedEmisor?.logo,
+        };
+
+        const tieneDatosRemotosMinimos = Boolean(
+          remoteEmisor.nit ||
+          remoteEmisor.nrc ||
+          remoteEmisor.nombre ||
+          remoteEmisor.nombreComercial
+        );
+
+        if (tieneDatosRemotosMinimos) {
+          await saveEmisor(remoteEmisor);
+          nextEmisor = await getEmisor();
+        }
+      } catch (error) {
+        console.warn('No se pudieron cargar los datos remotos del emisor para facturación; usando cache local.', error);
+      }
+    }
+
     setClients(loadedClients);
     setProducts(finalProducts);
-    setEmisor(loadedEmisor);
-    if (loadedEmisor) {
-      const { id, ...rest } = loadedEmisor;
+    setEmisor(nextEmisor);
+    if (nextEmisor) {
+      const { id, ...rest } = nextEmisor;
       setEmisorForm(rest);
     }
   };
 
-  const receptorEsConsumidorFinal = false;
+  const receptorEsConsumidorFinal = selectedReceptor?.name === 'Consumidor Final';
 
   const tipoDocumentoHint = 'Crédito Fiscal (03): usa el mismo precio final de venta; el sistema separa base e IVA al generar el DTE.';
 
@@ -243,6 +300,7 @@ const FacturaGenerator: React.FC = () => {
       await saveEmisor(emisorForm);
       const saved = await getEmisor(); // Reload to get ID and ensure consistency
       setEmisor(saved);
+      window.dispatchEvent(new CustomEvent('dte-emisor-updated'));
       addToast('Datos del emisor guardados', 'success');
       setShowEmisorConfig(false);
     } catch (error) {
@@ -485,6 +543,7 @@ const FacturaGenerator: React.FC = () => {
         setClientSearch={setClientSearch}
         filteredClients={filteredClients}
         onSelectReceptor={handleSelectReceptor}
+        allowConsumidorFinal={false}
         tipoDocumento={tipoDocumento}
         setTipoDocumento={handleSetTipoDocumento}
         receptorEsConsumidorFinal={receptorEsConsumidorFinal}

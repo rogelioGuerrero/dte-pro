@@ -32,6 +32,7 @@ interface FacturaMainContentProps {
   setClientSearch: React.Dispatch<React.SetStateAction<string>>;
   filteredClients: any[];
   onSelectReceptor: (client: any) => void;
+  allowConsumidorFinal?: boolean;
   tipoDocumento: string;
   setTipoDocumento: (value: string) => void;
   tipoDocumentoHint?: string;
@@ -80,6 +81,7 @@ export const FacturaMainContent: React.FC<FacturaMainContentProps> = ({
   setClientSearch,
   filteredClients,
   onSelectReceptor,
+  allowConsumidorFinal = true,
   tipoDocumento,
   setTipoDocumento,
   receptorEsConsumidorFinal,
@@ -133,6 +135,7 @@ export const FacturaMainContent: React.FC<FacturaMainContentProps> = ({
               setClientSearch={setClientSearch}
               filteredClients={filteredClients}
               onSelectReceptor={onSelectReceptor}
+              allowConsumidorFinal={allowConsumidorFinal}
             />
 
             <FacturaTipoDocumentoSelector
