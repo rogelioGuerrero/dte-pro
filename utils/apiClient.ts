@@ -31,6 +31,18 @@ export async function apiFetch<T>(path: string, options: { method?: HttpMethod; 
 
   if (!res.ok) {
     const text = await res.text();
+    if (res.status === 401) {
+      window.localStorage.removeItem('dte_jwt_token');
+      window.dispatchEvent(
+        new CustomEvent('dte-backend-auth-error', {
+          detail: {
+            status: res.status,
+            message: text,
+            path
+          }
+        })
+      );
+    }
     throw new Error(text || `Error ${res.status} en ${path}`);
   }
 

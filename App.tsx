@@ -26,6 +26,7 @@ import { useBusinessSettings } from './hooks/useBusinessSettings';
 import { APP_TAB_LABELS, AppTab } from './utils/appTabs';
 import { isManagedTabEnabled } from './utils/businessSettings';
 import { isTabAllowed } from './utils/userMode';
+import { supabase } from './utils/supabaseClient';
 
 const Placeholder: React.FC = () => (
   <div className="border border-dashed border-gray-300 rounded-xl p-6 text-center text-sm text-gray-500 bg-white/60">
@@ -147,6 +148,45 @@ const App: React.FC = () => {
       setActiveTab(defaultTab);
     }
   }, [activeTab, businessSettings, defaultTab]);
+
+  useEffect(() => {
+    const handleBackendAuthError = (event: Event) => {
+      const custom = event as CustomEvent<{ status: number; message: string; path: string }>;
+      if (!custom.detail) return;
+
+      const notifyError = () => {
+        const failureMessage =
+          `El backend rechazó el token (${custom.detail.status}). Debes volver a iniciar sesión para sincronizar los datos.`;
+        window.dispatchEvent(new CustomEvent('global-toast', { detail: { message: failureMessage, type: 'error' as const } }));
+        setActiveTab('micuenta');
+      };
+
+      const attemptRefresh = async () => {
+        if (!supabase) {
+          notifyError();
+          return;
+        }
+
+        const { data, error } = await supabase.auth.refreshSession();
+        if (!error && data?.session) {
+          window.dispatchEvent(new CustomEvent('global-toast', {
+            detail: {
+              message: 'Sesión renovada automáticamente. Ya puedes seguir.',
+              type: 'success' as const,
+            },
+          }));
+          return;
+        }
+
+        notifyError();
+      };
+
+      void attemptRefresh();
+    };
+
+    window.addEventListener('dte-backend-auth-error', handleBackendAuthError);
+    return () => window.removeEventListener('dte-backend-auth-error', handleBackendAuthError);
+  }, []);
 
   useEffect(() => {
     setActiveTab((current) => {
