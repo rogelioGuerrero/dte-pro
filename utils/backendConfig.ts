@@ -64,3 +64,17 @@ export const getBackendAuthToken = (): string | null => {
 
   return null;
 };
+
+export const setBackendAuthToken = (token: string | null) => {
+  if (typeof window === 'undefined') return;
+
+  if (token) {
+    window.localStorage.setItem('dte_jwt_token', token);
+  } else {
+    window.localStorage.removeItem('dte_jwt_token');
+  }
+
+  window.dispatchEvent(new CustomEvent('dte-auth-changed', {
+    detail: { authenticated: Boolean(token) }
+  }));
+};
