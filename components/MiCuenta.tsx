@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Bell, Shield, Key, Store, Upload, LogOut, UserRound } from 'lucide-react';
+import { Download, Bell, Shield, Key, Upload, LogOut, CheckCircle2, AlertCircle, Settings, Building2 } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { downloadBackup, restoreBackupFromText } from '../utils/backup';
 import { notify } from '../utils/notifications';
-import { Settings } from 'lucide-react';
 import { EmisorConfigModal } from './EmisorConfigModal';
 import { useCertificateManager } from '../hooks/useCertificateManager';
 import { EmisorData } from '../utils/emisorDb';
@@ -74,6 +73,16 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
   });
   
   const restoreFileInputRef = useRef<HTMLInputElement | null>(null);
+  const negocioNombre = selectedEmisor?.nombre || businessData.nombre || 'Tu negocio';
+  const cuentaTexto = isConfigured ? (user?.email || 'Cuenta sin iniciar sesión') : 'Uso sin cuenta';
+  const negocioVinculado = Boolean(businessId);
+  const negocioCompleto = Boolean(
+    negocioNombre &&
+    businessData.nit &&
+    businessData.nit !== 'No definido'
+  );
+  const dispositivoListo = credentialsStatus.hasCert && credentialsStatus.hasPassword;
+  const notificacionesListas = Boolean(subscription) || permission === 'granted';
 
   const handleSignOut = async () => {
     try {
@@ -270,12 +279,72 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     }
   };
 
+  const renderStatusPill = (
+    label: string,
+    tone: 'green' | 'amber' | 'gray'
+  ) => {
+    const styles = {
+      green: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      amber: 'bg-amber-50 text-amber-700 border-amber-200',
+      gray: 'bg-gray-100 text-gray-700 border-gray-200',
+    } as const;
+
+    return (
+      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${styles[tone]}`}>
+        {label}
+      </span>
+    );
+  };
+
+  const renderChecklistItem = (
+    title: string,
+    description: string,
+    status: 'ready' | 'review' | 'device'
+  ) => {
+    const config = {
+      ready: {
+        icon: CheckCircle2,
+        iconClass: 'text-emerald-600',
+        badge: renderStatusPill('Listo', 'green'),
+      },
+      review: {
+        icon: AlertCircle,
+        iconClass: 'text-amber-600',
+        badge: renderStatusPill('En revisión', 'amber'),
+      },
+      device: {
+        icon: AlertCircle,
+        iconClass: 'text-gray-500',
+        badge: renderStatusPill('Falta en este dispositivo', 'gray'),
+      },
+    } as const;
+
+    const Icon = config[status].icon;
+
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5">
+              <Icon className={`w-5 h-5 ${config[status].iconClass}`} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{title}</p>
+              <p className="text-xs text-gray-600 mt-1">{description}</p>
+            </div>
+          </div>
+          {config[status].badge}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-fade-in">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Mi Cuenta</h1>
-          <p className="text-sm text-gray-600 mt-1">Administra tu negocio y deja al equipo enfocado en facturar, POS e inventario.</p>
+          <p className="text-sm text-gray-600 mt-1">Aquí puedes revisar tu negocio, este dispositivo y tu respaldo sin complicarte.</p>
         </div>
         <div className="flex items-center gap-3">
           {isConfigured && user && (
@@ -296,17 +365,27 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
       </div>
 
       <div className="bg-gradient-to-r from-indigo-50 to-white border border-indigo-100 rounded-2xl p-4 sm:p-5">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-gray-900">Estado de configuración</p>
-            <p className="text-sm text-gray-600">
-              {businessId ? 'Tu emisor ya está vinculado a esta cuenta.' : 'Estamos buscando el emisor asociado a tu cuenta.'}
-            </p>
-            {!businessId && user && (
-              <p className="text-xs text-amber-700 mt-2">
-                Si este mensaje persiste, revisaremos la vinculación del emisor en backend. No deberías tener que escribir datos manualmente si tu negocio ya existe.
-              </p>
-            )}
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Tu negocio</p>
+              <p className="text-sm text-gray-600 mt-1">Revisa rápidamente si ya estás listo para trabajar desde esta computadora.</p>
+            </div>
+            <div className="rounded-xl border border-indigo-200 bg-white px-4 py-3 space-y-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-indigo-700 uppercase">Negocio activo</p>
+                  <p className="text-base font-semibold text-gray-900 mt-1">{negocioNombre}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {negocioVinculado ? renderStatusPill('Negocio encontrado', 'green') : renderStatusPill('En revisión', 'amber')}
+                    {isPlatformAdmin
+                      ? renderStatusPill('Admin global', 'gray')
+                      : renderStatusPill(currentRole || 'Tienda activa', 'gray')}
+                  </div>
+                </div>
+                {emisores.length > 0 && <EmisorSelector className="flex-wrap" />}
+              </div>
+            </div>
           </div>
           <div className="flex gap-2">
             {canManageLocal && (
@@ -317,158 +396,107 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
               >
                 <Settings className="w-4 h-4" />
-                Editar datos del emisor
+                Editar datos
               </button>
             )}
           </div>
         </div>
 
-        <div className="mt-4 rounded-xl border border-indigo-200 bg-white px-4 py-3 space-y-3">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-xs font-semibold text-indigo-700 uppercase">Tienda activa</p>
-              <p className="text-sm font-medium text-gray-900 mt-1">{selectedEmisor?.nombre || businessData.nombre || 'Sin seleccionar'}</p>
-            </div>
-            {emisores.length > 0 && <EmisorSelector className="flex-wrap" />}
-          </div>
-        </div>
-
-        {businessId && (
-          <div className="mt-4 rounded-xl border border-indigo-200 bg-white px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold text-indigo-700 uppercase">Código de tienda</p>
-              <p className="text-sm font-medium text-gray-900 mt-1 break-all">{businessId}</p>
-            </div>
-            <span
-              className={`px-2.5 py-1 rounded-full text-xs font-medium ${isPlatformAdmin ? 'bg-indigo-50 text-indigo-700' : 'bg-gray-100 text-gray-700'}`}
-              title={isPlatformAdmin ? 'Puedes administrar esta tienda aunque no tengas rol local' : 'Tu acceso depende del rol asignado a esta tienda'}
-            >
-              {isPlatformAdmin ? 'Admin global' : (currentRole || 'Tienda activa')}
-            </span>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase">Cuenta</p>
-            <p className="text-sm font-medium text-gray-900 mt-1">
-              {isConfigured ? (user?.email || 'Sin sesión') : 'Auth opcional desactivada'}
-            </p>
-            <p className="text-xs text-gray-600 mt-1">
-              {isConfigured ? (user ? 'Sesión activa con Supabase.' : 'Inicia sesión para sincronización remota.') : 'La app puede operar sin login mientras se configura Supabase.'}
-            </p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase">1. Emisor</p>
-            <p className="text-sm font-medium text-gray-900 mt-1">{businessId ? 'Listo para configurar' : 'Pendiente'}</p>
-            <p className="text-xs text-gray-600 mt-1">{businessId ? 'Datos fiscales y comerciales del emisor.' : 'Vincula un emisor a tu cuenta.'}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase">2. Credenciales</p>
-            <p className="text-sm font-medium text-gray-900 mt-1">
-              {credentialsStatus.hasCert && credentialsStatus.hasPassword ? 'Listo' : 'Pendiente'}
-            </p>
-            <p className="text-xs text-gray-600 mt-1">Certificado y contraseña para firma/transmisión.</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase">3. POS CF</p>
-            <p className="text-sm font-medium text-gray-900 mt-1">{businessId && credentialsStatus.hasCert ? 'Listo para prueba' : 'Pendiente'}</p>
-            <p className="text-xs text-gray-600 mt-1">Usaremos este emisor para comenzar las pruebas del punto de venta.</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase">4. Push</p>
-            <p className="text-sm font-medium text-gray-900 mt-1">
-              {subscription ? 'Suscrito' : permission === 'granted' ? 'Permiso activo' : 'Pendiente'}
-            </p>
-            <p className="text-xs text-gray-600 mt-1">
-              {subscription ? 'Este dispositivo ya está listo para recibir alertas.' : 'Activa notificaciones para suscribir este dispositivo.'}
-            </p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mt-4">
+          {renderChecklistItem(
+            'Negocio vinculado',
+            negocioVinculado ? 'Tu negocio ya está asociado a esta cuenta.' : 'Estamos revisando la información de tu negocio.',
+            negocioVinculado ? 'ready' : 'review'
+          )}
+          {renderChecklistItem(
+            'Datos del negocio',
+            negocioCompleto ? 'Nombre y NIT disponibles para trabajar.' : 'Todavía estamos revisando algunos datos del negocio.',
+            negocioCompleto ? 'ready' : 'review'
+          )}
+          {renderChecklistItem(
+            'Firma en esta computadora',
+            dispositivoListo ? 'Esta computadora ya está lista para firmar y enviar.' : 'Falta cargar el certificado en esta computadora.',
+            dispositivoListo ? 'ready' : 'device'
+          )}
+          {renderChecklistItem(
+            'Alertas del dispositivo',
+            notificacionesListas ? 'Este dispositivo ya puede mostrar avisos importantes.' : 'Puedes activar alertas en esta computadora si lo deseas.',
+            notificacionesListas ? 'ready' : 'device'
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <DeviceFingerprintDisplay />
-          {isConfigured && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="border-b border-gray-200 px-6 py-4 flex items-center gap-3">
-                <UserRound className="w-5 h-5 text-gray-500" />
-                <h2 className="text-lg font-medium text-gray-900">Sesión</h2>
-              </div>
-              <div className="p-6 space-y-3 text-sm text-gray-700">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-gray-500">Correo</span>
-                  <span className="font-medium text-gray-900 break-all">{user?.email || 'Sin sesión activa'}</span>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-gray-500">Estado</span>
-                  <span className={`font-medium ${user ? 'text-green-600' : 'text-amber-600'}`}>{user ? 'Autenticado' : 'Sin autenticación'}</span>
-                </div>
-              </div>
-            </div>
-          )}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Store className="w-5 h-5 text-gray-500" />
-                <h2 className="text-lg font-medium text-gray-900">Negocio</h2>
+                <Building2 className="w-5 h-5 text-gray-500" />
+                <h2 className="text-lg font-medium text-gray-900">Resumen del negocio</h2>
               </div>
-              <span className="text-xs text-gray-500">Datos sincronizados según la sesión activa</span>
+              {businessData.ambiente === '01'
+                ? renderStatusPill('Producción', 'green')
+                : renderStatusPill('Pruebas', 'gray')}
             </div>
-            <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs text-gray-500 uppercase font-semibold">Nombre</label>
-                <p className="text-gray-900 font-medium mt-1">{businessData.nombre}</p>
+                <label className="text-xs text-gray-500 uppercase font-semibold">Nombre del negocio</label>
+                <p className="text-gray-900 font-medium mt-1">{negocioNombre}</p>
               </div>
               <div>
                 <label className="text-xs text-gray-500 uppercase font-semibold">NIT</label>
                 <p className="text-gray-900 font-medium mt-1">{businessData.nit}</p>
               </div>
               <div>
-                <label className="text-xs text-gray-500 uppercase font-semibold">Business ID</label>
-                <p className="text-gray-900 font-medium mt-1 break-all">{operationalBusinessId || 'No asignado'}</p>
+                <label className="text-xs text-gray-500 uppercase font-semibold">Código de tienda</label>
+                <p className="text-gray-900 font-medium mt-1 break-all">{businessId || 'En revisión'}</p>
               </div>
               <div>
-                <label className="text-xs text-gray-500 uppercase font-semibold">Ambiente</label>
-                <div className="mt-2">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    businessData.ambiente === '01' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {businessData.ambiente === '01' ? 'Producción' : 'Pruebas'}
-                  </span>
+                <label className="text-xs text-gray-500 uppercase font-semibold">Estado de tu cuenta</label>
+                <p className="text-gray-900 font-medium mt-1">{cuentaTexto}</p>
+              </div>
+              {isConfigured && (
+                <div>
+                  <label className="text-xs text-gray-500 uppercase font-semibold">Sesión</label>
+                  <p className="text-gray-900 font-medium mt-1">{user ? 'Activa' : 'Sin iniciar'}</p>
                 </div>
+              )}
+              <div>
+                <label className="text-xs text-gray-500 uppercase font-semibold">Acceso</label>
+                <p className="text-gray-900 font-medium mt-1">{isPlatformAdmin ? 'Admin global' : (currentRole || 'Tienda activa')}</p>
               </div>
             </div>
           </div>
+
+          <DeviceFingerprintDisplay />
         </div>
 
         <div className="space-y-6">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="border-b border-gray-200 px-6 py-4 flex items-center gap-3">
               <Shield className="w-5 h-5 text-gray-500" />
-              <h2 className="text-lg font-medium text-gray-900">Credenciales</h2>
+              <h2 className="text-lg font-medium text-gray-900">Este dispositivo</h2>
             </div>
             <div className="p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Key className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-700">Certificado Digital</span>
+                  <span className="text-gray-700">Certificado</span>
                 </div>
                 <span className={`text-sm font-medium ${credentialsStatus.hasCert ? 'text-green-600' : 'text-red-600'}`}>
-                  {credentialsStatus.hasCert ? '✅ Cargado' : '❌ No cargado'}
+                  {credentialsStatus.hasCert ? '✅ Listo' : '❌ Falta'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-700">Contraseña</span>
+                  <span className="text-gray-700">Clave del certificado</span>
                 </div>
                 <span className={`text-sm font-medium ${credentialsStatus.hasPassword ? 'text-green-600' : 'text-red-600'}`}>
-                  {credentialsStatus.hasPassword ? '✅ Configurada' : '❌ No configurada'}
+                  {credentialsStatus.hasPassword ? '✅ Listo' : '❌ Falta'}
                 </span>
               </div>
-              <p className="text-xs text-gray-500">Se configuran dentro de “Configurar emisor”.</p>
+              <p className="text-xs text-gray-500">Si falta algo aquí, solo hace falta configurarlo en esta computadora.</p>
             </div>
           </div>
 
@@ -476,7 +504,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
             <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Bell className="w-5 h-5 text-gray-500" />
-                <h2 className="text-lg font-medium text-gray-900">Notificaciones</h2>
+                <h2 className="text-lg font-medium text-gray-900">Alertas</h2>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -490,21 +518,21 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
               </label>
             </div>
             <div className="p-6">
-              <p className="text-sm text-gray-600">Recibe alertas importantes sobre mantenimiento y estado del sistema.</p>
-              {!isSupported && <p className="mt-2 text-xs text-red-500">Tu navegador no soporta notificaciones.</p>}
-              {permission === 'denied' && <p className="mt-2 text-xs text-orange-500">Permiso bloqueado. Debes habilitarlo en tu navegador.</p>}
-              {permission === 'granted' && !subscription && <p className="mt-2 text-xs text-amber-600">Permiso concedido, pero el dispositivo aún no tiene una suscripción activa.</p>}
-              {subscription && <p className="mt-2 text-xs text-green-600 break-all">Suscripción activa en este dispositivo.</p>}
+              <p className="text-sm text-gray-600">Activa avisos importantes para esta computadora.</p>
+              {!isSupported && <p className="mt-2 text-xs text-red-500">Tu navegador no permite alertas.</p>}
+              {permission === 'denied' && <p className="mt-2 text-xs text-orange-500">El permiso está bloqueado en este navegador.</p>}
+              {permission === 'granted' && !subscription && <p className="mt-2 text-xs text-amber-600">El permiso ya está dado, pero este dispositivo aún no termina de activarse.</p>}
+              {subscription && <p className="mt-2 text-xs text-green-600 break-all">Este dispositivo ya recibe alertas.</p>}
             </div>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="border-b border-gray-200 px-6 py-4 flex items-center gap-3">
               <Download className="w-5 h-5 text-gray-500" />
-              <h2 className="text-lg font-medium text-gray-900">Copia de seguridad</h2>
+              <h2 className="text-lg font-medium text-gray-900">Respaldo</h2>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-sm text-gray-600">Guarda o restaura tu configuración y datos locales.</p>
+              <p className="text-sm text-gray-600">Guarda una copia de tus datos de esta computadora o recupérala cuando lo necesites.</p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleExportBackup}
