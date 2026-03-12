@@ -37,6 +37,16 @@ const normalizeUbicacionCode = (value?: string | number | null): string => {
   return String(value).trim();
 };
 
+const normalizeDepartamentoOrFallback = (value?: string | number | null): string => {
+  const normalized = normalizeUbicacionCode(value);
+  return isCodDepartamento(normalized) ? normalized : '01';
+};
+
+const normalizeMunicipioOrFallback = (value?: string | number | null): string => {
+  const normalized = normalizeUbicacionCode(value);
+  return isCodMunicipio(normalized) ? normalized : '01';
+};
+
 // Generar estructura JSON del DTE
 export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: string = '00'): DTEJSON => {
   const uuid = generarUUID();
@@ -44,8 +54,6 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
 
   // 1. Generar Cuerpo del Documento con redondeo a 8 decimales (Regla de la novena posición)
   const cuerpoDocumento = datos.items.map((item, index) => {
-    // Valores pre-calculados en la UI (FacturaGenerator / MobileFactura)
-    const precioUni = redondear(item.precioUni, 8);
     const cantidad = redondear(item.cantidad, 8);
 
     // Tomar base e IVA ya calculados en la UI para FE (01); no recalcular dividiendo entre 1.13
@@ -53,6 +61,10 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     const montoDescu = redondear(item.montoDescu, 8);
     const ventaNoSuj = redondear(item.ventaNoSuj, 8);
     const ventaExenta = redondear(item.ventaExenta, 8);
+    const baseImponibleItem = redondear(ventaGravada + ventaExenta + ventaNoSuj, 8);
+    const precioUni = datos.tipoDocumento === '03' && cantidad > 0
+      ? redondear(baseImponibleItem / cantidad, 8)
+      : redondear(item.precioUni, 8);
 
     // IVA por ítem: usar el valor provisto (ya redondeado) para mantener coherencia con resumen
     const ivaItem = datos.tipoDocumento === '01' ? 0 : redondear(item.ivaItem || 0, 2);
@@ -188,8 +200,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       codEstable: emisorCodEstableMH,
       codPuntoVenta: emisorCodPuntoVentaMH,
       direccion: {
-        departamento: normalizeUbicacionCode(datos.emisor.departamento),
-        municipio: normalizeUbicacionCode(datos.emisor.municipio),
+        departamento: normalizeDepartamentoOrFallback(datos.emisor.departamento),
+        municipio: normalizeMunicipioOrFallback(datos.emisor.municipio),
         complemento: emisorDireccionComplemento,
       },
       telefono: emisorTelefono,

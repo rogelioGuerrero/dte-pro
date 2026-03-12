@@ -141,6 +141,9 @@ export function useDTEWorkflow({
         }
 
         const tributos = (ventaGravada > 0 && tipoDocumento === '03') ? ['20'] : null;
+        const precioUnitarioNormalizado = tipoDocumento === '03' && cantidad8 > 0
+          ? redondear((ventaGravada + ventaExenta + ventaNoSuj) / cantidad8, 8)
+          : precio8;
 
         return {
           numItem: idx + 1,
@@ -149,7 +152,7 @@ export function useDTEWorkflow({
           codigo: item.codigo || null,
           uniMedida: item.uniMedida || 99,
           descripcion: item.descripcion,
-          precioUni: precio8,
+          precioUni: precioUnitarioNormalizado,
           montoDescu: 0,
           ventaNoSuj,
           ventaExenta,
@@ -172,7 +175,7 @@ export function useDTEWorkflow({
         const baseBruta = redondear(redondear(it.precioUni, 8) * redondear(it.cantidad, 8) - redondear(it.montoDescu, 8), 8);
         const baseEsperada =
           tipoDocumento === '03' && it.ventaGravada > 0 && it.ventaExenta === 0 && it.ventaNoSuj === 0
-            ? redondear(baseBruta / 1.13, 8)
+            ? baseBruta
             : baseBruta;
         const sumaLineas = redondear(it.ventaGravada + it.ventaExenta + it.ventaNoSuj, 8);
         if (Math.abs(baseEsperada - sumaLineas) > tolerance) {
