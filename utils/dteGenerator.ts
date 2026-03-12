@@ -32,6 +32,11 @@ const normalizeRequiredText = (value?: string | null, fallback: string = ''): st
   return normalized || fallback;
 };
 
+const normalizeUbicacionCode = (value?: string | number | null): string => {
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+};
+
 // Generar estructura JSON del DTE
 export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: string = '00'): DTEJSON => {
   const uuid = generarUUID();
@@ -181,8 +186,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       codEstable: datos.emisor.codEstableMH || null,
       codPuntoVenta: datos.emisor.codPuntoVentaMH || null,
       direccion: {
-        departamento: datos.emisor.departamento,
-        municipio: datos.emisor.municipio,
+        departamento: normalizeUbicacionCode(datos.emisor.departamento),
+        municipio: normalizeUbicacionCode(datos.emisor.municipio),
         complemento: emisorDireccionComplemento,
       },
       telefono: emisorTelefono,

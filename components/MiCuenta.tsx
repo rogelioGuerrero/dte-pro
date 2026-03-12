@@ -427,7 +427,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -475,28 +475,26 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="border-b border-gray-200 px-6 py-4 flex items-center gap-3">
               <Shield className="w-5 h-5 text-gray-500" />
-              <h2 className="text-lg font-medium text-gray-900">Este dispositivo</h2>
+              <h2 className="text-lg font-medium text-gray-900">Firma y certificado</h2>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-3">
+              <p className="text-sm text-gray-600">
+                La firma electrónica se almacena en Supabase y el backend la usa al generar DTE.
+                Solo necesitas cargar un certificado local si quieres firmar desde esta computadora;
+                de lo contrario el backend procesa todo automáticamente.
+              </p>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Key className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-700">Certificado</span>
-                </div>
-                <span className={`text-sm font-medium ${credentialsStatus.hasCert ? 'text-green-600' : 'text-red-600'}`}>
-                  {credentialsStatus.hasCert ? '✅ Listo' : '❌ Falta'}
+                <span className="text-xs text-gray-400">Certificado local</span>
+                <span className={`text-sm font-medium ${credentialsStatus.hasCert ? 'text-green-600' : 'text-amber-600'}`}>
+                  {credentialsStatus.hasCert ? 'Subido' : 'Opcional'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-700">Clave del certificado</span>
-                </div>
-                <span className={`text-sm font-medium ${credentialsStatus.hasPassword ? 'text-green-600' : 'text-red-600'}`}>
-                  {credentialsStatus.hasPassword ? '✅ Listo' : '❌ Falta'}
+                <span className="text-xs text-gray-400">Clave del certificado</span>
+                <span className={`text-sm font-medium ${credentialsStatus.hasPassword ? 'text-green-600' : 'text-amber-600'}`}>
+                  {credentialsStatus.hasPassword ? 'Subida' : 'Opcional'}
                 </span>
               </div>
-              <p className="text-xs text-gray-500">Si falta algo aquí, solo hace falta configurarlo en esta computadora.</p>
             </div>
           </div>
 

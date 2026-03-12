@@ -11,7 +11,8 @@
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
     "prepreview": "node scripts/generate-catalogos.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "complete-task": "node scripts/complete-task.mjs"
   },
   "dependencies": {
     "@langchain/core": "^1.1.25",
