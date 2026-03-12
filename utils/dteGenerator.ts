@@ -155,6 +155,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const emisorDireccionComplemento = normalizeRequiredText(datos.emisor.direccion, 'Dirección del negocio');
   const emisorTelefono = normalizeRequiredText(normalizePhone(datos.emisor.telefono), '00000000');
   const emisorCorreo = normalizeRequiredText(datos.emisor.correo);
+  const emisorCodEstableMH = (datos.emisor.codEstableMH || 'M001').trim();
+  const emisorCodPuntoVentaMH = (datos.emisor.codPuntoVentaMH || 'P001').trim();
   const receptorNombre = normalizeRequiredText(datos.receptor.name, 'Consumidor Final');
   const receptorTelefono = normalizePhone(datos.receptor.telefono);
   const receptorCorreo = normalizeOptionalText(datos.receptor.email);
@@ -183,8 +185,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       descActividad: emisorDescActividad,
       nombreComercial: emisorNombreComercial,
       tipoEstablecimiento: datos.emisor.tipoEstablecimiento || '01',
-      codEstable: datos.emisor.codEstableMH || null,
-      codPuntoVenta: datos.emisor.codPuntoVentaMH || null,
+      codEstable: emisorCodEstableMH,
+      codPuntoVenta: emisorCodPuntoVentaMH,
       direccion: {
         departamento: normalizeUbicacionCode(datos.emisor.departamento),
         municipio: normalizeUbicacionCode(datos.emisor.municipio),
@@ -192,8 +194,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       },
       telefono: emisorTelefono,
       correo: emisorCorreo,
-      codEstableMH: datos.emisor.codEstableMH || null,
-      codPuntoVentaMH: datos.emisor.codPuntoVentaMH || null,
+      codEstableMH: emisorCodEstableMH,
+      codPuntoVentaMH: emisorCodPuntoVentaMH,
     },
     receptor: {
       tipoDocumento: receptorSinDocumento ? null : (receptorIdDigits.length === 9 ? '13' : '36'),

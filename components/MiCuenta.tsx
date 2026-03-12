@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Bell, Shield, Key, Upload, LogOut, CheckCircle2, AlertCircle, Settings, Building2 } from 'lucide-react';
+import { Download, Bell, Shield, Upload, LogOut, CheckCircle2, AlertCircle, Settings, Building2 } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { downloadBackup, restoreBackupFromText } from '../utils/backup';
 import { notify } from '../utils/notifications';
@@ -81,7 +81,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     businessData.nit &&
     businessData.nit !== 'No definido'
   );
-  const dispositivoListo = credentialsStatus.hasCert && credentialsStatus.hasPassword;
+  const firmaBackendLista = negocioVinculado || isConfigured;
   const notificacionesListas = Boolean(subscription) || permission === 'granted';
 
   const handleSignOut = async () => {
@@ -415,8 +415,10 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
           )}
           {renderChecklistItem(
             'Firma en esta computadora',
-            dispositivoListo ? 'Esta computadora ya está lista para firmar y enviar.' : 'Falta cargar el certificado en esta computadora.',
-            dispositivoListo ? 'ready' : 'device'
+            firmaBackendLista
+              ? 'La firma del negocio ya está disponible en backend. El certificado local en esta PC es opcional.'
+              : 'Conecta primero tu negocio para usar la firma administrada en backend.',
+            firmaBackendLista ? 'ready' : 'review'
           )}
           {renderChecklistItem(
             'Alertas del dispositivo',

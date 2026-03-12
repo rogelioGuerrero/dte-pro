@@ -169,10 +169,14 @@ export function useDTEWorkflow({
       const tolerance = 0.01;
       const itemErrors: string[] = [];
       itemsParaCalculo.forEach((it) => {
-        const base = redondear(redondear(it.precioUni, 8) * redondear(it.cantidad, 8) - redondear(it.montoDescu, 8), 8);
+        const baseBruta = redondear(redondear(it.precioUni, 8) * redondear(it.cantidad, 8) - redondear(it.montoDescu, 8), 8);
+        const baseEsperada =
+          tipoDocumento === '03' && it.ventaGravada > 0 && it.ventaExenta === 0 && it.ventaNoSuj === 0
+            ? redondear(baseBruta / 1.13, 8)
+            : baseBruta;
         const sumaLineas = redondear(it.ventaGravada + it.ventaExenta + it.ventaNoSuj, 8);
-        if (Math.abs(base - sumaLineas) > tolerance) {
-          itemErrors.push(`Ítem ${it.numItem}: base ${base.toFixed(2)} ≠ sumatoria ${sumaLineas.toFixed(2)}`);
+        if (Math.abs(baseEsperada - sumaLineas) > tolerance) {
+          itemErrors.push(`Ítem ${it.numItem}: base ${baseEsperada.toFixed(2)} ≠ sumatoria ${sumaLineas.toFixed(2)}`);
         }
       });
 
@@ -200,19 +204,13 @@ export function useDTEWorkflow({
 
       const datosErrors: string[] = [];
       const filled = (v?: string | null) => (v ?? '').toString().trim().length > 0;
-      const emisorDirOK = filled(emisor.departamento) && filled(emisor.municipio) && filled(emisor.direccion);
-      const emisorCodEst = emisor.codEstableMH ?? (emisor as any).codEstable;
-      const emisorPunto = emisor.codPuntoVentaMH ?? (emisor as any).codPuntoVenta;
       const missingEmisor: string[] = [];
       if (!filled(emisor.nit)) missingEmisor.push('NIT');
       if (!filled(emisor.nrc)) missingEmisor.push('NRC');
       if (!filled(emisor.nombre)) missingEmisor.push('nombre');
       if (!filled(emisor.actividadEconomica)) missingEmisor.push('actividad');
-      if (!emisorDirOK) missingEmisor.push('dirección');
       if (!filled(emisor.telefono)) missingEmisor.push('teléfono');
       if (!filled(emisor.correo)) missingEmisor.push('correo');
-      if (!filled(emisorCodEst)) missingEmisor.push('código establecimiento MH');
-      if (!filled(emisorPunto)) missingEmisor.push('código punto de venta MH');
       if (missingEmisor.length > 0) {
         datosErrors.push(`Faltan datos del emisor: ${missingEmisor.join(', ')}`);
       }

@@ -171,15 +171,13 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
       const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
 
       const stored = await getCertificate();
-      if (!stored?.password) {
-        throw new Error('Debes guardar la contraseña del certificado en Mi Cuenta antes de transmitir.');
-      }
+      const passwordPri = stored?.password || '';
 
       setEstado('transmitiendo');
 
       const backendResponse = await transmitirDocumento({
         dte: dteLimpio,
-        passwordPri: stored.password,
+        passwordPri,
         ambiente: ambienteFinal,
       });
       const transmisionResult = toTransmisionResult(backendResponse, processed.dte);
@@ -228,10 +226,6 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
       const ambienteFinal = (processed.dte?.identificacion?.ambiente === '01' ? '01' : '00') as '00' | '01';
       const stored = await getCertificate();
       const passwordPri = stored?.password || '';
-
-      if (!passwordPri) {
-        throw new Error('Debes guardar la contraseña del certificado en Mi Cuenta antes de transmitir.');
-      }
 
       const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
       const backendResponse = await transmitirDocumento({

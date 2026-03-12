@@ -127,15 +127,11 @@ export const GeneradorSimple: React.FC = () => {
 
     try {
       const stored = await getCertificate();
-      if (!stored?.password) {
-        addToast('Guarda la contraseña del certificado en Mi Cuenta antes de transmitir.', 'error');
-        return;
-      }
-
+      const passwordPri = stored?.password || '';
       const dteLimpio = limpiarDteParaFirma(dteParaEnviar as any);
       const result = await transmitirDocumento({
         dte: dteLimpio,
-        passwordPri: stored.password,
+        passwordPri,
         ambiente: '00',
       });
       setRespuestaMH(result);

@@ -180,7 +180,7 @@ const FacturaGenerator: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [operationalBusinessId, selectedEmisor?.nombre]);
+  }, [operationalBusinessId, businessId, selectedEmisor?.nombre]);
 
   const loadData = async () => {
     // Sincronizar datos del inventario simplificado para asegurar frescura
@@ -200,7 +200,8 @@ const FacturaGenerator: React.FC = () => {
 
     let nextEmisor = loadedEmisor;
 
-    if (operationalBusinessId) {
+    const businessLookupId = operationalBusinessId || businessId;
+    if (businessLookupId) {
       try {
         const remote = await apiFetch<{ success: boolean; business: {
           nit?: string;
@@ -218,7 +219,7 @@ const FacturaGenerator: React.FC = () => {
           cod_estable_mh?: string | null;
           cod_punto_venta_mh?: string | null;
           logo_url?: string | null;
-        } }>(`/api/business/businesses/${operationalBusinessId}`);
+        } }>(`/api/business/businesses/${businessLookupId}`);
 
         const remoteEmisor: Omit<EmisorData, 'id'> = {
           nit: remote.business.nit || loadedEmisor?.nit || '',
