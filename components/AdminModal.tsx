@@ -348,6 +348,19 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, businessId, bu
                     <div className="space-y-3">
                       <label className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-200">
                         <div>
+                          <div className="text-sm font-medium text-gray-900">Configuración avanzada habilitada</div>
+                          <div className="text-xs text-gray-500">Permite mostrar y mantener disponible este modal administrativo para el negocio.</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={draftBusinessSettings.capabilities.advancedConfigEnabled}
+                          onChange={(e) => handleCapabilityToggle('advancedConfigEnabled', e.target.checked)}
+                          className="h-4 w-4"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-200">
+                        <div>
                           <div className="text-sm font-medium text-gray-900">Push habilitado</div>
                           <div className="text-xs text-gray-500">Bandera global del negocio para campañas y suscripciones.</div>
                         </div>

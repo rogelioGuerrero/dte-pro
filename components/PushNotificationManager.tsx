@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, BellOff, X } from 'lucide-react';
+import { BusinessSettings, DEFAULT_BUSINESS_SETTINGS } from '../utils/businessSettings';
 
 interface PushNotificationManagerProps {
   className?: string;
+  businessSettings?: BusinessSettings;
 }
 
 export const PushNotificationManager: React.FC<PushNotificationManagerProps> = ({ 
-  className = '' 
+  className = '',
+  businessSettings = DEFAULT_BUSINESS_SETTINGS,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
+  const pushAllowedByBusiness = businessSettings.capabilities.pushEnabled;
 
   useEffect(() => {
     checkSupport();
@@ -24,7 +28,7 @@ export const PushNotificationManager: React.FC<PushNotificationManagerProps> = (
         }
       });
     }
-  }, []);
+  }, [pushAllowedByBusiness]);
 
   const checkSupport = () => {
     const supported = 'serviceWorker' in navigator && 'PushManager' in window;
@@ -32,9 +36,11 @@ export const PushNotificationManager: React.FC<PushNotificationManagerProps> = (
     setPermission(Notification.permission);
     
     // Mostrar banner si está soportado y no tiene permiso
-    if (supported && Notification.permission === 'default') {
+    if (supported && pushAllowedByBusiness && Notification.permission === 'default') {
       // Mostrar después de 3 segundos para no interrumpir la carga
       setTimeout(() => setIsVisible(true), 3000);
+    } else {
+      setIsVisible(false);
     }
   };
 
@@ -59,7 +65,7 @@ export const PushNotificationManager: React.FC<PushNotificationManagerProps> = (
   };
 
   // No mostrar si ya fue descartado o si ya tiene permiso
-  if (!isVisible || !isSupported || permission !== 'default') {
+  if (!pushAllowedByBusiness || !isVisible || !isSupported || permission !== 'default') {
     return null;
   }
 

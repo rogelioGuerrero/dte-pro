@@ -13,12 +13,14 @@ import { DeviceFingerprintDisplay } from './DeviceFingerprintDisplay';
 import { apiFetch } from '../utils/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { EmisorSelector } from './EmisorSelector';
+import { BusinessSettings, DEFAULT_BUSINESS_SETTINGS } from '../utils/businessSettings';
 
 interface MiCuentaProps {
   onBack?: () => void;
+  businessSettings?: BusinessSettings;
 }
 
-const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
+const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, businessSettings = DEFAULT_BUSINESS_SETTINGS }) => {
   const { isSupported, permission, subscription, requestPermission, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
   const { user, isConfigured, signOut } = useAuth();
   const { businessId, operationalBusinessId, emisores, reload, currentRole, selectedEmisor } = useEmisor();
@@ -83,6 +85,8 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
   );
   const firmaBackendLista = negocioVinculado || isConfigured;
   const notificacionesListas = Boolean(subscription) || permission === 'granted';
+  const pushAllowedByBusiness = businessSettings.capabilities.pushEnabled;
+  const pushCanBeActivated = pushAllowedByBusiness && isSupported;
 
   const handleSignOut = async () => {
     try {
@@ -97,7 +101,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
   useEffect(() => {
     // Cargar estado inicial
     const dismissed = localStorage.getItem('push-notification-dismissed');
-    setNotificationsEnabled(permission === 'granted' && dismissed !== 'true');
+    setNotificationsEnabled(pushAllowedByBusiness && permission === 'granted' && dismissed !== 'true');
 
     const loadLocal = async () => {
       const storedAmbiente = localStorage.getItem('dte_ambiente') || '00';
@@ -178,7 +182,13 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
     };
 
     loadLocal();
-  }, [permission, showEmisorConfig, operationalBusinessId, selectedEmisor?.nombre]);
+  }, [permission, pushAllowedByBusiness, showEmisorConfig, operationalBusinessId, selectedEmisor?.nombre]);
+
+  useEffect(() => {
+    if (!pushAllowedByBusiness && notificationsEnabled) {
+      setNotificationsEnabled(false);
+    }
+  }, [notificationsEnabled, pushAllowedByBusiness]);
 
   const handleOpenConfig = () => {
     setShowEmisorConfig(true);
@@ -222,6 +232,11 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
   };
 
   const handleNotificationToggle = async (checked: boolean) => {
+    if (!pushAllowedByBusiness) {
+      notify('Tu administrador todavía no habilita notificaciones push para este negocio.', 'info');
+      return;
+    }
+
     if (checked) {
       if (permission === 'default') {
         const granted = await requestPermission();
@@ -405,25 +420,29 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mt-4">
           {renderChecklistItem(
             'Negocio vinculado',
-            negocioVinculado ? 'Tu negocio ya está asociado a esta cuenta.' : 'Estamos revisando la información de tu negocio.',
+            negocioVinculado ? 'Tu negocio ya está asociado con esta cuenta de usuario.' : 'Estamos revisando la información de tu negocio.',
             negocioVinculado ? 'ready' : 'review'
           )}
           {renderChecklistItem(
             'Datos del negocio',
-            negocioCompleto ? 'Nombre y NIT disponibles para trabajar.' : 'Todavía estamos revisando algunos datos del negocio.',
+            negocioCompleto ? 'Datos de emisor y NIT registrados para generar facturas.' : 'Todavía estamos revisando algunos datos del negocio.',
             negocioCompleto ? 'ready' : 'review'
           )}
           {renderChecklistItem(
-            'Firma en esta computadora',
+            'Firma electrónica',
             firmaBackendLista
-              ? 'La firma del negocio ya está lista. Cargar el certificado en esta compu es opcional.'
-              : 'Conecta primero tu negocio para activar la firma automática.',
+              ? 'La firma ha sido registrada para generar facturas.'
+              : 'Asocia primero tu negocio para activar la firma en las facturas.',
             firmaBackendLista ? 'ready' : 'review'
           )}
           {renderChecklistItem(
-            'Alertas del dispositivo',
-            notificacionesListas ? 'Este dispositivo ya puede mostrar avisos importantes.' : 'Puedes activar alertas en esta computadora si lo deseas.',
-            notificacionesListas ? 'ready' : 'device'
+            'Alertas y notificaciones',
+            !pushAllowedByBusiness
+              ? 'Tu negocio aún no tiene habilitadas las notificaciones push desde administración.'
+              : notificacionesListas
+                ? 'Este equipo ya puede mostrar avisos importantes.'
+                : 'Puedes activar alertas en este equipo si lo deseas.',
+            !pushAllowedByBusiness ? 'review' : notificacionesListas ? 'ready' : 'device'
           )}
         </div>
       </div>
@@ -450,11 +469,11 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
                 <p className="text-gray-900 font-medium mt-1">{businessData.nit}</p>
               </div>
               <div>
-                <label className="text-xs text-gray-500 uppercase font-semibold">Código de tienda</label>
+                <label className="text-xs text-gray-500 uppercase font-semibold">Código de la cuenta</label>
                 <p className="text-gray-900 font-medium mt-1 break-all">{businessId || 'En revisión'}</p>
               </div>
               <div>
-                <label className="text-xs text-gray-500 uppercase font-semibold">Estado de tu cuenta</label>
+                <label className="text-xs text-gray-500 uppercase font-semibold">Correo de tu cuenta</label>
                 <p className="text-gray-900 font-medium mt-1">{cuentaTexto}</p>
               </div>
               {isConfigured && (
@@ -512,17 +531,22 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
                   className="sr-only peer"
                   checked={notificationsEnabled}
                   onChange={(e) => handleNotificationToggle(e.target.checked)}
-                  disabled={!isSupported}
+                  disabled={!pushCanBeActivated}
                 />
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
               </label>
             </div>
             <div className="p-6">
-              <p className="text-sm text-gray-600">Activa avisos importantes para esta computadora.</p>
+              <p className="text-sm text-gray-600">Activa avisos importantes.</p>
+              {!pushAllowedByBusiness && (
+                <p className="mt-2 text-xs text-amber-600">
+                  Este negocio tiene deshabilitadas las notificaciones push desde Configuración Avanzada.
+                </p>
+              )}
               {!isSupported && <p className="mt-2 text-xs text-red-500">Tu navegador no permite alertas.</p>}
               {permission === 'denied' && <p className="mt-2 text-xs text-orange-500">El permiso está bloqueado en este navegador.</p>}
-              {permission === 'granted' && !subscription && <p className="mt-2 text-xs text-amber-600">El permiso ya está dado, pero este dispositivo aún no termina de activarse.</p>}
-              {subscription && <p className="mt-2 text-xs text-green-600 break-all">Este dispositivo ya recibe alertas.</p>}
+              {pushAllowedByBusiness && permission === 'granted' && !subscription && <p className="mt-2 text-xs text-amber-600">El permiso ya está dado, pero este dispositivo aún no termina de activarse.</p>}
+              {pushAllowedByBusiness && subscription && <p className="mt-2 text-xs text-green-600 break-all">Este dispositivo ya recibe alertas.</p>}
             </div>
           </div>
 

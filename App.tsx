@@ -325,6 +325,7 @@ const App: React.FC = () => {
         {activeTab === 'micuenta' && (
           <MiCuenta
             onBack={() => setActiveTab('factura')}
+            businessSettings={businessSettings}
           />
         )}
         {activeTab === 'simple' && (businessId ? (
@@ -403,7 +404,7 @@ const App: React.FC = () => {
       <MagicLicenseActivator />
       <PWAInstallPrompt />
       <GlobalToastHost />
-      <PushNotificationManager />
+      <PushNotificationManager businessSettings={businessSettings} />
     </div>
   );
 };
