@@ -17,7 +17,6 @@ import { DTEJSON, convertirAContingencia } from '../utils/dteGenerator';
 import TemplateSelector from './TemplateSelector';
 import { construirDTEArchivado, guardarDTEEnHistorial } from '../utils/dteHistoryDb';
 import { generarLibroDesdeDTEs } from '../utils/librosAutoGenerator';
-import { getCertificate } from '../utils/secureStorage';
 import { limpiarDteParaFirma, transmitirDocumento } from '../utils/firmaApiClient';
 import { processDTE } from '../utils/mh/process';
 import { loadSettings } from '../utils/settings';
@@ -204,14 +203,10 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
 
       const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
 
-      const stored = await getCertificate();
-      const passwordPri = stored?.password || '';
-
       setEstado('transmitiendo');
 
       const backendResponse = await transmitirDocumento({
         dte: dteLimpio,
-        passwordPri,
         ambiente: ambienteFinal,
       });
       const transmisionResult = toTransmisionResult(backendResponse, processed.dte);
@@ -265,13 +260,10 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
       setDteTransmitido(processed.dte);
       
       const ambienteFinal = (processed.dte?.identificacion?.ambiente === '01' ? '01' : '00') as '00' | '01';
-      const stored = await getCertificate();
-      const passwordPri = stored?.password || '';
 
       const dteLimpio = limpiarDteParaFirma(processed.dte as unknown as Record<string, unknown>);
       const backendResponse = await transmitirDocumento({
         dte: dteLimpio,
-        passwordPri,
         ambiente: ambienteFinal,
       });
       const resultContingencia = toTransmisionResult(backendResponse, processed.dte);

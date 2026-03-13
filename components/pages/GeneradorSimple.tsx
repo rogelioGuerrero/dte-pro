@@ -4,7 +4,6 @@ import { useToast } from '../Toast';
 import { Copy, Send } from 'lucide-react';
 
 import { checkLicense } from '../../utils/licenseValidator';
-import { getCertificate } from '../../utils/secureStorage';
 import { limpiarDteParaFirma, transmitirDocumento, type TransmitDTEResponse } from '../../utils/firmaApiClient';
 
 export const GeneradorSimple: React.FC = () => {
@@ -126,12 +125,9 @@ export const GeneradorSimple: React.FC = () => {
     }
 
     try {
-      const stored = await getCertificate();
-      const passwordPri = stored?.password || '';
       const dteLimpio = limpiarDteParaFirma(dteParaEnviar as any);
       const result = await transmitirDocumento({
         dte: dteLimpio,
-        passwordPri,
         ambiente: '00',
       });
       setRespuestaMH(result);

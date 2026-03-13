@@ -41,7 +41,7 @@ export interface MHResponse {
 
 export interface SignDTERequest {
   dte: Record<string, unknown>;
-  passwordPri: string;
+  passwordPri?: string;
 }
 
 export interface SignDTEResponse {
@@ -52,7 +52,7 @@ export interface SignDTEResponse {
 
 export interface TransmitDTERequest {
   dte: Record<string, unknown>;
-  passwordPri: string;
+  passwordPri?: string;
   ambiente?: '00' | '01';
 }
 
@@ -198,7 +198,7 @@ export const wakeFirmaService = async (opts?: {
 };
 
 export const firmarDocumento = async (params: {
-  passwordPri: string;
+  passwordPri?: string;
   dteJson: unknown;
   timeoutMs?: number;
   retries?: number;
@@ -223,8 +223,8 @@ export const firmarDocumento = async (params: {
           ...buildAuthHeaders(),
         },
         body: JSON.stringify({
-          passwordPri: params.passwordPri,
           dte: params.dteJson,
+          ...(params.passwordPri ? { passwordPri: params.passwordPri } : {}),
         }),
         signal: controller.signal,
       });
@@ -294,7 +294,7 @@ export const firmarDocumento = async (params: {
 
 export const transmitirDocumento = async (params: {
   dte: Record<string, unknown>;
-  passwordPri: string;
+  passwordPri?: string;
   ambiente?: '00' | '01';
   timeoutMs?: number;
 }): Promise<TransmitDTEResponse> => {
@@ -313,8 +313,8 @@ export const transmitirDocumento = async (params: {
       },
       body: JSON.stringify({
         dte: params.dte,
-        passwordPri: params.passwordPri,
         ambiente: params.ambiente ?? '00',
+        ...(params.passwordPri ? { passwordPri: params.passwordPri } : {}),
       }),
       signal: controller.signal,
     });
