@@ -15,6 +15,13 @@ import {
 } from './validators';
 import { calcularTotales } from './totales';
 
+const DTE_VERSION_BY_TYPE: Record<string, number> = {
+  '01': 1,
+  '03': 3,
+  '11': 1,
+  '14': 1,
+};
+
 const normalizePhone = (value?: string | null): string | null => {
   const digits = (value || '').replace(/\D/g, '').trim();
   return digits || null;
@@ -51,6 +58,7 @@ const normalizeMunicipioOrFallback = (value?: string | number | null): string =>
 export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: string = '00'): DTEJSON => {
   const uuid = generarUUID();
   const numeroControl = generarNumeroControl(datos.tipoDocumento, correlativo, datos.emisor.codEstableMH, datos.emisor.codPuntoVentaMH);
+  const version = DTE_VERSION_BY_TYPE[datos.tipoDocumento] ?? 1;
 
   // 1. Generar Cuerpo del Documento con redondeo a 8 decimales (Regla de la novena posición)
   const cuerpoDocumento = datos.items.map((item, index) => {
@@ -67,7 +75,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       : redondear(item.precioUni, 8);
 
     // IVA por ítem: usar el valor provisto (ya redondeado) para mantener coherencia con resumen
-    const ivaItem = datos.tipoDocumento === '01' ? 0 : redondear(item.ivaItem || 0, 2);
+    const ivaItem = datos.tipoDocumento === '01' ? undefined : redondear(item.ivaItem || 0, 2);
 
     // FE (01) no debe enviar tributos desde el frontend; el backend los arma
     const tributos = datos.tipoDocumento === '01' ? null : (ventaGravada > 0 ? item.tributos : null);
@@ -89,7 +97,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       codTributo: null,
       psv: item.psv ? redondear(item.psv, 2) : 0,
       noGravado: item.noGravado ? redondear(item.noGravado, 2) : 0,
-      ...(ivaItem !== undefined && { ivaItem }),
+      ...(ivaItem !== undefined ? { ivaItem } : {}),
     };
   });
 
@@ -175,7 +183,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
 
   const dteJSON: DTEJSON = {
     identificacion: {
-      version: datos.tipoDocumento === '01' ? 1 : 3,
+      version,
       ambiente,
       tipoDte: datos.tipoDocumento,
       numeroControl,
