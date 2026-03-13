@@ -28,6 +28,8 @@ export interface TransmisionResult {
   enlaceConsulta?: string;
   reintentarEn?: number;
   instrucciones?: string;
+  canRetry?: boolean;
+  code?: string;
 }
 
 export type EstadoTransmision =

@@ -27,6 +27,10 @@ import {
 } from '../utils/dteSignature';
 import { checkLicense } from '../utils/licenseValidator';
 
+const WAITING_MESSAGE = 'Estamos procesando y enviando su factura. Por favor espere un momento.';
+const WAITING_SUBMESSAGE = 'No necesita volver a presionar el botón.';
+const ALREADY_PROCESSING_MESSAGE = 'Su documento ya se está enviando. Por favor espere.';
+
 interface TransmisionModalProps {
   dte: DTEJSON;
   onClose: () => void;
@@ -57,10 +61,26 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
   const [dteTransmitido, setDteTransmitido] = useState<DTEJSON | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isConnectionError, setIsConnectionError] = useState(false);
+  const [canRetry, setCanRetry] = useState(false);
+  const [softNotice, setSoftNotice] = useState<string | null>(null);
 
   const getFriendlyError = (raw: string | null): { friendly: string; raw: string } => {
     if (!raw) {
       return { friendly: 'No pudimos completar la transmisión en este momento. Intenta nuevamente en unos segundos.', raw: '' };
+    }
+
+    const normalized = raw.toLowerCase();
+    if (
+      normalized.includes('timeout de firma') ||
+      normalized.includes('firma dormida') ||
+      normalized.includes('proveedor dormido') ||
+      normalized.includes('handshake') ||
+      normalized.includes('token') ||
+      normalized.includes('servicio de firma') ||
+      normalized.includes('timeout esperando servicio de firma') ||
+      normalized.includes('timeout firmando documento')
+    ) {
+      return { friendly: 'No pudimos completar el envío en este momento. Intenta nuevamente en unos segundos.', raw: '' };
     }
 
     const isHtml = /<[^>]+>/.test(raw) || raw.toLowerCase().includes('doctype html') || raw.toLowerCase().includes('cloudflare');
@@ -121,14 +141,27 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
         valorEsperado: err.valorEsperado,
       })),
       enlaceConsulta: mh?.enlaceConsulta,
+      canRetry: mh?.canRetry ?? payload.canRetry,
+      code: mh?.code ?? payload.code,
     };
   };
+
+  const isAlreadyProcessingResult = (transmisionResult: TransmisionResult) =>
+    transmisionResult.code === 'DTE_ALREADY_PROCESSING' ||
+    transmisionResult.errores?.some((err) => err.codigo === 'DTE_ALREADY_PROCESSING');
+
+  const isRealRetryableError = (transmisionResult: TransmisionResult) =>
+    transmisionResult.success === false &&
+    transmisionResult.canRetry === true &&
+    !isAlreadyProcessingResult(transmisionResult);
 
   const iniciarTransmision = async () => {
     setEstado('firmando');
     setError(null);
     setResultado(null);
     setIsConnectionError(false);
+    setCanRetry(false);
+    setSoftNotice(null);
 
     try {
       const licensed = await checkLicense();
@@ -151,6 +184,7 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
         };
         setResultado(rechazo);
         setEstado('rechazado');
+        setCanRetry(false);
         return;
       }
 
@@ -195,17 +229,22 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
         } else {
           onSuccess('', transmisionResult);
         }
+      } else if (isAlreadyProcessingResult(transmisionResult)) {
+        setSoftNotice(ALREADY_PROCESSING_MESSAGE);
+        setCanRetry(false);
+        setEstado('transmitiendo');
       } else {
-        // Verificar si es error de comunicación
         const isCommError = transmisionResult.errores?.some((e: any) => e.codigo === 'COM-ERR' || e.codigo.startsWith('HTTP-'));
         if (isCommError) {
           setIsConnectionError(true);
         }
+        setCanRetry(isRealRetryableError(transmisionResult));
         setEstado('rechazado');
       }
     } catch (err) {
       setEstado('error');
       setError(err instanceof Error ? err.message : 'Error desconocido');
+      setCanRetry(false);
     }
   };
 
@@ -218,6 +257,8 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
     try {
       setEstado('transmitiendo');
       setError(null);
+      setCanRetry(false);
+      setSoftNotice(null);
 
       const dteContingencia = convertirAContingencia(dte);
       const processed = processDTE(dteContingencia);
@@ -306,6 +347,10 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
     
     return (
       <div className="space-y-4">
+        <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
+          <p className="text-sm font-medium text-indigo-900">{softNotice || WAITING_MESSAGE}</p>
+          <p className="text-xs text-indigo-700 mt-1">{WAITING_SUBMESSAGE}</p>
+        </div>
         {PASOS.map((paso, index) => {
           const Icon = paso.icon;
           const isActive = index === pasoActual;
@@ -557,7 +602,7 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
       )}
 
       {/* Opción de Contingencia si es error de conexión */}
-      {isConnectionError && dte.identificacion.tipoDte === '01' && (
+      {isConnectionError && canRetry && dte.identificacion.tipoDte === '01' && (
         <div className="bg-amber-50 rounded-xl p-4 mb-4 border border-amber-200">
           <div className="flex items-start gap-3">
             <WifiOff className="w-6 h-6 text-amber-600 shrink-0 mt-1" />
@@ -585,13 +630,15 @@ const TransmisionModal: React.FC<TransmisionModalProps> = ({
         >
           Cancelar
         </button>
-        <button
-          onClick={iniciarTransmision}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Reintentar
-        </button>
+        {canRetry && (
+          <button
+            onClick={iniciarTransmision}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Reintentar
+          </button>
+        )}
       </div>
     </div>
   );

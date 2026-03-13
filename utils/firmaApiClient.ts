@@ -35,6 +35,8 @@ export interface MHResponse {
   enlaceConsulta?: string;
   advertencias?: MHWarning[];
   errores?: MHError[];
+  canRetry?: boolean;
+  code?: string;
 }
 
 export interface SignDTERequest {
@@ -62,6 +64,8 @@ export interface TransmitDTEResponse {
   contingencyReason?: string | null;
   message?: string;
   error?: string | { message?: string };
+  canRetry?: boolean;
+  code?: string;
 }
 
 const BASE_URL = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_DTE_URL || '') as string;
