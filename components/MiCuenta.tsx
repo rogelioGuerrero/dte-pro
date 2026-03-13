@@ -416,8 +416,8 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
           {renderChecklistItem(
             'Firma en esta computadora',
             firmaBackendLista
-              ? 'La firma del negocio ya está disponible en backend. El certificado local en esta PC es opcional.'
-              : 'Conecta primero tu negocio para usar la firma administrada en backend.',
+              ? 'La firma del negocio ya está lista. Cargar el certificado en esta compu es opcional.'
+              : 'Conecta primero tu negocio para activar la firma automática.',
             firmaBackendLista ? 'ready' : 'review'
           )}
           {renderChecklistItem(
@@ -481,9 +481,9 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack }) => {
             </div>
             <div className="p-6 space-y-3">
               <p className="text-sm text-gray-600">
-                La firma electrónica se almacena en Supabase y el backend la usa al generar DTE.
-                Solo necesitas cargar un certificado local si quieres firmar desde esta computadora;
-                de lo contrario el backend procesa todo automáticamente.
+                Tu firma ya está lista en la plataforma.
+                Si querés, podés guardar una copia del certificado en esta computadora para firmar aquí mismo,
+                pero no es obligatorio.
               </p>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-400">Certificado local</span>
