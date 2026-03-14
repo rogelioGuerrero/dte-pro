@@ -229,6 +229,19 @@ export function useDTEWorkflow({
         if (!filled(selectedReceptor.name)) {
           datosErrors.push('Crédito Fiscal (03) requiere al menos el nombre del receptor');
         }
+        const receptorNit = (selectedReceptor.nit || '').replace(/\s|-/g, '');
+        if (receptorNit.length !== 14) {
+          datosErrors.push('Crédito Fiscal (03) requiere NIT de receptor válido de 14 dígitos');
+        }
+        if (!filled(selectedReceptor.nrc)) {
+          datosErrors.push('Crédito Fiscal (03) requiere NRC del receptor');
+        }
+        if (!filled(selectedReceptor.departamento) || !filled(selectedReceptor.municipio) || !filled(selectedReceptor.direccion)) {
+          datosErrors.push('Crédito Fiscal (03) requiere dirección completa del receptor');
+        }
+        if (!filled(selectedReceptor.actividadEconomica) && !filled(selectedReceptor.descActividad)) {
+          datosErrors.push('Crédito Fiscal (03) requiere actividad económica o giro del receptor');
+        }
       }
 
       const allErrors = [...itemErrors, ...resumenErrors, ...datosErrors];
