@@ -1,4 +1,5 @@
 import { getBackendAuthToken } from './backendConfig';
+import { getVersionByTipoDte } from './dteGenerator';
 
 export interface FirmaApiResponse {
   status?: string;
@@ -139,6 +140,22 @@ const cloneObject = <T>(value: T): T => {
   return JSON.parse(JSON.stringify(value)) as T;
 };
 
+const normalizeDteForTransport = <T extends Record<string, unknown>>(dte: T): T => {
+  const cloned = cloneObject(dte) as T & {
+    identificacion?: {
+      tipoDte?: string | null;
+      version?: number;
+    };
+  };
+
+  if (cloned.identificacion) {
+    const tipoDte = cloned.identificacion.tipoDte;
+    cloned.identificacion.version = getVersionByTipoDte(tipoDte);
+  }
+
+  return cloned;
+};
+
 export const wakeFirmaService = async (opts?: {
   retries?: number;
   baseDelayMs?: number;
@@ -208,6 +225,7 @@ export const firmarDocumento = async (params: {
   const retries = params.retries ?? 2;
   const baseDelayMs = params.baseDelayMs ?? 1000;
   const url = buildUrl('/api/dte/sign');
+  const normalizedDte = normalizeDteForTransport(params.dteJson as Record<string, unknown>);
 
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -223,7 +241,7 @@ export const firmarDocumento = async (params: {
           ...buildAuthHeaders(),
         },
         body: JSON.stringify({
-          dte: params.dteJson,
+          dte: normalizedDte,
           ...(params.passwordPri ? { passwordPri: params.passwordPri } : {}),
         }),
         signal: controller.signal,
@@ -300,6 +318,7 @@ export const transmitirDocumento = async (params: {
 }): Promise<TransmitDTEResponse> => {
   const timeoutMs = params.timeoutMs ?? 45000;
   const url = buildUrl('/api/dte/transmit');
+  const normalizedDte = normalizeDteForTransport(params.dte);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(new Error('Timeout transmitiendo documento')), timeoutMs);
 
@@ -312,7 +331,7 @@ export const transmitirDocumento = async (params: {
         ...buildAuthHeaders(),
       },
       body: JSON.stringify({
-        dte: params.dte,
+        dte: normalizedDte,
         ambiente: params.ambiente ?? '00',
         ...(params.passwordPri ? { passwordPri: params.passwordPri } : {}),
       }),
