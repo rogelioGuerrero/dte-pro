@@ -22,6 +22,11 @@ const DTE_VERSION_BY_TYPE: Record<string, number> = {
   '14': 1,
 };
 
+export const getVersionByTipoDte = (tipoDte?: string | null): number => {
+  const normalizedTipoDte = (tipoDte || '').trim();
+  return DTE_VERSION_BY_TYPE[normalizedTipoDte] ?? 1;
+};
+
 const normalizePhone = (value?: string | null): string | null => {
   const digits = (value || '').replace(/\D/g, '').trim();
   return digits || null;
@@ -58,7 +63,7 @@ const normalizeMunicipioOrFallback = (value?: string | number | null): string =>
 export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: string = '00'): DTEJSON => {
   const uuid = generarUUID();
   const numeroControl = generarNumeroControl(datos.tipoDocumento, correlativo, datos.emisor.codEstableMH, datos.emisor.codPuntoVentaMH);
-  const version = DTE_VERSION_BY_TYPE[datos.tipoDocumento] ?? 1;
+  const version = getVersionByTipoDte(datos.tipoDocumento);
 
   // 1. Generar Cuerpo del Documento con redondeo a 8 decimales (Regla de la novena posición)
   const cuerpoDocumento = datos.items.map((item, index) => {
