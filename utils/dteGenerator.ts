@@ -149,6 +149,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
 
   const receptorIdDigits = (datos.receptor.nit || '').replace(/[\s-]/g, '').trim();
   const receptorSinDocumento = receptorIdDigits.length === 0;
+  const isCreditoFiscal = datos.tipoDocumento === '03';
 
   const receptorCodActividad = isCodActividad(datos.receptor.actividadEconomica)
     ? datos.receptor.actividadEconomica.trim()
@@ -185,6 +186,21 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const receptorNombre = normalizeRequiredText(datos.receptor.name, 'Consumidor Final');
   const receptorTelefono = normalizePhone(datos.receptor.telefono);
   const receptorCorreo = normalizeOptionalText(datos.receptor.email);
+  const receptorNit = receptorIdDigits.length === 14 ? receptorIdDigits : '';
+  const receptorDui = receptorIdDigits.length === 9 ? receptorIdDigits : '';
+  const receptorTipoDocumento = isCreditoFiscal
+    ? (receptorNit ? '36' : null)
+    : (receptorSinDocumento ? null : (receptorDui ? '13' : '36'));
+  const receptorNumDocumento = isCreditoFiscal
+    ? (receptorNit || null)
+    : (receptorSinDocumento ? null : receptorIdDigits);
+  const receptorDireccionFinal = isCreditoFiscal
+    ? {
+        departamento: normalizeDepartamentoOrFallback(datos.receptor.departamento),
+        municipio: normalizeMunicipioOrFallback(datos.receptor.municipio),
+        complemento: normalizeRequiredText(datos.receptor.direccion, 'Dirección del receptor'),
+      }
+    : receptorDireccion;
 
   const dteJSON: DTEJSON = {
     identificacion: {
@@ -223,14 +239,15 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       codPuntoVentaMH: emisorCodPuntoVentaMH,
     },
     receptor: {
-      tipoDocumento: receptorSinDocumento ? null : (receptorIdDigits.length === 9 ? '13' : '36'),
-      numDocumento: receptorSinDocumento ? null : receptorIdDigits,
-      nrc: receptorNrc || null,
+      tipoDocumento: receptorTipoDocumento,
+      numDocumento: receptorNumDocumento,
+      nrc: isCreditoFiscal ? (receptorNrc || null) : (receptorNrc || null),
       nombre: receptorNombre,
-      codActividad: receptorCodActividad,
-      descActividad: receptorDescActividad,
-      direccion: receptorDireccion,
+      codActividad: isCreditoFiscal ? (receptorCodActividad || '00000') : receptorCodActividad,
+      descActividad: isCreditoFiscal ? (receptorDescActividad || normalizeRequiredText(datos.receptor.descActividad || datos.receptor.actividadEconomica, 'GIRO NO ESPECIFICADO')) : receptorDescActividad,
+      direccion: receptorDireccionFinal,
       telefono: receptorTelefono,
+      ...(isCreditoFiscal && receptorNit ? { nit: receptorNit } : {}),
       ...(receptorCorreo !== null ? { correo: receptorCorreo } : {}),
     },
     otrosDocumentos: null,
