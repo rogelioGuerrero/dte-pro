@@ -146,11 +146,25 @@ const normalizeDteForTransport = <T extends Record<string, unknown>>(dte: T): T 
       tipoDte?: string | null;
       version?: number;
     };
+    receptor?: {
+      tipoDocumento?: string | null;
+      numDocumento?: string | null;
+      nit?: string | null;
+    };
   };
 
   if (cloned.identificacion) {
     const tipoDte = cloned.identificacion.tipoDte;
     cloned.identificacion.version = getVersionByTipoDte(tipoDte);
+
+    if (tipoDte === '03' && cloned.receptor) {
+      const currentNit = (cloned.receptor.nit || cloned.receptor.numDocumento || '').replace(/\D/g, '').trim();
+      if (currentNit) {
+        cloned.receptor.nit = currentNit;
+        cloned.receptor.tipoDocumento = '36';
+        cloned.receptor.numDocumento = currentNit;
+      }
+    }
   }
 
   return cloned;
@@ -323,6 +337,11 @@ export const transmitirDocumento = async (params: {
   const timeout = setTimeout(() => controller.abort(new Error('Timeout transmitiendo documento')), timeoutMs);
 
   try {
+    console.log('[DTE_TRANSMIT_PAYLOAD]', JSON.stringify({
+      dte: normalizedDte,
+      ambiente: params.ambiente ?? '00',
+    }, null, 2));
+
     const res = await fetch(url, {
       method: 'POST',
       headers: {
