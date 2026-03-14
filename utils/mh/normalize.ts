@@ -18,6 +18,7 @@ const roundTo = (value: number, decimals: number): number => {
 };
 
 export const normalizeDTE = (dte: DTEJSON): DTEJSON => {
+  const isCreditoFiscal = dte.identificacion.tipoDte === '03';
   return {
     ...dte,
     identificacion: {
@@ -45,8 +46,17 @@ export const normalizeDTE = (dte: DTEJSON): DTEJSON => {
     },
     receptor: {
       ...dte.receptor,
-      tipoDocumento: (trimOrNull(dte.receptor.tipoDocumento) as any) ?? null,
-      numDocumento: onlyDigits(dte.receptor.numDocumento),
+      ...(isCreditoFiscal
+        ? {}
+        : {
+            tipoDocumento: (trimOrNull(dte.receptor.tipoDocumento) as any) ?? null,
+            numDocumento: onlyDigits(dte.receptor.numDocumento),
+          }),
+      ...(isCreditoFiscal
+        ? {
+            nit: onlyDigits((dte.receptor as typeof dte.receptor & { nit?: string | null }).nit),
+          }
+        : {}),
       nrc: onlyDigits(dte.receptor.nrc),
       nombre: dte.receptor.nombre.trim(),
       codActividad: trimOrNull(dte.receptor.codActividad) as any,
@@ -85,7 +95,7 @@ export const normalizeDTE = (dte: DTEJSON): DTEJSON => {
       codTributo: trimOrNull(i.codTributo) as any,
       psv: roundTo(i.psv ?? 0, 2),
       noGravado: roundTo(i.noGravado ?? 0, 2),
-      ivaItem: roundTo(i.ivaItem ?? 0, 2),
+      ...(isCreditoFiscal ? {} : { ivaItem: roundTo(i.ivaItem ?? 0, 2) }),
     })),
     resumen: {
       ...dte.resumen,

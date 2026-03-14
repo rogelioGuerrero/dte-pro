@@ -5,6 +5,7 @@ const near = (a: number, b: number, tol: number) => Math.abs(a - b) <= tol;
 
 export const validateDteRules = (dte: DTEJSON): ErrorValidacionMH[] => {
   const errores: ErrorValidacionMH[] = [];
+  const isCreditoFiscal = dte.identificacion.tipoDte === '03';
 
   if (dte.identificacion.tipoDte === '01' && dte.resumen.montoTotalOperacion < 1095) {
     if (dte.receptor.tipoDocumento !== null || dte.receptor.numDocumento !== null) {
@@ -26,6 +27,29 @@ export const validateDteRules = (dte: DTEJSON): ErrorValidacionMH[] => {
         severidad: 'ERROR',
       });
     }
+  }
+
+  if (isCreditoFiscal) {
+    const receptorNit = ((dte.receptor as typeof dte.receptor & { nit?: string | null }).nit || '').trim();
+    if (receptorNit.length !== 14) {
+      errores.push({
+        codigo: 'RULE-0003-CCF',
+        campo: 'receptor.nit',
+        descripcion: 'CCF requiere receptor.nit de 14 dígitos',
+        severidad: 'ERROR',
+      });
+    }
+
+    if (!dte.receptor.nrc || dte.receptor.nrc.length < 2) {
+      errores.push({
+        codigo: 'RULE-0004-CCF',
+        campo: 'receptor.nrc',
+        descripcion: 'CCF requiere receptor.nrc',
+        severidad: 'ERROR',
+      });
+    }
+
+    return errores;
   }
 
   if (dte.receptor.tipoDocumento === null) {

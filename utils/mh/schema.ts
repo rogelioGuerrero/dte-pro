@@ -64,6 +64,36 @@ export const DTE_SCHEMA = {
         },
       },
     },
+    CuerpoDocumentoCCF: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 2000,
+      items: {
+        type: 'object',
+        required: ['numItem', 'tipoItem', 'cantidad', 'descripcion', 'precioUni', 'montoDescu', 'ventaNoSuj', 'ventaExenta', 'ventaGravada', 'tributos'],
+        properties: {
+          numItem: { type: 'integer', minimum: 1, maximum: 2000 },
+          tipoItem: { type: 'integer', enum: [1, 2] },
+          cantidad: { type: 'number', multipleOf: 0.00000001, minimum: 0.00000001, maximum: 99999999999.99999999 },
+          codigo: { type: ['string', 'null'], maxLength: 25 },
+          uniMedida: { type: 'integer' },
+          descripcion: { type: 'string', maxLength: 200 },
+          precioUni: { type: 'number', multipleOf: 0.00000001, minimum: 0, maximum: 99999999999.99999999 },
+          montoDescu: { type: 'number', multipleOf: 0.00000001, minimum: 0 },
+          ventaNoSuj: { type: 'number', multipleOf: 0.00000001, minimum: 0 },
+          ventaExenta: { type: 'number', multipleOf: 0.00000001, minimum: 0 },
+          ventaGravada: { type: 'number', multipleOf: 0.00000001, minimum: 0 },
+          tributos: {
+            type: ['array', 'null'],
+            items: { type: 'string', pattern: '^(20)$' },
+          },
+          numeroDocumento: { type: ['string', 'null'], maxLength: 30 },
+          codTributo: { type: ['string', 'null'], pattern: '^(20)$' },
+          psv: { type: 'number', multipleOf: 0.01, minimum: 0 },
+          noGravado: { type: 'number', multipleOf: 0.01, minimum: 0 },
+        },
+      },
+    },
     Resumen: {
       type: 'object',
       required: [
@@ -248,9 +278,9 @@ export const DTE_SCHEMA = {
       properties: {
         identificacion: {
           type: 'object',
-          required: ['ambiente', 'tipoDte', 'numeroControl', 'codigoGeneracion', 'tipoModelo', 'tipoOperacion', 'fecEmi', 'horEmi', 'tipoMoneda'],
+          required: ['version', 'ambiente', 'tipoDte', 'numeroControl', 'codigoGeneracion', 'tipoModelo', 'tipoOperacion', 'fecEmi', 'horEmi', 'tipoMoneda'],
           properties: {
-            version: { type: 'integer' },
+            version: { type: 'integer', const: 3 },
             ambiente: { type: 'string', enum: ['00', '01'] },
             tipoDte: { type: 'string', const: '03' },
             numeroControl: { type: 'string', pattern: '^DTE-03-[A-Z0-9]{8}-\\d{15}$' },
@@ -266,10 +296,10 @@ export const DTE_SCHEMA = {
         },
         documentoRelacionado: { type: ['object', 'null'] },
         emisor: { $ref: '#/definitions/FE/properties/emisor' },
-        receptor: { $ref: '#/definitions/FE/properties/receptor' },
+        receptor: { $ref: '#/definitions/ReceptorCCF' },
         otrosDocumentos: { type: ['object', 'null'] },
         ventaTercero: { type: ['object', 'null'] },
-        cuerpoDocumento: { $ref: '#/definitions/CuerpoDocumento' },
+        cuerpoDocumento: { $ref: '#/definitions/CuerpoDocumentoCCF' },
         resumen: { $ref: '#/definitions/Resumen' },
         extension: { $ref: '#/definitions/Extension' },
         apendice: { $ref: '#/definitions/Apendice' },
