@@ -191,6 +191,28 @@ export const DTE_SCHEMA = {
         },
       },
     },
+    ReceptorCCF: {
+      type: 'object',
+      required: ['nit', 'nrc', 'nombre', 'codActividad', 'descActividad', 'direccion'],
+      properties: {
+        nit: { $ref: '#/definitions/NIT' },
+        nrc: { $ref: '#/definitions/NRC' },
+        nombre: { type: 'string', maxLength: 250 },
+        codActividad: { type: ['string', 'null'], pattern: '^\\d{5,6}$' },
+        descActividad: { type: ['string', 'null'], maxLength: 150 },
+        direccion: {
+          type: 'object',
+          required: ['departamento', 'municipio', 'complemento'],
+          properties: {
+            departamento: { type: 'string', pattern: '^(0[1-9]|1[0-4])$' },
+            municipio: { type: 'string', pattern: '^(0[1-9]|[1-5]\\d|6[0-8])$' },
+            complemento: { type: 'string', maxLength: 200 },
+          },
+        },
+        telefono: { type: ['string', 'null'], maxLength: 30 },
+        correo: { type: ['string', 'null'], format: 'email', maxLength: 100 },
+      },
+    },
     FE: {
       type: 'object',
       required: ['identificacion', 'emisor', 'receptor', 'cuerpoDocumento', 'resumen'],
