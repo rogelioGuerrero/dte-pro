@@ -151,6 +151,12 @@ const normalizeDteForTransport = <T extends Record<string, unknown>>(dte: T): T 
       numDocumento?: string | null;
       nit?: string | null;
     };
+    cuerpoDocumento?: Array<{
+      ivaItem?: number;
+    }>;
+    resumen?: {
+      totalCargosNoBase?: number;
+    };
   };
 
   if (cloned.identificacion) {
@@ -161,9 +167,21 @@ const normalizeDteForTransport = <T extends Record<string, unknown>>(dte: T): T 
       const currentNit = (cloned.receptor.nit || cloned.receptor.numDocumento || '').replace(/\D/g, '').trim();
       if (currentNit) {
         cloned.receptor.nit = currentNit;
-        cloned.receptor.tipoDocumento = '36';
-        cloned.receptor.numDocumento = currentNit;
       }
+      delete cloned.receptor.tipoDocumento;
+      delete cloned.receptor.numDocumento;
+    }
+
+    if (tipoDte === '03' && Array.isArray(cloned.cuerpoDocumento)) {
+      cloned.cuerpoDocumento = cloned.cuerpoDocumento.map((item) => {
+        const normalizedItem = { ...item };
+        delete normalizedItem.ivaItem;
+        return normalizedItem;
+      });
+    }
+
+    if (tipoDte === '03' && cloned.resumen) {
+      delete cloned.resumen.totalCargosNoBase;
     }
   }
 
