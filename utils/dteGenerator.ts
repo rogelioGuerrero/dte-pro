@@ -79,9 +79,6 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       ? redondear(baseImponibleItem / cantidad, 8)
       : redondear(item.precioUni, 8);
 
-    // IVA por ítem: usar el valor provisto (ya redondeado) para mantener coherencia con resumen
-    const ivaItem = datos.tipoDocumento === '01' ? undefined : redondear(item.ivaItem || 0, 2);
-
     // FE (01) no debe enviar tributos desde el frontend; el backend los arma
     const tributos = datos.tipoDocumento === '01' ? null : (ventaGravada > 0 ? item.tributos : null);
 
@@ -102,7 +99,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       codTributo: null,
       psv: item.psv ? redondear(item.psv, 2) : 0,
       noGravado: item.noGravado ? redondear(item.noGravado, 2) : 0,
-      ...(ivaItem !== undefined ? { ivaItem } : {}),
+      ...(datos.tipoDocumento === '03' ? {} : { ivaItem: redondear(item.ivaItem || 0, 2) }),
     };
   });
 
@@ -127,14 +124,16 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const reteRenta = 0;
   const saldoFavor = 0;
 
-  const sinIvaEnItems = datos.tipoDocumento === '01' || cuerpoDocumento.every((item) => !item.ivaItem || item.ivaItem === 0);
-  const ivaCalculado = datos.tipoDocumento === '01' ? 0 : (sinIvaEnItems ? 0 : totalIva);
+  const ivaCalculado = datos.tipoDocumento === '03'
+    ? redondear(totalGravada * 0.13, 2)
+    : (datos.tipoDocumento === '01' ? 0 : totalIva);
 
   const resumenSubTotal = redondear(subTotalVentas - totalDescu, 2);
 
-  const resumenMontoTotal = sinIvaEnItems
-    ? redondear(totalGravada + totalExenta + totalNoSuj + totalNoGravado, 2)
-    : redondear(totalGravada + totalExenta + totalNoSuj + totalNoGravado + ivaCalculado, 2);
+  const resumenMontoTotal = redondear(
+    totalGravada + totalExenta + totalNoSuj + totalNoGravado + ivaCalculado,
+    2
+  );
 
   const resumenTotalPagar = redondear(
     resumenMontoTotal - ivaRete1 - reteRenta + saldoFavor + totalCargosNoBase,
@@ -188,12 +187,6 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const receptorCorreo = normalizeOptionalText(datos.receptor.email);
   const receptorNit = receptorIdDigits.length === 14 ? receptorIdDigits : '';
   const receptorDui = receptorIdDigits.length === 9 ? receptorIdDigits : '';
-  const receptorTipoDocumento = isCreditoFiscal
-    ? (receptorNit ? '36' : null)
-    : (receptorSinDocumento ? null : (receptorDui ? '13' : '36'));
-  const receptorNumDocumento = isCreditoFiscal
-    ? (receptorNit || null)
-    : (receptorSinDocumento ? null : receptorIdDigits);
   const receptorDireccionFinal = isCreditoFiscal
     ? {
         departamento: normalizeDepartamentoOrFallback(datos.receptor.departamento),
@@ -239,15 +232,15 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       codPuntoVentaMH: emisorCodPuntoVentaMH,
     },
     receptor: {
-      tipoDocumento: receptorTipoDocumento,
-      numDocumento: receptorNumDocumento,
-      nrc: isCreditoFiscal ? (receptorNrc || null) : (receptorNrc || null),
+      ...(isCreditoFiscal && receptorNit ? { nit: receptorNit } : {}),
+      tipoDocumento: isCreditoFiscal ? null : (receptorSinDocumento ? null : (receptorDui ? '13' : '36')),
+      numDocumento: isCreditoFiscal ? null : (receptorSinDocumento ? null : receptorIdDigits),
+      nrc: receptorNrc || null,
       nombre: receptorNombre,
       codActividad: isCreditoFiscal ? (receptorCodActividad || '00000') : receptorCodActividad,
       descActividad: isCreditoFiscal ? (receptorDescActividad || normalizeRequiredText(datos.receptor.descActividad || datos.receptor.actividadEconomica, 'GIRO NO ESPECIFICADO')) : receptorDescActividad,
       direccion: receptorDireccionFinal,
       telefono: receptorTelefono,
-      ...(isCreditoFiscal && receptorNit ? { nit: receptorNit } : {}),
       ...(receptorCorreo !== null ? { correo: receptorCorreo } : {}),
     },
     otrosDocumentos: null,
@@ -270,7 +263,6 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       reteRenta: 0,
       montoTotalOperacion: resumenMontoTotal,
       totalNoGravado,
-      totalCargosNoBase,
       ivaPerci1,
       totalPagar: resumenTotalPagar,
       totalLetras: numeroALetras(resumenTotalPagar),
