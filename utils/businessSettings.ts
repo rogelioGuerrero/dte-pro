@@ -13,6 +13,7 @@ export interface BusinessFeatureFlags {
   historial: boolean;
   simple: boolean;
   poscf: boolean;
+  ccftester: boolean;
 }
 
 function sanitizeBackendFeatures(input?: Record<string, boolean> | null): BusinessFeatureFlags {
@@ -25,6 +26,7 @@ function sanitizeBackendFeatures(input?: Record<string, boolean> | null): Busine
     historial: input?.historial,
     simple: input?.simple,
     poscf: input?.poscf,
+    ccftester: input?.ccftester,
   });
 }
 
@@ -71,6 +73,7 @@ const DEFAULT_FEATURES: BusinessFeatureFlags = {
   historial: true,
   simple: false,
   poscf: false,
+  ccftester: true,
 };
 
 const DEFAULT_CAPABILITIES: BusinessCapabilities = {
@@ -113,6 +116,7 @@ function sanitizeFeatures(input?: Partial<BusinessFeatureFlags> | null): Busines
     historial: input?.historial ?? DEFAULT_FEATURES.historial,
     simple: input?.simple ?? DEFAULT_FEATURES.simple,
     poscf: input?.poscf ?? DEFAULT_FEATURES.poscf,
+    ccftester: input?.ccftester ?? DEFAULT_FEATURES.ccftester,
   };
 }
 
@@ -205,6 +209,7 @@ function mapBusinessSettingsToBackendPayload(settings: BusinessSettings) {
       historial: settings.features.historial,
       simple: settings.features.simple,
       poscf: settings.features.poscf,
+      ccftester: settings.features.ccftester,
     },
     push_enabled: settings.capabilities.pushEnabled,
     fingerprint_enabled: settings.capabilities.fingerprintEnabled,

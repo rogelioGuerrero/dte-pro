@@ -99,7 +99,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       codTributo: null,
       psv: item.psv ? redondear(item.psv, 2) : 0,
       noGravado: item.noGravado ? redondear(item.noGravado, 2) : 0,
-      ...(datos.tipoDocumento === '03' ? {} : { ivaItem: redondear(item.ivaItem || 0, 2) }),
+      ivaItem: redondear(item.ivaItem || 0, 2),
     };
   });
 
@@ -110,41 +110,24 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     totalGravada,
     totalNoGravado,
     subTotalVentas,
+    subTotal,
     totalDescu,
     iva: totalIva,
-    totalCargosNoBase,
+    montoTotalOperacion,
     ivaPerci1,
+    totalPagar,
   } = calcularTotales(cuerpoDocumento, datos.tipoDocumento);
 
   // Consolidar tributos: solo IVA 13% (código 20) por ahora, y solo para FE/CCF
   const aplicaIVAResumen = datos.tipoDocumento === '01' || datos.tipoDocumento === '03';
 
-  // Rete/perc/saldo: aún no se manejan en FE; se dejan en cero
-  const ivaRete1 = 0;
-  const reteRenta = 0;
-  const saldoFavor = 0;
-
-  const ivaCalculado = datos.tipoDocumento === '03'
-    ? redondear(totalGravada * 0.13, 2)
-    : (datos.tipoDocumento === '01' ? 0 : totalIva);
-
-  const resumenSubTotal = redondear(subTotalVentas - totalDescu, 2);
-
-  const resumenMontoTotal = redondear(
-    totalGravada + totalExenta + totalNoSuj + totalNoGravado + ivaCalculado,
-    2
-  );
-
-  const resumenTotalPagar = redondear(
-    resumenMontoTotal - ivaRete1 - reteRenta + saldoFavor + totalCargosNoBase,
-    2
-  );
-
-  const tributosResumen = datos.tipoDocumento === '01'
-    ? null
-    : (aplicaIVAResumen && totalGravada > 0 && ivaCalculado > 0
-      ? [{ codigo: '20', descripcion: 'IVA 13%', valor: ivaCalculado }]
-      : null);
+  const tributosResumen = datos.tipoDocumento === '03'
+    ? (totalIva > 0 ? [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }] : null)
+    : (datos.tipoDocumento === '01'
+      ? null
+      : (aplicaIVAResumen && totalGravada > 0 && totalIva > 0
+        ? [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }]
+        : null));
 
   const receptorIdDigits = (datos.receptor.nit || '').replace(/[\s-]/g, '').trim();
   const receptorSinDocumento = receptorIdDigits.length === 0;
@@ -195,6 +178,26 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       }
     : receptorDireccion;
 
+  const receptorBase = {
+    ...(isCreditoFiscal && receptorNit ? { nit: receptorNit } : {}),
+    nrc: receptorNrc || null,
+    nombre: receptorNombre,
+    codActividad: isCreditoFiscal ? (receptorCodActividad || '00000') : receptorCodActividad,
+    descActividad: isCreditoFiscal
+      ? (receptorDescActividad || normalizeRequiredText(datos.receptor.descActividad || datos.receptor.actividadEconomica, 'GIRO NO ESPECIFICADO'))
+      : receptorDescActividad,
+    direccion: receptorDireccionFinal,
+    telefono: receptorTelefono,
+    ...(receptorCorreo !== null ? { correo: receptorCorreo } : {}),
+  } as DTEJSON['receptor'];
+
+  const receptorDocumentoCampos = isCreditoFiscal
+    ? {}
+    : {
+        tipoDocumento: receptorSinDocumento ? null : (receptorDui ? '13' : '36'),
+        numDocumento: receptorSinDocumento ? null : receptorIdDigits,
+      };
+
   const dteJSON: DTEJSON = {
     identificacion: {
       version,
@@ -232,16 +235,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       codPuntoVentaMH: emisorCodPuntoVentaMH,
     },
     receptor: {
-      ...(isCreditoFiscal && receptorNit ? { nit: receptorNit } : {}),
-      tipoDocumento: isCreditoFiscal ? null : (receptorSinDocumento ? null : (receptorDui ? '13' : '36')),
-      numDocumento: isCreditoFiscal ? null : (receptorSinDocumento ? null : receptorIdDigits),
-      nrc: receptorNrc || null,
-      nombre: receptorNombre,
-      codActividad: isCreditoFiscal ? (receptorCodActividad || '00000') : receptorCodActividad,
-      descActividad: isCreditoFiscal ? (receptorDescActividad || normalizeRequiredText(datos.receptor.descActividad || datos.receptor.actividadEconomica, 'GIRO NO ESPECIFICADO')) : receptorDescActividad,
-      direccion: receptorDireccionFinal,
-      telefono: receptorTelefono,
-      ...(receptorCorreo !== null ? { correo: receptorCorreo } : {}),
+      ...receptorBase,
+      ...receptorDocumentoCampos,
     },
     otrosDocumentos: null,
     ventaTercero: null,
@@ -256,21 +251,21 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       descuGravada: totalDescu,
       porcentajeDescuento: 0,
       totalDescu: totalDescu,
-      totalIva: ivaCalculado,
+      totalIva: totalIva,
       tributos: tributosResumen,
-      subTotal: resumenSubTotal,
+      subTotal: subTotal,
       ivaRete1: 0,
       reteRenta: 0,
-      montoTotalOperacion: resumenMontoTotal,
+      montoTotalOperacion: montoTotalOperacion,
       totalNoGravado,
       ivaPerci1,
-      totalPagar: resumenTotalPagar,
-      totalLetras: numeroALetras(resumenTotalPagar),
+      totalPagar: totalPagar,
+      totalLetras: numeroALetras(totalPagar),
       saldoFavor: 0,
       condicionOperacion: datos.condicionOperacion,
       pagos: datos.condicionOperacion === 1 ? [{
         codigo: String(datos.formaPago).padStart(2, '0'),
-        montoPago: resumenTotalPagar,
+        montoPago: totalPagar,
         referencia: null,
         plazo: null,
         periodo: null,

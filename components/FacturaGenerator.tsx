@@ -435,9 +435,8 @@ const FacturaGenerator: React.FC = () => {
       ventaGravada = totalLinea;
       ivaItem = 0;
     } else if (tipoDocumento === '03') {
-      const totalFinal = totalLinea;
-      ventaGravada = redondear(totalFinal / 1.13, 8);
-      ivaItem = redondear(totalFinal - ventaGravada, 2);
+      ventaGravada = totalLinea;
+      ivaItem = redondear(ventaGravada * 0.13, 2);
     } else {
       // Otros documentos: sin IVA
       ventaGravada = totalLinea;

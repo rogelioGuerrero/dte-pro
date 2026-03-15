@@ -1,4 +1,15 @@
-export type AppTab = 'batch' | 'clients' | 'products' | 'inventory' | 'factura' | 'historial' | 'fiscal' | 'micuenta' | 'simple' | 'poscf';
+export type AppTab =
+  | 'batch'
+  | 'clients'
+  | 'products'
+  | 'inventory'
+  | 'factura'
+  | 'historial'
+  | 'fiscal'
+  | 'micuenta'
+  | 'simple'
+  | 'poscf'
+  | 'ccftester';
 
 export type ManagedAppTab = Exclude<AppTab, 'micuenta' | 'products'>;
 
@@ -10,7 +21,8 @@ export const MANAGED_APP_TABS: ManagedAppTab[] = [
   'factura',
   'historial',
   'simple',
-  'poscf'
+  'poscf',
+  'ccftester'
 ];
 
 export const APP_TAB_LABELS: Record<AppTab, string> = {
@@ -23,5 +35,6 @@ export const APP_TAB_LABELS: Record<AppTab, string> = {
   simple: 'Test DTE',
   poscf: 'Facturas',
   micuenta: 'Mi Cuenta',
-  products: 'Productos'
+  products: 'Productos',
+  ccftester: 'CCF Tester'
 };

@@ -71,8 +71,8 @@ export interface DTEJSON {
     codPuntoVentaMH: string | null;
   };
   receptor: {
-    tipoDocumento: string | null;
-    numDocumento: string | null;
+    tipoDocumento?: string | null;
+    numDocumento?: string | null;
     nrc: string | null;
     nombre: string;
     codActividad: string | null;

@@ -30,14 +30,12 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const totalCargosNoBase = redondear(totalCargosNoBaseRaw, 2);
 
   const subTotalVentas = redondear(totalGravada + totalExenta + totalNoSuj, 2);
-  
-  // IVA: FE (01) usa la suma de ivaItem ya redondeada en el cuerpo
-  const iva = tipoDocumento === '01'
-    ? redondear(ivaItemsRaw, 2)
-    : redondear(ivaItemsRaw, 2);
 
-  // Para FE (01) el subTotal es la base menos descuentos (sin restar IVA)
-  const subTotal = redondear(subTotalVentas - totalDescu, 2);
+  const iva = redondear(ivaItemsRaw, 2);
+
+  const subTotal = tipoDocumento === '03'
+    ? subTotalVentas
+    : redondear(subTotalVentas - totalDescu, 2);
 
   const tributosAdicionales = 0;
   const ivaRete1 = 0;
@@ -46,14 +44,18 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const ivaPerci1 = 0;
 
   // Para FE (01) incluimos IVA calculado cuando aplica
-  const montoTotalOperacion = tipoDocumento === '01'
-    ? redondear(totalGravada + totalExenta + totalNoSuj + totalNoGravado + iva, 2)
-    : redondear(subTotal + iva + tributosAdicionales + totalNoGravado, 2);
+  const montoTotalOperacion = tipoDocumento === '03'
+    ? redondear(subTotal - totalDescu + totalNoGravado + iva, 2)
+    : (tipoDocumento === '01'
+      ? redondear(totalGravada + totalExenta + totalNoSuj + totalNoGravado + iva, 2)
+      : redondear(subTotal + iva + tributosAdicionales + totalNoGravado, 2));
 
-  const totalPagar = redondear(
-    montoTotalOperacion - ivaRete1 - reteRenta + saldoFavor + totalCargosNoBase,
-    2
-  );
+  const totalPagar = tipoDocumento === '03'
+    ? redondear(montoTotalOperacion - ivaRete1 - reteRenta + saldoFavor, 2)
+    : redondear(
+        montoTotalOperacion - ivaRete1 - reteRenta + saldoFavor + totalCargosNoBase,
+        2
+      );
 
   return {
     totalNoSuj,
