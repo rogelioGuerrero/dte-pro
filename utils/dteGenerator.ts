@@ -80,7 +80,11 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       : redondear(item.precioUni, 8);
 
     // FE (01) no debe enviar tributos desde el frontend; el backend los arma
-    const tributos = datos.tipoDocumento === '01' ? null : (ventaGravada > 0 ? item.tributos : null);
+    const tributos = datos.tipoDocumento === '01'
+      ? null
+      : (datos.tipoDocumento === '03'
+        ? ['20']
+        : (ventaGravada > 0 ? item.tributos : null));
 
     return {
       numItem: index + 1,
@@ -96,10 +100,10 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       ventaGravada,
       tributos,
       numeroDocumento: item.numeroDocumento ?? null,
-      codTributo: null,
+      codTributo: datos.tipoDocumento === '03' ? '20' : null,
       psv: item.psv ? redondear(item.psv, 2) : 0,
       noGravado: item.noGravado ? redondear(item.noGravado, 2) : 0,
-      ivaItem: redondear(item.ivaItem || 0, 2),
+      ...(datos.tipoDocumento === '03' ? {} : { ivaItem: redondear(item.ivaItem || 0, 2) }),
     };
   });
 
@@ -114,7 +118,6 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
     totalDescu,
     iva: totalIva,
     montoTotalOperacion,
-    ivaPerci1,
     totalPagar,
   } = calcularTotales(cuerpoDocumento, datos.tipoDocumento);
 
@@ -222,8 +225,8 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       descActividad: emisorDescActividad,
       nombreComercial: emisorNombreComercial,
       tipoEstablecimiento: datos.emisor.tipoEstablecimiento || '01',
-      codEstable: emisorCodEstableMH,
-      codPuntoVenta: emisorCodPuntoVentaMH,
+      codEstable: null,
+      codPuntoVenta: null,
       direccion: {
         departamento: normalizeDepartamentoOrFallback(datos.emisor.departamento),
         municipio: normalizeMunicipioOrFallback(datos.emisor.municipio),
@@ -258,7 +261,6 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       reteRenta: 0,
       montoTotalOperacion: montoTotalOperacion,
       totalNoGravado,
-      ivaPerci1,
       totalPagar: totalPagar,
       totalLetras: numeroALetras(totalPagar),
       saldoFavor: 0,
