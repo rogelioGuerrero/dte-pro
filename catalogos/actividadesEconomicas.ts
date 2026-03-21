@@ -285,6 +285,8 @@ export const actividadesEconomicas: ActividadEconomica[] = [
   { codigo: "85501", descripcion: "Actividades de apoyo a la educación" },
   { codigo: "86101", descripcion: "Actividades de hospitales" },
   { codigo: "86201", descripcion: "Actividades de práctica médica y odontológica" },
+  { codigo: "86202", descripcion: "Servicios de odontología" },
+  { codigo: "86203", descripcion: "Servicios médicos" },
   { codigo: "86901", descripcion: "Otras actividades de atención de la salud humana" },
   { codigo: "87010", descripcion: "Actividades de atención residencial médica" },
   { codigo: "87030", descripcion: "Actividades de atención residencial para ancianos" },
