@@ -24,6 +24,9 @@ const SelectActividad: React.FC<SelectActividadProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [manualCode, setManualCode] = useState('');
+  const [manualDescription, setManualDescription] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -107,6 +110,21 @@ const SelectActividad: React.FC<SelectActividadProps> = ({
     setSearch('');
   };
 
+  const handleManualSubmit = () => {
+    if (manualCode.trim() && manualDescription.trim()) {
+      onChange(manualCode.trim(), manualDescription.trim());
+      setShowManualInput(false);
+      setManualCode('');
+      setManualDescription('');
+    }
+  };
+
+  const handleManualCancel = () => {
+    setShowManualInput(false);
+    setManualCode('');
+    setManualDescription('');
+  };
+
   const inputValue = isOpen ? search : (displayText || '');
 
   return (
@@ -188,7 +206,15 @@ const SelectActividad: React.FC<SelectActividadProps> = ({
             {isLoading ? (
               <p className="p-3 text-sm text-gray-400 text-center">Cargando...</p>
             ) : filteredActividades.length === 0 ? (
-              <p className="p-3 text-sm text-gray-400 text-center">Sin resultados</p>
+              <div>
+                <p className="p-3 text-sm text-gray-400 text-center">Sin resultados</p>
+                <button
+                  onClick={() => setShowManualInput(true)}
+                  className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors border-t"
+                >
+                  Ingresar código y descripción manualmente
+                </button>
+              </div>
             ) : (
               filteredActividades.map(actividad => (
                 <button
@@ -215,6 +241,52 @@ const SelectActividad: React.FC<SelectActividadProps> = ({
                 Mostrando primeros 50 resultados. Refina tu búsqueda.
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal para entrada manual */}
+      {showManualInput && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Ingresar actividad económica manualmente</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Código</label>
+                <input
+                  type="text"
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                  placeholder="Ej: 86202"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                <input
+                  type="text"
+                  value={manualDescription}
+                  onChange={(e) => setManualDescription(e.target.value)}
+                  placeholder="Ej: Servicios de odontología"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleManualCancel}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleManualSubmit}
+                disabled={!manualCode.trim() || !manualDescription.trim()}
+                className="flex-1 px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Agregar
+              </button>
+            </div>
           </div>
         </div>
       )}
