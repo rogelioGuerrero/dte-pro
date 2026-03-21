@@ -261,7 +261,7 @@ const CCF03Generator: React.FC = () => {
     if (!emisorForm.codEstableMH?.trim()) payloadErrors.push('El código de establecimiento MH es obligatorio.');
     if (!emisorForm.codPuntoVentaMH?.trim()) payloadErrors.push('El código de punto de venta MH es obligatorio.');
 
-    if (receptorNit.length !== 14) payloadErrors.push('El receptor del CCF 03 debe tener NIT de 14 dígitos.');
+    if (!(receptorNit.length === 9 || receptorNit.length === 14)) payloadErrors.push('El NIT del receptor debe tener 9 o 14 dígitos.');
     if (!receptorNrc) payloadErrors.push('El NRC del receptor es obligatorio.');
     if (!receptorForm.nombre.trim()) payloadErrors.push('El nombre del receptor es obligatorio.');
     if (!receptorForm.codActividad.trim()) payloadErrors.push('La actividad económica del receptor es obligatoria.');

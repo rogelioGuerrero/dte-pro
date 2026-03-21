@@ -229,8 +229,8 @@ export function useDTEWorkflow({
           datosErrors.push('Crédito Fiscal (03) requiere al menos el nombre del receptor');
         }
         const receptorNit = (selectedReceptor.nit || '').replace(/\s|-/g, '');
-        if (receptorNit.length !== 14) {
-          datosErrors.push('Crédito Fiscal (03) requiere NIT de receptor válido de 14 dígitos');
+        if (!(receptorNit.length === 9 || receptorNit.length === 14)) {
+          datosErrors.push('Crédito Fiscal (03) requiere NIT de receptor válido de 9 o 14 dígitos');
         }
         if (!filled(selectedReceptor.nrc)) {
           datosErrors.push('Crédito Fiscal (03) requiere NRC del receptor');
