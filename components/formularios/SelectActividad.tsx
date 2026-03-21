@@ -5,33 +5,37 @@ import { loadActividadesEconomicas } from '../../utils/catalogosRuntime';
 
 interface SelectActividadProps {
   value: string;
+  description?: string;
   onChange: (codigo: string, descripcion: string) => void;
   disabled?: boolean;
   required?: boolean;
   label?: string;
   placeholder?: string;
   className?: string;
+  allowManual?: boolean;
 }
 
 const SelectActividad: React.FC<SelectActividadProps> = ({
   value,
+  description,
   onChange,
   disabled = false,
   required = false,
   label = 'Actividad Económica',
   placeholder = 'Buscar actividad...',
   className = '',
+  allowManual = true,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [showManualInput, setShowManualInput] = useState(false);
-  const [manualCode, setManualCode] = useState('');
-  const [manualDescription, setManualDescription] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [actividades, setActividades] = useState<ActividadEconomica[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [manualCode, setManualCode] = useState(value);
+  const [manualDesc, setManualDesc] = useState('');
+  const [manualError, setManualError] = useState('');
 
   // Obtener actividad seleccionada
   const selectedActividad = useMemo(() => {
@@ -40,9 +44,10 @@ const SelectActividad: React.FC<SelectActividadProps> = ({
 
   const displayText = useMemo(() => {
     if (selectedActividad) return selectedActividad.descripcion;
+    if (description) return description;
     if (value) return value;
     return '';
-  }, [selectedActividad]);
+  }, [selectedActividad, description, value]);
 
   // Filtrar actividades
   const filteredActividades = useMemo(() => {
@@ -86,10 +91,29 @@ const SelectActividad: React.FC<SelectActividadProps> = ({
     };
   }, [isOpen, actividades.length]);
 
+  useEffect(() => {
+    setManualCode(value || '');
+  }, [value]);
+
+  useEffect(() => {
+    if (description) {
+      setManualDesc(description);
+      return;
+    }
+    if (selectedActividad) {
+      setManualDesc(selectedActividad.descripcion);
+      return;
+    }
+    if (!value) {
+      setManualDesc('');
+    }
+  }, [description, selectedActividad, value]);
+
   const handleSelect = (actividad: ActividadEconomica) => {
     onChange(actividad.codigo, actividad.descripcion);
     setIsOpen(false);
     setSearch('');
+    setManualError('');
   };
 
   const handleClear = () => {
@@ -110,22 +134,20 @@ const SelectActividad: React.FC<SelectActividadProps> = ({
     setSearch('');
   };
 
-  const handleManualSubmit = () => {
-    if (manualCode.trim() && manualDescription.trim()) {
-      onChange(manualCode.trim(), manualDescription.trim());
-      setShowManualInput(false);
-      setManualCode('');
-      setManualDescription('');
-    }
-  };
-
-  const handleManualCancel = () => {
-    setShowManualInput(false);
-    setManualCode('');
-    setManualDescription('');
-  };
-
   const inputValue = isOpen ? search : (displayText || '');
+
+  const handleManualApply = () => {
+    if (!allowManual) return;
+    const codigo = manualCode.trim();
+    const descripcionManual = manualDesc.trim();
+    if (!codigo || !descripcionManual) {
+      setManualError('Completa código y descripción.');
+      return;
+    }
+    setManualError('');
+    onChange(codigo, descripcionManual);
+    setIsOpen(false);
+  };
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
@@ -206,15 +228,7 @@ const SelectActividad: React.FC<SelectActividadProps> = ({
             {isLoading ? (
               <p className="p-3 text-sm text-gray-400 text-center">Cargando...</p>
             ) : filteredActividades.length === 0 ? (
-              <div>
-                <p className="p-3 text-sm text-gray-400 text-center">Sin resultados</p>
-                <button
-                  onClick={() => setShowManualInput(true)}
-                  className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors border-t"
-                >
-                  Ingresar código y descripción manualmente
-                </button>
-              </div>
+              <p className="p-3 text-sm text-gray-400 text-center">Sin resultados</p>
             ) : (
               filteredActividades.map(actividad => (
                 <button
@@ -245,48 +259,43 @@ const SelectActividad: React.FC<SelectActividadProps> = ({
         </div>
       )}
 
-      {/* Modal para entrada manual */}
-      {showManualInput && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Ingresar actividad económica manualmente</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Código</label>
-                <input
-                  type="text"
-                  value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value)}
-                  placeholder="Ej: 86202"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                <input
-                  type="text"
-                  value={manualDescription}
-                  onChange={(e) => setManualDescription(e.target.value)}
-                  placeholder="Ej: Servicios de odontología"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
-              </div>
+      {allowManual && (
+        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs font-medium text-slate-500 mb-2">¿No aparece en el catálogo? Ingresa la actividad manualmente.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div>
+              <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Código</label>
+              <input
+                type="text"
+                value={manualCode}
+                onChange={(e) => setManualCode(e.target.value.replace(/[^0-9]/g, ''))}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="86203"
+                disabled={disabled}
+              />
             </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleManualCancel}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleManualSubmit}
-                disabled={!manualCode.trim() || !manualDescription.trim()}
-                className="flex-1 px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Agregar
-              </button>
+            <div className="md:col-span-2">
+              <label className="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Descripción</label>
+              <textarea
+                value={manualDesc}
+                onChange={(e) => setManualDesc(e.target.value)}
+                rows={2}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Servicios médicos"
+                disabled={disabled}
+              />
             </div>
+          </div>
+          {manualError && <p className="text-xs text-red-500 mt-2">{manualError}</p>}
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={handleManualApply}
+              disabled={disabled}
+              className="inline-flex items-center gap-2 rounded-lg bg-slate-900 text-white px-3 py-2 text-sm font-medium hover:bg-slate-800 disabled:opacity-60"
+            >
+              Usar valores manuales
+            </button>
           </div>
         </div>
       )}
