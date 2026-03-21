@@ -55,6 +55,9 @@ export interface TransmitDTERequest {
   dte: Record<string, unknown>;
   passwordPri?: string;
   ambiente?: '00' | '01';
+  flowType?: 'emission' | 'reception';
+  businessId?: string | null;
+  receptorEmail?: string | null;
 }
 
 export interface TransmitDTEResponse {
@@ -346,6 +349,9 @@ export const transmitirDocumento = async (params: {
   dte: Record<string, unknown>;
   passwordPri?: string;
   ambiente?: '00' | '01';
+  flowType?: 'emission' | 'reception';
+  businessId?: string | null;
+  receptorEmail?: string | null;
   timeoutMs?: number;
 }): Promise<TransmitDTEResponse> => {
   const timeoutMs = params.timeoutMs ?? 45000;
@@ -358,6 +364,9 @@ export const transmitirDocumento = async (params: {
     console.log('[DTE_TRANSMIT_PAYLOAD]', JSON.stringify({
       dte: normalizedDte,
       ambiente: params.ambiente ?? '00',
+      flowType: params.flowType ?? 'emission',
+      businessId: params.businessId ?? null,
+      receptorEmail: params.receptorEmail ?? null,
     }, null, 2));
 
     const res = await fetch(url, {
@@ -370,6 +379,9 @@ export const transmitirDocumento = async (params: {
       body: JSON.stringify({
         dte: normalizedDte,
         ambiente: params.ambiente ?? '00',
+        flowType: params.flowType ?? 'emission',
+        businessId: params.businessId ?? null,
+        receptorEmail: params.receptorEmail ?? null,
         ...(params.passwordPri ? { passwordPri: params.passwordPri } : {}),
       }),
       signal: controller.signal,

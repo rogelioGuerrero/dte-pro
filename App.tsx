@@ -3,7 +3,7 @@ import BatchDashboard from './components/BatchDashboard';
 import FiscalDashboard from './components/dashboard/FiscalDashboard';
 import ClientManager from './components/ClientManager';
 import SistemaInventario from './components/inventario/SistemaInventario';
-import FacturaGenerator from './components/FacturaGenerator';
+import CCF03Generator from './components/CCF03Generator';
 import DTEDashboard from './components/DTEDashboard';
 import AdminModal from './components/AdminModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
@@ -320,7 +320,7 @@ const App: React.FC = () => {
         {activeTab === 'fiscal' && (businessId ? <FiscalDashboard /> : <Placeholder />)}
         {activeTab === 'clients' && (businessId ? <ClientManager /> : <Placeholder />)}
         {activeTab === 'inventory' && (businessId ? <SistemaInventario /> : <Placeholder />)}
-        {activeTab === 'factura' && <FacturaGenerator />}
+        {activeTab === 'factura' && <CCF03Generator />}
         {activeTab === 'historial' && (businessId ? <DTEDashboard /> : <Placeholder />)}
         {activeTab === 'micuenta' && (
           <MiCuenta

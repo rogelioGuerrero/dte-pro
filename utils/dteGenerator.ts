@@ -100,7 +100,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       ventaGravada,
       tributos,
       numeroDocumento: item.numeroDocumento ?? null,
-      codTributo: datos.tipoDocumento === '03' ? '20' : null,
+      codTributo: null,
       psv: item.psv ? redondear(item.psv, 2) : 0,
       noGravado: item.noGravado ? redondear(item.noGravado, 2) : 0,
       ...(datos.tipoDocumento === '03' ? {} : { ivaItem: redondear(item.ivaItem || 0, 2) }),
@@ -274,7 +274,14 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       }] : null,
       numPagoElectronico: null,
     },
-    extension: null,
+    extension: {
+      nombEntrega: null,
+      docuEntrega: null,
+      nombRecibe: null,
+      docuRecibe: null,
+      observaciones: normalizeOptionalText(datos.observaciones) ?? null,
+      placaVehiculo: null,
+    },
     apendice: null,
   };
   
