@@ -9,6 +9,7 @@ import {
   FileText,
   Loader2,
   Star,
+  ArrowRight,
 } from 'lucide-react';
 import { getClients, ClientData } from '../utils/clientDb';
 import { getProducts, ProductData } from '../utils/productDb';
@@ -47,6 +48,31 @@ const QuickSale: React.FC = () => {
   const [formaPago, setFormaPago] = useState('01');
   const [condicionOperacion, setCondicionOperacion] = useState(1);
   const [observaciones, setObservaciones] = useState('');
+
+  // Función para convertir a CCF
+  const handleConvertirACCF = () => {
+    // Guardar items actuales en localStorage para que CCF03Generator los use
+    const itemsParaCCF = cart.map(item => ({
+      id: item.id,
+      tipoItem: item.tipoItem === 1 ? 1 : 2, // Asegurar que sea 1 o 2
+      codigo: item.codigo || '',
+      descripcion: item.descripcion,
+      cantidad: item.cantidad,
+      uniMedida: item.uniMedida || 59,
+      precioUni: redondear(item.precioUni / 1.13, 8), // Convertir precio con IVA a precio sin IVA
+      montoDescu: 0, // Sin descuentos en la conversión
+      esExento: item.esExento,
+    }));
+    
+    localStorage.setItem('ccf_items_temp', JSON.stringify(itemsParaCCF));
+    localStorage.setItem('ccf_observaciones_temp', observaciones);
+    localStorage.setItem('ccf_forma_pago_temp', formaPago);
+    localStorage.setItem('ccf_condicion_temp', condicionOperacion.toString());
+    
+    // Cambiar al tab de CCF
+    window.dispatchEvent(new CustomEvent('switch-tab', { detail: { tab: 'factura' } }));
+    addToast('Items convertidos para CCF. Los precios se ajustaron sin IVA.', 'success');
+  };
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedDTE, setGeneratedDTE] = useState<DTEJSON | null>(null);
@@ -516,6 +542,18 @@ const QuickSale: React.FC = () => {
               <span className="text-gray-600">Total</span>
               <span className="font-mono font-semibold text-gray-900">${totals.totales.totalPagar.toFixed(2)}</span>
             </div>
+
+            {/* Botón para convertir a CCF */}
+            {cart.length > 0 && (
+              <button
+                type="button"
+                onClick={handleConvertirACCF}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+              >
+                <ArrowRight className="w-4 h-4" />
+                Cliente quiere CCF? Convertir
+              </button>
+            )}
 
             <div className="grid grid-cols-2 gap-2">
               <select

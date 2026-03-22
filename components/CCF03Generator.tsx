@@ -171,6 +171,35 @@ const CCF03Generator: React.FC = () => {
           setEmisorForm(emptyEmisorForm(storedEmisor));
         }
         setClients(loadedClients);
+        
+        // Verificar si hay items convertidos desde Factura
+        const itemsTemp = localStorage.getItem('ccf_items_temp');
+        if (itemsTemp) {
+          try {
+            const itemsConvertidos = JSON.parse(itemsTemp);
+            setItems(itemsConvertidos);
+            
+            // Cargar otros datos temporales
+            const obsTemp = localStorage.getItem('ccf_observaciones_temp');
+            if (obsTemp) setObservaciones(obsTemp);
+            
+            const pagoTemp = localStorage.getItem('ccf_forma_pago_temp');
+            if (pagoTemp) setFormaPago(pagoTemp);
+            
+            const condTemp = localStorage.getItem('ccf_condicion_temp');
+            if (condTemp) setCondicionOperacion(Number(condTemp));
+            
+            // Limpiar datos temporales
+            localStorage.removeItem('ccf_items_temp');
+            localStorage.removeItem('ccf_observaciones_temp');
+            localStorage.removeItem('ccf_forma_pago_temp');
+            localStorage.removeItem('ccf_condicion_temp');
+            
+            addToast('Items convertidos desde Factura. Precios ajustados sin IVA.', 'info');
+          } catch (error) {
+            console.error('Error al cargar items convertidos:', error);
+          }
+        }
       } finally {
         if (mounted) setLoading(false);
       }
