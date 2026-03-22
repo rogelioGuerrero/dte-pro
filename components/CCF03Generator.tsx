@@ -613,11 +613,11 @@ const CCF03Generator: React.FC = () => {
                             }} 
                           />
                         </div>
-                        <div className={`${item.tipoItem === 1 ? 'md:col-span-2' : 'hidden'}`}>
+                        <div className={`${item.tipoItem === 1 && item.uniMedida !== 59 ? 'md:col-span-2' : 'hidden'}`}>
                           <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Uni. medida</label>
                           <input type="number" min="1" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.uniMedida} onChange={(e) => updateItem(index, 'uniMedida', Number(e.target.value) || 59)} />
                         </div>
-                        <div className={`${item.tipoItem === 1 ? 'md:col-span-4' : 'md:col-span-6'}`}>
+                        <div className={`${item.tipoItem === 1 && item.uniMedida !== 59 ? 'md:col-span-4' : item.tipoItem === 1 ? 'md:col-span-6' : 'md:col-span-6'}`}>
                           <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Descripción</label>
                           <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.descripcion} onChange={(e) => updateItem(index, 'descripcion', e.target.value)} />
                         </div>
@@ -627,7 +627,7 @@ const CCF03Generator: React.FC = () => {
                         </div>
                         <div className="md:col-span-2">
                           <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Precio unitario sin IVA</label>
-                          <input type="number" min="0" step="0.00000001" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.precioUni} onChange={(e) => updateItem(index, 'precioUni', Number(e.target.value) || 0)} />
+                          <input type="number" min="0" step="0.01" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.precioUni.toFixed(2)} onChange={(e) => updateItem(index, 'precioUni', Number(e.target.value) || 0)} />
                         </div>
                         <div className="md:col-span-2">
                           <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Descuento</label>

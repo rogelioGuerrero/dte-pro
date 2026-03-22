@@ -56,7 +56,10 @@ const PosCF: React.FC = () => {
     
     // Cambiar al tab de CCF (factura)
     window.dispatchEvent(new CustomEvent('switch-tab', { detail: { tab: 'factura' } }));
-    addToast('Items convertidos para CCF. Los precios se ajustaron sin IVA.', 'success');
+    addToast('Redirigiendo a Crédito Fiscal...', 'info');
+    setTimeout(() => {
+      addToast('Items convertidos para CCF. Los precios se ajustaron sin IVA.', 'success');
+    }, 500);
   };
   const [mobileView, setMobileView] = useState<'productos' | 'carrito'>('productos');
   const [showTechnicalDetail, setShowTechnicalDetail] = useState(false);
@@ -613,7 +616,7 @@ const PosCF: React.FC = () => {
                         className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
                       >
                         <ArrowRight className="h-4 w-4" />
-                        Cliente quiere CCF? Convertir
+                        Convertir a CCF
                       </button>
                     )}
 
