@@ -171,8 +171,10 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const receptorNombre = normalizeRequiredText(datos.receptor.name, 'Consumidor Final');
   const receptorTelefono = normalizePhone(datos.receptor.telefono);
   const receptorCorreo = normalizeOptionalText(datos.receptor.email);
-  const receptorNit = receptorIdDigits.length === 14 ? receptorIdDigits : '';
-  const receptorDui = receptorIdDigits.length === 9 ? receptorIdDigits : '';
+  const receptorNit = isCreditoFiscal
+    ? ((receptorIdDigits.length === 9 || receptorIdDigits.length === 14) ? receptorIdDigits : '')
+    : (receptorIdDigits.length === 14 ? receptorIdDigits : '');
+  const receptorDui = (!isCreditoFiscal && receptorIdDigits.length === 9) ? receptorIdDigits : '';
   const receptorDireccionFinal = isCreditoFiscal
     ? {
         departamento: normalizeDepartamentoOrFallback(datos.receptor.departamento),
