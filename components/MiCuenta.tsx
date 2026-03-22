@@ -614,6 +614,11 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, businessSettings = DEFAULT_
             handleSaveCertificate({ nit, nrc }, ambiente || businessData.ambiente)
           }
           fileInputRef={fileInputRef}
+          ambiente={businessData.ambiente}
+          setAmbiente={(value) => {
+            localStorage.setItem('dte_ambiente', value);
+            setBusinessData(prev => ({ ...prev, ambiente: value }));
+          }}
         />
       )}
     </div>

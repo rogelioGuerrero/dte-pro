@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Building2, FileSignature, Loader2, Save } from 'lucide-react';
+import { Building2, FileSignature, Loader2, Save, Settings } from 'lucide-react';
 import { EmailField, NitOrDuiField, NrcField, PhoneField, SelectActividad, SelectUbicacion } from './formularios';
 import LogoUploader from './LogoUploader';
+import SelectCatalogo from './formularios/SelectCatalogo';
 
 interface EmisorConfigModalProps {
   isOpen: boolean;
@@ -29,6 +30,8 @@ interface EmisorConfigModalProps {
   handleSaveCertificate: (nit: string, nrc: string, ambiente?: string) => void | Promise<void>;
   fileInputRef: React.RefObject<HTMLInputElement>;
   readOnly?: boolean;
+  ambiente?: string;
+  setAmbiente?: (value: string) => void;
 }
 
 export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
@@ -57,10 +60,12 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
   handleSaveCertificate,
   fileInputRef,
   readOnly = false,
+  ambiente = '00',
+  setAmbiente,
 }) => {
   if (!isOpen) return null;
 
-  const [activeTab, setActiveTab] = useState<'datos' | 'firma' | 'mh'>('datos');
+  const [activeTab, setActiveTab] = useState<'datos' | 'firma' | 'mh' | 'sistema'>('datos');
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -80,10 +85,11 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
               { id: 'datos', label: 'Datos del emisor' },
               { id: 'firma', label: 'Firma y token' },
               { id: 'mh', label: 'Códigos MH' },
+              { id: 'sistema', label: 'Sistema' },
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as 'datos' | 'firma' | 'mh')}
+                onClick={() => setActiveTab(tab.id as 'datos' | 'firma' | 'mh' | 'sistema')}
                 className={`px-3 py-2 rounded-lg transition-colors ${
                   activeTab === tab.id ? 'bg-white shadow text-blue-600' : 'text-gray-500'
                 }`}
@@ -395,6 +401,30 @@ export const EmisorConfigModal: React.FC<EmisorConfigModalProps> = ({
                     placeholder="P001"
                   />
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'sistema' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Settings className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Configuración del Sistema</p>
+                  <p className="text-xs text-gray-500">
+                    Configuración global que afecta todos los documentos generados
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <SelectCatalogo
+                  label="Ambiente"
+                  catalogo={[{ codigo: '00', descripcion: 'Pruebas' }, { codigo: '01', descripcion: 'Producción' }]}
+                  value={ambiente}
+                  onChange={(value) => setAmbiente?.(value as '00' | '01')}
+                  showCode
+                />
               </div>
             </div>
           )}

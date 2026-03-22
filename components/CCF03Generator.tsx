@@ -1,25 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Building2,
-  Copy,
-  Plus,
-  RefreshCw,
-  Search,
-  Send,
-  Sparkles,
-  Trash2,
-  User,
-  FileJson,
-  ReceiptText,
-  ShieldCheck,
-} from 'lucide-react';
+import { FileJson, Plus, ReceiptText, Search, Sparkles, Trash2, Send, FilePlus2 } from 'lucide-react';
 import { useEmisor } from '../contexts/EmisorContext';
 import { useToast, ToastContainer } from './Toast';
 import { getClients, type ClientData } from '../utils/clientDb';
-import { getEmisor, saveEmisor, type EmisorData } from '../utils/emisorDb';
+import { getEmisor, type EmisorData } from '../utils/emisorDb';
 import { checkLicense } from '../utils/licenseValidator';
 import { getCertificate } from '../utils/secureStorage';
 import { limpiarDteParaFirma, transmitirDocumento } from '../utils/firmaApiClient';
+import CCF03DebugModal from './CCF03DebugModal';
 import {
   calcularTotales,
   generarCorrelativoControlado,
@@ -29,11 +17,8 @@ import {
   type DTEJSON,
   type ItemFactura,
 } from '../utils/dteGenerator';
-import SelectUbicacion from './formularios/SelectUbicacion';
-import SelectActividad from './formularios/SelectActividad';
 import SelectCatalogo from './formularios/SelectCatalogo';
-import { condicionesOperacion, formasPago, tiposEstablecimiento, tiposModelo, tiposTransmision } from '../catalogos';
-import { obtenerFechaActual, obtenerHoraActual } from '../utils/formatters';
+import { condicionesOperacion, formasPago } from '../catalogos';
 
 interface CCF03ItemForm {
   id: string;
@@ -119,7 +104,6 @@ const isValidEmail = (value: string): boolean => {
   if (!value.trim()) return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 };
-const makeDateTime = () => ({ fecEmi: obtenerFechaActual(), horEmi: obtenerHoraActual() });
 const makeEmptyErrors = () => [] as string[];
 
 const SectionCard: React.FC<{
@@ -130,16 +114,18 @@ const SectionCard: React.FC<{
   actions?: React.ReactNode;
 }> = ({ title, subtitle, icon, children, actions }) => (
   <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-    <div className="px-4 md:px-6 py-4 border-b border-slate-100 flex items-start justify-between gap-4 bg-slate-50/70">
-      <div>
-        <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-          {icon}
-          {title}
-        </h2>
-        {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
+    {(title || subtitle || icon || actions) && (
+      <div className="px-4 md:px-6 py-4 border-b border-slate-100 flex items-start justify-between gap-4 bg-slate-50/70">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+            {icon}
+            {title}
+          </h2>
+          {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
+        </div>
+        {actions}
       </div>
-      {actions}
-    </div>
+    )}
     <div className="p-4 md:p-6">{children}</div>
   </section>
 );
@@ -167,14 +153,13 @@ const CCF03Generator: React.FC = () => {
   const [items, setItems] = useState<CCF03ItemForm[]>([createItem(1)]);
   const [formaPago, setFormaPago] = useState('01');
   const [condicionOperacion, setCondicionOperacion] = useState(1);
-  const [ambiente, setAmbiente] = useState<'00' | '01'>('00');
+  const [ambiente] = useState<'00' | '01'>(() => (localStorage.getItem('dte_ambiente') as '00' | '01') || '00');
   const [observaciones, setObservaciones] = useState('');
   const [generatedDTE, setGeneratedDTE] = useState<DTEJSON | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isTransmitting, setIsTransmitting] = useState(false);
   const [mhResult, setMhResult] = useState<any>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [savedEmisor, setSavedEmisor] = useState<EmisorData | null>(null);
+  const [showDebugModal, setShowDebugModal] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -183,7 +168,6 @@ const CCF03Generator: React.FC = () => {
         const [storedEmisor, loadedClients] = await Promise.all([getEmisor(), getClients()]);
         if (!mounted) return;
         if (storedEmisor) {
-          setSavedEmisor(storedEmisor);
           setEmisorForm(emptyEmisorForm(storedEmisor));
         }
         setClients(loadedClients);
@@ -337,27 +321,6 @@ const CCF03Generator: React.FC = () => {
     receptorEmail: normalizeEmail(receptorEmail),
   });
 
-  const handleGeneratePayload = async () => {
-    setIsGenerating(true);
-    try {
-      buildDTE();
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleSaveEmisor = async () => {
-    try {
-      await saveEmisor(emisorForm);
-      const saved = await getEmisor();
-      setSavedEmisor(saved);
-      addToast('Datos del emisor guardados.', 'success');
-    } catch (error) {
-      console.error(error);
-      addToast('No se pudo guardar el emisor.', 'error');
-    }
-  };
-
   const handleSelectClient = (client: ClientData) => {
     setSelectedClient(client);
     setReceptorForm({
@@ -431,14 +394,6 @@ const CCF03Generator: React.FC = () => {
     }
   };
 
-  const handleCopyPayload = async () => {
-    const dte = generatedDTE || buildDTE();
-    if (!dte) return;
-    const payload = buildWrapper(dte);
-    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-    addToast('Payload copiado al portapapeles.', 'success');
-  };
-
   const handleReset = () => {
     setSelectedClient(null);
     setClientSearch('');
@@ -473,27 +428,17 @@ const CCF03Generator: React.FC = () => {
         <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 text-indigo-700 px-3 py-1 text-xs font-semibold">
-                <Sparkles className="w-3.5 h-3.5" />
-                Nuevo formulario orientado al payload MH
-              </div>
               <h1 className="mt-3 text-2xl md:text-3xl font-bold text-slate-900">Comprobante de Crédito Fiscal Electrónico 03</h1>
-              <p className="mt-1 text-sm text-slate-500 max-w-3xl">
-                Captura el CCF exactamente como lo requiere Hacienda: identificación, emisor, receptor, cuerpo, resumen y wrapper de transmisión.
-              </p>
-            </div>
+                          </div>
             <div className="flex flex-wrap gap-2">
-              <button onClick={handleSaveEmisor} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800 transition">
-                <ShieldCheck className="w-4 h-4" /> Guardar emisor
-              </button>
-              <button onClick={handleCopyPayload} className="inline-flex items-center gap-2 rounded-xl bg-slate-100 text-slate-700 px-4 py-2 text-sm font-medium hover:bg-slate-200 transition">
-                <Copy className="w-4 h-4" /> Copiar payload
-              </button>
-              <button onClick={handleTransmit} disabled={isTransmitting} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-50">
-                <Send className="w-4 h-4" /> {isTransmitting ? 'Transmitiendo...' : 'Transmitir'}
-              </button>
-              <button onClick={handleReset} className="inline-flex items-center gap-2 rounded-xl bg-rose-50 text-rose-700 px-4 py-2 text-sm font-medium hover:bg-rose-100 transition">
-                <RefreshCw className="w-4 h-4" /> Reiniciar
+              <button
+                type="button"
+                onClick={() => setShowDebugModal(true)}
+                title="Detalle técnico"
+                aria-label="Abrir detalle técnico"
+                className="inline-flex items-center gap-2 rounded-full bg-indigo-50 text-indigo-700 px-3 py-2 text-sm font-medium hover:bg-indigo-100 transition border border-indigo-200"
+              >
+                <FileJson className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -501,234 +446,102 @@ const CCF03Generator: React.FC = () => {
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
           <div className="xl:col-span-8 space-y-5">
-            <SectionCard
-              title="Identificación y transmisión"
-              subtitle="Valores fijos o controlados desde el formulario para coincidir con el payload oficial."
-              icon={<ReceiptText className="w-4 h-4" />}
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <SelectCatalogo
-                  label="Ambiente"
-                  catalogo={[{ codigo: '00', descripcion: 'Pruebas' }, { codigo: '01', descripcion: 'Producción' }]}
-                  value={ambiente}
-                  onChange={(value) => setAmbiente(value as '00' | '01')}
-                  showCode
+            <SectionCard title="">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={selectedClient ? `${selectedClient.name} · NIT: ${selectedClient.nit}` : clientSearch}
+                  onChange={(e) => {
+                    if (!selectedClient) {
+                      setClientSearch(e.target.value);
+                    }
+                  }}
+                  onFocus={() => {
+                    if (selectedClient) {
+                      setShowClientSearch(true);
+                    }
+                  }}
+                  placeholder={selectedClient ? "" : "Buscar cliente por nombre, NIT o NRC..."}
+                  className="w-full rounded-xl border border-slate-300 pl-10 pr-24 py-3 text-sm bg-white"
+                  readOnly={!!selectedClient}
                 />
-                <SelectCatalogo
-                  label="Condición de operación"
-                  catalogo={condicionesOperacion}
-                  value={condicionOperacion}
-                  onChange={(value) => setCondicionOperacion(Number(value) as number)}
-                  showCode
-                />
-                <SelectCatalogo
-                  label="Forma de pago"
-                  catalogo={formasPago}
-                  value={formaPago}
-                  onChange={setFormaPago}
-                  showCode
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-[11px] uppercase tracking-wide text-slate-400">Tipo modelo</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-800">{tiposModelo.find((t) => t.codigo === 1)?.codigo} - {tiposModelo.find((t) => t.codigo === 1)?.descripcion}</p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-[11px] uppercase tracking-wide text-slate-400">Tipo operación</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-800">{tiposTransmision.find((t) => t.codigo === 1)?.codigo} - {tiposTransmision.find((t) => t.codigo === 1)?.descripcion}</p>
-                  </div>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                  {selectedClient ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setShowClientSearch(true)}
+                        className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
+                      >
+                        <Search className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedClient(null); setReceptorForm(emptyReceptorForm); setReceptorEmail(''); }}
+                        className="inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowClientSearch(true)}
+                      className="rounded-lg bg-slate-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700"
+                    >
+                      Buscar
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-                <PayloadTag label="Fecha" value={generatedDTE?.identificacion.fecEmi || makeDateTime().fecEmi} />
-                <PayloadTag label="Hora" value={generatedDTE?.identificacion.horEmi || makeDateTime().horEmi} />
-                <PayloadTag label="Moneda" value="USD" />
-              </div>
-            </SectionCard>
-
-            <SectionCard
-              title="Emisor"
-              subtitle="Los campos de emisor se envían tal como los exige MH en CCF 03."
-              icon={<Building2 className="w-4 h-4" />}
-              actions={<span className="text-xs text-slate-500">{savedEmisor ? 'Cargado desde almacenamiento local' : 'Sin emisor guardado'}</span>}
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">NIT</label>
-                  <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={emisorForm.nit} onChange={(e) => setEmisorForm((prev) => ({ ...prev, nit: e.target.value }))} />
+              
+              {selectedClient && (
+                <div className="mt-2 text-sm text-slate-600">
+                  <p>{selectedClient.email || 'correo@ejemplo.com'} · {selectedClient.telefono || 'Sin teléfono'}</p>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">NRC</label>
-                  <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={emisorForm.nrc} onChange={(e) => setEmisorForm((prev) => ({ ...prev, nrc: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Nombre</label>
-                  <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={emisorForm.nombre} onChange={(e) => setEmisorForm((prev) => ({ ...prev, nombre: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Nombre comercial</label>
-                  <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={emisorForm.nombreComercial} onChange={(e) => setEmisorForm((prev) => ({ ...prev, nombreComercial: e.target.value }))} />
-                </div>
-                <div className="md:col-span-2">
-                  <SelectActividad
-                    label="Actividad económica"
-                    value={emisorForm.actividadEconomica}
-                    onChange={(codigo, descripcion) => setEmisorForm((prev) => ({ ...prev, actividadEconomica: codigo, descActividad: descripcion }))}
-                    required
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Descripción de actividad</label>
-                  <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={emisorForm.descActividad} onChange={(e) => setEmisorForm((prev) => ({ ...prev, descActividad: e.target.value }))} />
-                </div>
-                <SelectCatalogo
-                  label="Tipo de establecimiento"
-                  catalogo={tiposEstablecimiento}
-                  value={emisorForm.tipoEstablecimiento}
-                  onChange={(value) => setEmisorForm((prev) => ({ ...prev, tipoEstablecimiento: value }))}
-                  showCode
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Código estab. MH</label>
-                    <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={emisorForm.codEstableMH || ''} onChange={(e) => setEmisorForm((prev) => ({ ...prev, codEstableMH: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Código punto venta MH</label>
-                    <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={emisorForm.codPuntoVentaMH || ''} onChange={(e) => setEmisorForm((prev) => ({ ...prev, codPuntoVentaMH: e.target.value }))} />
-                  </div>
-                </div>
-                <div className="md:col-span-2">
-                  <SelectUbicacion
-                    departamento={emisorForm.departamento}
-                    municipio={emisorForm.municipio}
-                    onDepartamentoChange={(codigo) => setEmisorForm((prev) => ({ ...prev, departamento: codigo }))}
-                    onMunicipioChange={(codigo) => setEmisorForm((prev) => ({ ...prev, municipio: codigo }))}
-                    required
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Dirección completa</label>
-                  <textarea className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm min-h-[96px]" value={emisorForm.direccion} onChange={(e) => setEmisorForm((prev) => ({ ...prev, direccion: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Teléfono</label>
-                  <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={emisorForm.telefono} onChange={(e) => setEmisorForm((prev) => ({ ...prev, telefono: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Correo</label>
-                  <input type="email" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={emisorForm.correo} onChange={(e) => setEmisorForm((prev) => ({ ...prev, correo: e.target.value }))} />
-                </div>
-              </div>
-            </SectionCard>
-
-            <SectionCard
-              title="Receptor"
-              subtitle="CCF 03 requiere receptor completo, con NIT y NRC válidos."
-              icon={<User className="w-4 h-4" />}
-              actions={
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setShowClientSearch((value) => !value)} className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                    <Search className="w-3.5 h-3.5" /> Buscar cliente
-                  </button>
-                  <button type="button" onClick={() => { setSelectedClient(null); setReceptorForm(emptyReceptorForm); setReceptorEmail(''); }} className="inline-flex items-center gap-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-100">
-                    <Trash2 className="w-3.5 h-3.5" /> Limpiar
-                  </button>
-                </div>
-              }
-            >
+              )}
+              
               {showClientSearch && (
-                <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Clientes guardados</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      value={clientSearch}
-                      onChange={(e) => setClientSearch(e.target.value)}
-                      placeholder="Buscar por nombre, NIT o NRC..."
-                      className="w-full rounded-xl border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm"
-                    />
-                  </div>
-                  <div className="mt-3 max-h-56 overflow-y-auto space-y-2">
+                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 shadow-lg">
+                  <div className="max-h-56 overflow-y-auto space-y-1">
                     {filteredClients.length === 0 ? (
-                      <p className="text-sm text-slate-400 text-center py-4">Sin resultados</p>
+                      <p className="text-sm text-slate-400 text-center py-3">Sin resultados. Ve al tab "Clientes" para crear nuevos.</p>
                     ) : (
                       filteredClients.map((client) => (
                         <button
                           type="button"
                           key={client.id}
                           onClick={() => handleSelectClient(client)}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-left hover:border-indigo-300 hover:bg-indigo-50 transition"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:border-indigo-300 hover:bg-indigo-50 transition"
                         >
-                          <p className="text-sm font-semibold text-slate-900 truncate">{client.name}</p>
-                          <p className="text-xs text-slate-500 mt-1">NIT: {client.nit} · NRC: {client.nrc || '—'}</p>
+                          <p className="text-sm font-medium text-slate-900 truncate">{client.name}</p>
+                          <p className="text-xs text-slate-500">NIT: {client.nit} · NRC: {client.nrc || '—'}</p>
                         </button>
                       ))
                     )}
                   </div>
                 </div>
               )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">NIT receptor</label>
-                  <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={receptorForm.nit} onChange={(e) => setReceptorForm((prev) => ({ ...prev, nit: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">NRC receptor</label>
-                  <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={receptorForm.nrc} onChange={(e) => setReceptorForm((prev) => ({ ...prev, nrc: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Nombre receptor</label>
-                  <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={receptorForm.nombre} onChange={(e) => setReceptorForm((prev) => ({ ...prev, nombre: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Nombre comercial</label>
-                  <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={receptorForm.nombreComercial} onChange={(e) => setReceptorForm((prev) => ({ ...prev, nombreComercial: e.target.value }))} />
-                </div>
-                <div className="md:col-span-2">
-                  <SelectActividad
-                    label="Actividad económica receptor"
-                    value={receptorForm.codActividad}
-                    onChange={(codigo, descripcion) => setReceptorForm((prev) => ({ ...prev, codActividad: codigo, descActividad: descripcion }))}
-                    required
+              
+              {selectedClient && (
+                <div className="mt-4">
+                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Correo para notificación (opcional)</label>
+                  <input 
+                    type="email" 
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" 
+                    value={receptorEmail} 
+                    onChange={(e) => setReceptorEmail(e.target.value)} 
+                    placeholder={selectedClient.email || "correo@ejemplo.com"}
                   />
+                  <p className="text-xs text-slate-500 mt-1">Se usará este correo para enviar el CCF. Si se deja vacío, se usará el del cliente.</p>
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Descripción de actividad</label>
-                  <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={receptorForm.descActividad} onChange={(e) => setReceptorForm((prev) => ({ ...prev, descActividad: e.target.value }))} />
-                </div>
-                <div className="md:col-span-2">
-                  <SelectUbicacion
-                    departamento={receptorForm.departamento}
-                    municipio={receptorForm.municipio}
-                    onDepartamentoChange={(codigo) => setReceptorForm((prev) => ({ ...prev, departamento: codigo }))}
-                    onMunicipioChange={(codigo) => setReceptorForm((prev) => ({ ...prev, municipio: codigo }))}
-                    required
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Dirección completa</label>
-                  <textarea className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm min-h-[96px]" value={receptorForm.direccion} onChange={(e) => setReceptorForm((prev) => ({ ...prev, direccion: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Teléfono receptor</label>
-                  <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={receptorForm.telefono} onChange={(e) => setReceptorForm((prev) => ({ ...prev, telefono: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Correo receptor</label>
-                  <input type="email" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={receptorForm.correo} onChange={(e) => setReceptorForm((prev) => ({ ...prev, correo: e.target.value }))} />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Correo para envío / notificación</label>
-                  <input type="email" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={receptorEmail} onChange={(e) => setReceptorEmail(e.target.value)} placeholder="Se enviará desde este correo si es distinto al receptor" />
-                </div>
-              </div>
+              )}
             </SectionCard>
 
             <SectionCard
               title="Cuerpo del documento"
-              subtitle="Precio unitario sin IVA, tributo 20 aplicado por defecto y descuentos por línea."
+              subtitle="Precio unitario sin IVA, tributo código 20 aplicado por defecto y descuentos por ítem ."
               icon={<FileJson className="w-4 h-4" />}
               actions={
                 <button type="button" onClick={addItem} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-700">
@@ -744,7 +557,6 @@ const CCF03Generator: React.FC = () => {
                       <div className="flex items-center justify-between gap-3 mb-4">
                         <div>
                           <p className="text-sm font-semibold text-slate-900">Ítem {index + 1}</p>
-                          <p className="text-xs text-slate-500">Campos alineados al cuerpoDocumento del CCF 03</p>
                         </div>
                         <button type="button" onClick={() => removeItem(index)} className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-medium text-rose-700 border border-rose-200 hover:bg-rose-50">
                           <Trash2 className="w-3.5 h-3.5" /> Eliminar
@@ -759,30 +571,40 @@ const CCF03Generator: React.FC = () => {
                           </select>
                         </div>
                         <div className="md:col-span-2">
-                          <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Código</label>
-                          <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.codigo} onChange={(e) => updateItem(index, 'codigo', e.target.value)} placeholder="Opcional" />
+                          <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Cantidad</label>
+                          <input 
+                            type="number" 
+                            min="1" 
+                            step="1" 
+                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" 
+                            value={item.cantidad} 
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 1;
+                              updateItem(index, 'cantidad', Math.max(1, val));
+                            }} 
+                          />
                         </div>
-                        <div className="md:col-span-4">
+                        <div className={`${item.tipoItem === 1 ? 'md:col-span-2' : 'hidden'}`}>
+                          <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Uni. medida</label>
+                          <input type="number" min="1" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.uniMedida} onChange={(e) => updateItem(index, 'uniMedida', Number(e.target.value) || 59)} />
+                        </div>
+                        <div className={`${item.tipoItem === 1 ? 'md:col-span-4' : 'md:col-span-6'}`}>
                           <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Descripción</label>
                           <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.descripcion} onChange={(e) => updateItem(index, 'descripcion', e.target.value)} />
                         </div>
                         <div className="md:col-span-2">
-                          <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Cantidad</label>
-                          <input type="number" min="0" step="0.00000001" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.cantidad} onChange={(e) => updateItem(index, 'cantidad', Number(e.target.value) || 0)} />
+                          <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Código</label>
+                          <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.codigo} onChange={(e) => updateItem(index, 'codigo', e.target.value)} placeholder="Opcional" />
                         </div>
                         <div className="md:col-span-2">
-                          <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Uni. medida</label>
-                          <input type="number" min="1" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.uniMedida} onChange={(e) => updateItem(index, 'uniMedida', Number(e.target.value) || 59)} />
-                        </div>
-                        <div className="md:col-span-3">
                           <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Precio unitario sin IVA</label>
                           <input type="number" min="0" step="0.00000001" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.precioUni} onChange={(e) => updateItem(index, 'precioUni', Number(e.target.value) || 0)} />
                         </div>
-                        <div className="md:col-span-3">
+                        <div className="md:col-span-2">
                           <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Descuento</label>
                           <input type="number" min="0" step="0.00000001" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.montoDescu} onChange={(e) => updateItem(index, 'montoDescu', Number(e.target.value) || 0)} />
                         </div>
-                        <div className="md:col-span-3">
+                        <div className="md:col-span-2">
                           <label className="inline-flex items-center gap-2 text-sm text-slate-700 mt-7">
                             <input type="checkbox" className="rounded border-slate-300" checked={item.esExento} onChange={(e) => updateItem(index, 'esExento', e.target.checked)} />
                             Exento
@@ -802,27 +624,19 @@ const CCF03Generator: React.FC = () => {
             </SectionCard>
 
             <SectionCard
-              title="Observaciones y totales"
-              subtitle="Observaciones se envían dentro de `extension.observaciones`; el resumen se calcula automáticamente."
+              title="Observaciones"
+              subtitle="Observaciones se envían dentro de `extension.observaciones`."
               icon={<Sparkles className="w-4 h-4" />}
             >
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Observaciones</label>
-                  <textarea className="w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm min-h-[132px]" value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Comentarios opcionales para el DTE..." />
-                </div>
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <PayloadTag label="Total gravada" value={totales.totalGravada.toFixed(2)} />
-                    <PayloadTag label="IVA 13%" value={totales.iva.toFixed(2)} />
-                    <PayloadTag label="Subtotal ventas" value={totales.subTotalVentas.toFixed(2)} />
-                    <PayloadTag label="Total a pagar" value={totales.totalPagar.toFixed(2)} />
-                  </div>
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                    <p className="text-xs uppercase tracking-wide text-emerald-600 font-semibold">Total en letras</p>
-                    <p className="mt-1 text-sm font-medium text-emerald-900">{payableLabel}</p>
-                  </div>
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Observaciones</label>
+                <textarea 
+                  className="w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm" 
+                  style={{ minHeight: '3.5rem', maxHeight: '3.5rem', resize: 'none' }}
+                  value={observaciones} 
+                  onChange={(e) => setObservaciones(e.target.value)} 
+                  placeholder="Comentarios opcionales para el DTE..." 
+                />
               </div>
             </SectionCard>
 
@@ -838,62 +652,70 @@ const CCF03Generator: React.FC = () => {
           </div>
 
           <aside className="xl:col-span-4 space-y-5 xl:sticky xl:top-24">
-            <SectionCard
-              title="Payload final"
-              subtitle="Este es el cuerpo de transmisión que viajará al backend."
-              icon={<FileJson className="w-4 h-4" />}
-            >
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <PayloadTag label="Business ID" value={resolvedBusinessId} />
-                <PayloadTag label="Receptor email" value={normalizeEmail(receptorEmail)} />
-                <PayloadTag label="tipoDte" value="03" />
-                <PayloadTag label="version" value={3} />
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-950 text-slate-100 p-4 max-h-[340px] overflow-auto">
-                <pre className="text-[11px] leading-5 font-mono whitespace-pre-wrap break-words">{payloadText}</pre>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button onClick={handleGeneratePayload} disabled={isGenerating} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 text-white px-3 py-2 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
-                  <ReceiptText className="w-4 h-4" /> {isGenerating ? 'Generando...' : 'Generar payload'}
-                </button>
-                <button onClick={handleTransmit} disabled={isTransmitting} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 text-white px-3 py-2 text-sm font-medium hover:bg-emerald-700 disabled:opacity-50">
-                  <Send className="w-4 h-4" /> {isTransmitting ? 'Transmitiendo...' : 'Transmitir'}
-                </button>
-              </div>
-            </SectionCard>
-
-            <SectionCard
-              title="Resumen MH"
-              subtitle="Estado recibido del backend al transmitir."
-              icon={<ShieldCheck className="w-4 h-4" />}
-            >
-              {mhResult ? (
-                <div className="space-y-3 text-sm">
-                  <PayloadTag label="Estado" value={mhResult?.mhResponse?.estado || mhResult?.estado || '—'} />
-                  <PayloadTag label="Mensaje" value={mhResult?.mhResponse?.mensaje || mhResult?.message || mhResult?.error || '—'} />
-                  <PayloadTag label="Sello recepción" value={mhResult?.mhResponse?.selloRecepcion || '—'} />
-                  <PayloadTag label="Código generación" value={mhResult?.mhResponse?.codigoGeneracion || generatedDTE?.identificacion.codigoGeneracion || '—'} />
+            <SectionCard title="">
+              <div className="space-y-3">
+                <SelectCatalogo
+                  label="Condición de operación"
+                  catalogo={condicionesOperacion}
+                  value={condicionOperacion}
+                  onChange={(value) => setCondicionOperacion(Number(value) as number)}
+                  showCode
+                />
+                <SelectCatalogo
+                  label="Forma de pago"
+                  catalogo={formasPago}
+                  value={formaPago}
+                  onChange={setFormaPago}
+                  showCode
+                />
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-xs uppercase tracking-wide text-slate-400 font-semibold">Total gravada</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">{totales.totalGravada.toFixed(2)}</p>
+                  <p className="mt-2 text-xs text-slate-500">Subtotal ventas: {totales.subTotalVentas.toFixed(2)} · IVA 13%: {totales.iva.toFixed(2)}</p>
                 </div>
-              ) : (
-                <p className="text-sm text-slate-500">Aún no hay respuesta MH. Genera y transmite el payload para ver el resultado aquí.</p>
-              )}
-            </SectionCard>
-
-            <SectionCard
-              title="Reglas clave"
-              subtitle="Lo que el formulario ya fuerza para evitar errores comunes."
-              icon={<Sparkles className="w-4 h-4" />}
-            >
-              <ul className="space-y-2 text-sm text-slate-600">
-                <li className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">Versión fija <span className="font-semibold">3</span> para tipo DTE <span className="font-semibold">03</span>.</li>
-                <li className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">Precio unitario capturado <span className="font-semibold">sin IVA</span>.</li>
-                <li className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">Tributo <span className="font-semibold">20</span> aplicado por defecto en líneas gravadas.</li>
-                <li className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">Wrapper de transmisión incluye <span className="font-semibold">flowType</span>, <span className="font-semibold">businessId</span> y <span className="font-semibold">receptorEmail</span>.</li>
-              </ul>
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                  <p className="text-xs uppercase tracking-wide text-emerald-600 font-semibold">Total a pagar</p>
+                  <p className="mt-1 text-2xl font-bold text-emerald-900">{totales.totalPagar.toFixed(2)}</p>
+                  <p className="mt-2 text-sm font-medium text-emerald-900">{payableLabel}</p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={handleTransmit}
+                    disabled={isTransmitting}
+                    title={isTransmitting ? 'Transmitiendo...' : 'Transmitir'}
+                    aria-label={isTransmitting ? 'Transmitiendo' : 'Transmitir'}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white px-4 py-3 text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-50 w-full"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>{isTransmitting ? 'Transmitiendo...' : 'Transmitir'}</span>
+                  </button>
+                  <button
+                    onClick={handleReset}
+                    title="Nuevo CCF"
+                    aria-label="Nuevo CCF"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-100 text-slate-700 px-4 py-3 text-sm font-medium hover:bg-slate-200 transition w-full"
+                  >
+                    <FilePlus2 className="w-4 h-4" />
+                    <span>Nuevo CCF</span>
+                  </button>
+                </div>
+              </div>
             </SectionCard>
           </aside>
         </div>
       </div>
+      <CCF03DebugModal
+        open={showDebugModal}
+        onClose={() => setShowDebugModal(false)}
+        payloadText={payloadText}
+        currentPayload={currentPayload}
+        generatedDTE={generatedDTE}
+        mhResult={mhResult}
+        totalGravada={totales.totalGravada}
+        totalPagar={totales.totalPagar}
+        businessId={resolvedBusinessId}
+        receptorEmail={normalizeEmail(receptorEmail)}
+      />
     </div>
   );
 };

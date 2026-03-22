@@ -352,39 +352,6 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      <footer className="hidden md:block border-t border-gray-200 mt-auto bg-white/50">
-        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex justify-between items-center gap-4">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm text-gray-400">
-              &copy; {new Date().getFullYear()} Facturas DTE Pro.
-            </p>
-            <p className="text-xs text-gray-400">
-              Formato diseñado para ser compatible con los lineamientos del Ministerio de Hacienda de El Salvador.
-              <br />
-              Revisa siempre tus archivos en{' '}
-              <a
-                href="https://factura.gob.sv/"
-                target="_blank"
-                rel="noreferrer"
-                className="underline decoration-dotted text-indigo-500 hover:text-indigo-600"
-                title="Ir al sitio oficial del Ministerio de Hacienda (factura.gob.sv) para consultar normativa y validar tus DTE."
-              >
-                factura.gob.sv
-              </a>{' '}
-              antes de presentarlos.
-            </p>
-          </div>
-          <div className="flex flex-col space-y-1 items-end">
-            <div className="flex items-center space-x-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
-               <CheckCircle className="w-3 h-3" />
-               <span>100% Seguro & Privado</span>
-            </div>
-            <div className="text-xs text-gray-400">
-              v{import.meta.env.VITE_APP_VERSION || '1.0.0'}
-            </div>
-          </div>
-        </div>
-      </footer>
       <AdminModal
         isOpen={showAdminModal}
         onClose={() => setShowAdminModal(false)}
