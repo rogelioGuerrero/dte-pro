@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Copy, FileJson, Layers3, ShieldCheck, Sparkles, X } from 'lucide-react';
-import { numeroALetras, redondear, type DTEJSON } from '../utils/dteGenerator';
+import { Copy, FileJson, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { numeroALetras, type DTEJSON } from '../utils/dteGenerator';
 
 interface CCF03DebugModalProps {
   open: boolean;

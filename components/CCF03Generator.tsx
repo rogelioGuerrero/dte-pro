@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FileJson, Plus, ReceiptText, Search, Sparkles, Trash2, Send, FilePlus2 } from 'lucide-react';
+import { FileJson, Plus, Search, Sparkles, Trash2, Send, FilePlus2 } from 'lucide-react';
 import { useEmisor } from '../contexts/EmisorContext';
 import { useToast, ToastContainer } from './Toast';
 import { getClients, type ClientData } from '../utils/clientDb';

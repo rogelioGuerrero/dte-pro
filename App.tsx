@@ -17,7 +17,7 @@ import { UserModeSetup } from './components/UserModeSetup';
 import { shouldShowUserModeSelection } from './utils/remoteLicensing';
 import { licenseValidator } from './utils/licenseValidator';
 import { NavigationTabs } from './components/NavigationTabs';
-import { LayoutDashboard, CheckCircle } from 'lucide-react';
+import { LayoutDashboard } from 'lucide-react';
 import ForceUpdateModal from './components/ForceUpdateModal';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import MiCuenta from './components/MiCuenta';
