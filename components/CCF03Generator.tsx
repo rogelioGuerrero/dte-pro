@@ -46,6 +46,27 @@ interface ReceptorForm {
   correo: string;
 }
 
+// Unidades de medida según catálogo MH
+const UNIDADES_MEDIDA = [
+  { codigo: 1, descripcion: 'Cajas' },
+  { codigo: 2, descripcion: 'Docenas' },
+  { codigo: 3, descripcion: 'Litros' },
+  { codigo: 7, descripcion: 'Kilogramos' },
+  { codigo: 10, descripcion: 'Metros' },
+  { codigo: 17, descripcion: 'Gramos' },
+  { codigo: 23, descripcion: 'Centímetros' },
+  { codigo: 25, descripcion: 'Milímetros' },
+  { codigo: 29, descripcion: 'Mililitros' },
+  { codigo: 41, descripcion: 'Juegos' },
+  { codigo: 47, descripcion: 'Pares' },
+  { codigo: 48, descripcion: 'Paquetes' },
+  { codigo: 59, descripcion: 'Unidades' }, // Valor por defecto
+  { codigo: 71, descripcion: 'Toneladas' },
+  { codigo: 86, descripcion: 'Barriles' },
+  { codigo: 96, descripcion: 'Servicios' },
+  { codigo: 99, descripcion: 'Otra' },
+];
+
 const emptyReceptorForm: ReceptorForm = {
   nit: '',
   nrc: '',
@@ -613,11 +634,21 @@ const CCF03Generator: React.FC = () => {
                             }} 
                           />
                         </div>
-                        <div className={`${item.tipoItem === 1 && item.uniMedida !== 59 ? 'md:col-span-2' : 'hidden'}`}>
+                        <div className={`${item.tipoItem === 1 ? 'md:col-span-2' : 'hidden'}`}>
                           <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Uni. medida</label>
-                          <input type="number" min="1" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.uniMedida} onChange={(e) => updateItem(index, 'uniMedida', Number(e.target.value) || 59)} />
+                          <select 
+                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                            value={item.uniMedida}
+                            onChange={(e) => updateItem(index, 'uniMedida', Number(e.target.value))}
+                          >
+                            {UNIDADES_MEDIDA.map(u => (
+                              <option key={u.codigo} value={u.codigo}>
+                                {u.descripcion}
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                        <div className={`${item.tipoItem === 1 && item.uniMedida !== 59 ? 'md:col-span-4' : item.tipoItem === 1 ? 'md:col-span-6' : 'md:col-span-6'}`}>
+                        <div className={`${item.tipoItem === 1 ? 'md:col-span-4' : 'md:col-span-6'}`}>
                           <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Descripción</label>
                           <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.descripcion} onChange={(e) => updateItem(index, 'descripcion', e.target.value)} />
                         </div>
