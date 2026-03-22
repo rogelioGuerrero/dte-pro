@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ShoppingCart, Trash2, Plus, Minus, Send, Loader2, Search, X, ReceiptText, Package, ChevronRight } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, Send, Loader2, Search, X, ReceiptText, Package, ChevronRight, ArrowRight } from 'lucide-react';
 import { Producto } from '../../types/inventario';
 import { inventarioService } from '../../utils/inventario/inventarioService';
 import { useToast } from '../Toast';
@@ -28,6 +28,36 @@ const PosCF: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
   const [resultadoJSON, setResultadoJSON] = useState<string>('');
   const [respuestaMH, setRespuestaMH] = useState<TransmitDTEResponse | { error: string } | null>(null);
+
+  // Función para convertir a CCF
+  const handleConvertirACCF = () => {
+    if (cart.length === 0) {
+      addToast('No hay items para convertir', 'error');
+      return;
+    }
+
+    // Guardar items actuales en localStorage para que CCF03Generator los use
+    const itemsParaCCF = cart.map(item => ({
+      id: `cart_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      tipoItem: item.producto.gestionarInventario ? 1 : 2, // 1=Bien si gestiona inventario, 2=Servicio
+      codigo: item.producto.codigo || item.producto.codigoPrincipal || '',
+      descripcion: item.producto.descripcion,
+      cantidad: item.cantidad,
+      uniMedida: 59, // Unidad por defecto
+      precioUni: redondear(item.producto.precioSugerido / 1.13, 8), // Convertir precio con IVA a precio sin IVA
+      montoDescu: 0,
+      esExento: false,
+    }));
+    
+    localStorage.setItem('ccf_items_temp', JSON.stringify(itemsParaCCF));
+    localStorage.setItem('ccf_observaciones_temp', '');
+    localStorage.setItem('ccf_forma_pago_temp', '01');
+    localStorage.setItem('ccf_condicion_temp', '1');
+    
+    // Cambiar al tab de CCF (factura)
+    window.dispatchEvent(new CustomEvent('switch-tab', { detail: { tab: 'factura' } }));
+    addToast('Items convertidos para CCF. Los precios se ajustaron sin IVA.', 'success');
+  };
   const [mobileView, setMobileView] = useState<'productos' | 'carrito'>('productos');
   const [showTechnicalDetail, setShowTechnicalDetail] = useState(false);
 
@@ -576,6 +606,17 @@ const PosCF: React.FC = () => {
                   </div>
 
                   <div className="mt-4 grid gap-2">
+                    {/* Botón para convertir a CCF */}
+                    {cart.length > 0 && (
+                      <button
+                        onClick={handleConvertirACCF}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                        Cliente quiere CCF? Convertir
+                      </button>
+                    )}
+
                     <button
                       onClick={transmitir}
                       disabled={isSending || cart.length === 0}
