@@ -75,6 +75,7 @@ export interface DTEJSON {
     numDocumento?: string | null;
     nrc: string | null;
     nombre: string;
+    nombreComercial?: string | null;
     codActividad: string | null;
     descActividad: string | null;
     direccion: {

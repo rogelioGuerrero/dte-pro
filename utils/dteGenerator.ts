@@ -127,7 +127,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const tributosResumen = datos.tipoDocumento === '03'
     ? (totalIva > 0 ? [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }] : null)
     : (datos.tipoDocumento === '01'
-      ? null
+      ? (totalIva > 0 ? [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }] : null)
       : (aplicaIVAResumen && totalGravada > 0 && totalIva > 0
         ? [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }]
         : null));
@@ -146,15 +146,6 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
         ? (datos.receptor.actividadEconomica || '').trim()
         : null);
 
-  const receptorDireccion =
-    isCodDepartamento(datos.receptor.departamento) && isCodMunicipio(datos.receptor.municipio)
-      ? {
-          departamento: datos.receptor.departamento.trim(),
-          municipio: datos.receptor.municipio.trim(),
-          complemento: datos.receptor.direccion || '',
-        }
-      : null;
-
   const emisorCodActividad = normalizeEmisorCodActividad(datos.emisor.actividadEconomica);
   const emisorDescActividad = (datos.emisor.descActividad || '').trim();
   
@@ -169,7 +160,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const emisorCodEstableMH = (datos.emisor.codEstableMH || 'M001').trim();
   const emisorCodPuntoVentaMH = (datos.emisor.codPuntoVentaMH || 'P001').trim();
   const receptorNombre = normalizeRequiredText(datos.receptor.name, 'Consumidor Final');
-  const receptorTelefono = normalizePhone(datos.receptor.telefono);
+  const receptorTelefono = isCreditoFiscal ? normalizePhone(datos.receptor.telefono) : null;
   const receptorCorreo = normalizeOptionalText(datos.receptor.email);
   const receptorNit = isCreditoFiscal
     ? ((receptorIdDigits.length === 9 || receptorIdDigits.length === 14) ? receptorIdDigits : '')
@@ -181,12 +172,17 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
         municipio: normalizeMunicipioOrFallback(datos.receptor.municipio),
         complemento: normalizeRequiredText(datos.receptor.direccion, 'Dirección del receptor'),
       }
-    : receptorDireccion;
+    : {
+        departamento: normalizeDepartamentoOrFallback(datos.receptor.departamento),
+        municipio: normalizeMunicipioOrFallback(datos.receptor.municipio),
+        complemento: normalizeRequiredText(datos.receptor.direccion, 'Dirección del receptor'),
+      };
 
   const receptorBase = {
     ...(isCreditoFiscal && receptorNit ? { nit: receptorNit } : {}),
     nrc: receptorNrc || null,
     nombre: receptorNombre,
+    nombreComercial: null,
     codActividad: isCreditoFiscal ? (receptorCodActividad || '00000') : receptorCodActividad,
     descActividad: isCreditoFiscal
       ? (receptorDescActividad || normalizeRequiredText(datos.receptor.descActividad || datos.receptor.actividadEconomica, 'GIRO NO ESPECIFICADO'))
