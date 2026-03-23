@@ -140,19 +140,6 @@ export const validateDteRules = (dte: DTEJSON): ErrorValidacionMH[] => {
     });
   }
 
-  const ivaTributo = dte.resumen.tributos?.find((t) => t.codigo === '20');
-  if (ivaTributo) {
-    const ivaCalculado = dte.resumen.totalGravada * 0.13;
-    if (!near(ivaTributo.valor, ivaCalculado, 0.02)) {
-      errores.push({
-        codigo: 'RULE-0300',
-        campo: 'resumen.tributos[codigo=20].valor',
-        descripcion: `IVA incorrecto: ${ivaTributo.valor} ≠ ${ivaCalculado} (13% de ${dte.resumen.totalGravada})`,
-        severidad: 'ERROR',
-      });
-    }
-  }
-
   if (!dte.resumen.totalLetras || !dte.resumen.totalLetras.trim().endsWith('USD')) {
     errores.push({
       codigo: 'RULE-0400',
