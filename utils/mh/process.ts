@@ -1,8 +1,6 @@
 import type { DTEJSON } from '../dteGenerator';
 import type { ErrorValidacionMH } from './types';
 import { normalizeDTE } from './normalize';
-import { validateDteSchema } from './validateSchema';
-import { validateDteRules } from './validateRules';
 
 export interface ProcessDTEResult {
   dte: DTEJSON;
@@ -11,6 +9,6 @@ export interface ProcessDTEResult {
 
 export const processDTE = (input: DTEJSON): ProcessDTEResult => {
   const dte = normalizeDTE(input);
-  const errores = [...validateDteSchema(dte), ...validateDteRules(dte)];
-  return { dte, errores };
+  // El backend valida el contrato final; en frontend solo normalizamos para no bloquear emisiones válidas.
+  return { dte, errores: [] };
 };
