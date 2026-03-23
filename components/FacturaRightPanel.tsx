@@ -16,9 +16,7 @@ interface FacturaRightPanelProps {
   totales: TotalesResumen;
   selectedReceptor: ClientData | null;
   generatedDTE: DTEJSON | null;
-  formaPago: string;
   tipoDocumento?: string;
-  requiereStripe: (formaPago: string) => boolean;
   onOpenDTEPreview: () => void;
   onTransmit: () => void;
   onDeleteDTE: () => void;
@@ -28,9 +26,7 @@ export const FacturaRightPanel: React.FC<FacturaRightPanelProps> = ({
   totales,
   selectedReceptor,
   generatedDTE,
-  formaPago,
   tipoDocumento = '01',
-  requiereStripe,
   onOpenDTEPreview,
   onTransmit,
   onDeleteDTE,
@@ -135,7 +131,7 @@ export const FacturaRightPanel: React.FC<FacturaRightPanelProps> = ({
               className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-colors"
             >
               <FileText className="w-4 h-4" />
-              {requiereStripe(formaPago) ? 'Cobrar con Tarjeta' : 'Transmitir a Hacienda'}
+              Cobrar
             </button>
 
             <button

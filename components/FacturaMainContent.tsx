@@ -66,7 +66,6 @@ interface FacturaMainContentProps {
   onNuevaFactura: () => void;
   // Right column props
   totales: any;
-  requiereStripe: (formaPago: string) => boolean;
   onOpenDTEPreview: () => void;
   onTransmit: () => void;
   onDeleteDTE: () => void;
@@ -114,7 +113,6 @@ export const FacturaMainContent: React.FC<FacturaMainContentProps> = ({
   onNuevaFactura,
   // Right column
   totales,
-  requiereStripe,
   onOpenDTEPreview,
   onTransmit,
   onDeleteDTE,
@@ -211,9 +209,7 @@ export const FacturaMainContent: React.FC<FacturaMainContentProps> = ({
         totales={totales}
         selectedReceptor={selectedReceptor}
         generatedDTE={generatedDTE}
-        formaPago={formaPago}
         tipoDocumento={tipoDocumento}
-        requiereStripe={requiereStripe}
         onOpenDTEPreview={onOpenDTEPreview}
         onTransmit={onTransmit}
         onDeleteDTE={onDeleteDTE}
