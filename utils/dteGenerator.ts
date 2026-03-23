@@ -79,9 +79,12 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       ? redondear(baseImponibleItem / cantidad, 8)
       : redondear(item.precioUni, 8);
 
-    // FE (01) no debe enviar tributos desde el frontend; el backend los arma
+    const ivaItem = datos.tipoDocumento === '03'
+      ? 0
+      : (ventaGravada > 0 ? redondear(ventaGravada * 0.13, 2) : 0);
+
     const tributos = datos.tipoDocumento === '01'
-      ? null
+      ? (ivaItem > 0 ? ['20'] : null)
       : (datos.tipoDocumento === '03'
         ? ['20']
         : (ventaGravada > 0 ? item.tributos : null));
@@ -103,7 +106,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       codTributo: null,
       psv: item.psv ? redondear(item.psv, 2) : 0,
       noGravado: item.noGravado ? redondear(item.noGravado, 2) : 0,
-      ...(datos.tipoDocumento === '03' ? {} : { ivaItem: redondear(item.ivaItem || 0, 2) }),
+      ...(datos.tipoDocumento === '03' ? {} : { ivaItem }),
     };
   });
 
