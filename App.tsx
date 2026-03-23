@@ -4,7 +4,7 @@ import FiscalDashboard from './components/dashboard/FiscalDashboard';
 import ClientManager from './components/ClientManager';
 import SistemaInventario from './components/inventario/SistemaInventario';
 import CCF03Generator from './components/CCF03Generator';
-import DTEDashboard from './components/DTEDashboard';
+import HistoryWrapper from './components/HistoryWrapper';
 import AdminModal from './components/AdminModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import ClientFormPage from './components/ClientFormPage';
@@ -321,7 +321,7 @@ const App: React.FC = () => {
         {activeTab === 'clients' && (businessId ? <ClientManager /> : <Placeholder />)}
         {activeTab === 'inventory' && (businessId ? <SistemaInventario /> : <Placeholder />)}
         {activeTab === 'factura' && <CCF03Generator />}
-        {activeTab === 'historial' && (businessId ? <DTEDashboard /> : <Placeholder />)}
+        {activeTab === 'historial' && (businessId ? <HistoryWrapper /> : <Placeholder />)}
         {activeTab === 'micuenta' && (
           <MiCuenta
             onBack={() => setActiveTab('factura')}

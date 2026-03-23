@@ -2,6 +2,10 @@
 export const BACKEND_CONFIG = {
   // URL del backend (apuntando al backend en LangGraph/api-dte)
   URL: import.meta.env.VITE_BACKEND_URL || 'https://api-dte.onrender.com',
+  API_URL: import.meta.env.VITE_BACKEND_URL || 'https://api-dte.onrender.com',
+  
+  // Configuración para usar backend en historial
+  USE_BACKEND_HISTORY: import.meta.env.VITE_USE_BACKEND_HISTORY === 'true',
   
   // Timeouts
   TIMEOUTS: {

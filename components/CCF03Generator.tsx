@@ -487,7 +487,7 @@ const CCF03Generator: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-          <div className="xl:col-span-8 space-y-8">
+          <div className="xl:col-span-9 space-y-8">
             <SectionCard title="">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -727,7 +727,7 @@ const CCF03Generator: React.FC = () => {
             )}
           </div>
 
-          <aside className="xl:col-span-4 space-y-8 xl:sticky xl:top-24">
+          <aside className="xl:col-span-3 space-y-8 xl:sticky xl:top-24">
             <SectionCard title="">
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
