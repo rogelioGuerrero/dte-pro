@@ -12,7 +12,6 @@ import {
   calcularTotales,
   generarCorrelativoControlado,
   generarDTE,
-  numeroALetras,
   redondear,
   type DTEJSON,
   type ItemFactura,
@@ -134,15 +133,15 @@ const SectionCard: React.FC<{
   children: React.ReactNode;
   actions?: React.ReactNode;
 }> = ({ title, subtitle, icon, children, actions }) => (
-  <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+  <section className="bg-gray-100 rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
     {(title || subtitle || icon || actions) && (
-      <div className="px-4 md:px-6 py-4 border-b border-slate-100 flex items-start justify-between gap-4 bg-slate-50/70">
+      <div className="px-4 md:px-6 py-4 border-b border-gray-200 flex items-start justify-between gap-4 bg-white/50">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
             {icon}
             {title}
           </h2>
-          {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-gray-600 mt-1">{subtitle}</p>}
         </div>
         {actions}
       </div>
@@ -151,12 +150,6 @@ const SectionCard: React.FC<{
   </section>
 );
 
-const PayloadTag: React.FC<{ label: string; value: string | number | null | undefined }> = ({ label, value }) => (
-  <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-    <p className="text-[11px] uppercase tracking-wide text-slate-400">{label}</p>
-    <p className="mt-1 text-sm font-mono text-slate-800 break-all">{value === null || value === undefined || value === '' ? '—' : String(value)}</p>
-  </div>
-);
 
 const CCF03Generator: React.FC = () => {
   const { toasts, addToast, removeToast } = useToast();
@@ -461,7 +454,6 @@ const CCF03Generator: React.FC = () => {
 
   const currentPayload = generatedDTE ? buildWrapper(generatedDTE) : null;
   const payloadText = currentPayload ? JSON.stringify(currentPayload, null, 2) : 'Genera el payload para visualizar aquí la estructura final.';
-  const payableLabel = numeroALetras(totales.totalPagar) || '';
 
   if (loading) {
     return (
@@ -474,7 +466,7 @@ const CCF03Generator: React.FC = () => {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50/80">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-8">
         <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -495,7 +487,7 @@ const CCF03Generator: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-          <div className="xl:col-span-8 space-y-5">
+          <div className="xl:col-span-8 space-y-8">
             <SectionCard title="">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -612,21 +604,21 @@ const CCF03Generator: React.FC = () => {
                           <Trash2 className="w-3.5 h-3.5" /> Eliminar
                         </button>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                        <div className="md:col-span-2">
-                          <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Tipo ítem</label>
-                          <select className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white" value={item.tipoItem} onChange={(e) => updateItem(index, 'tipoItem', Number(e.target.value) as 1 | 2)}>
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                        <div className="md:col-span-3">
+                          <label className="block text-sm font-semibold text-black uppercase mb-2">Tipo ítem</label>
+                          <select className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white" value={item.tipoItem} onChange={(e) => updateItem(index, 'tipoItem', Number(e.target.value) as 1 | 2)}>
                             <option value={1}>Bien</option>
                             <option value={2}>Servicio</option>
                           </select>
                         </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Cantidad</label>
+                        <div className="md:col-span-3">
+                          <label className="block text-sm font-semibold text-black uppercase mb-2">Cantidad</label>
                           <input 
                             type="number" 
                             min="1" 
                             step="1" 
-                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" 
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" 
                             value={item.cantidad} 
                             onChange={(e) => {
                               const val = parseInt(e.target.value) || 1;
@@ -634,10 +626,10 @@ const CCF03Generator: React.FC = () => {
                             }} 
                           />
                         </div>
-                        <div className={`${item.tipoItem === 1 ? 'md:col-span-2' : 'hidden'}`}>
-                          <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Uni. medida</label>
+                        <div className={`${item.tipoItem === 1 ? 'md:col-span-3' : 'hidden'}`}>
+                          <label className="block text-sm font-semibold text-black uppercase mb-2">Uni. medida</label>
                           <select 
-                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                             value={item.uniMedida}
                             onChange={(e) => updateItem(index, 'uniMedida', Number(e.target.value))}
                           >
@@ -648,34 +640,58 @@ const CCF03Generator: React.FC = () => {
                             ))}
                           </select>
                         </div>
-                        <div className={`${item.tipoItem === 1 ? 'md:col-span-4' : 'md:col-span-6'}`}>
-                          <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Descripción</label>
-                          <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.descripcion} onChange={(e) => updateItem(index, 'descripcion', e.target.value)} />
+                      </div>
+                      
+                      <div className="mt-4">
+                        <label className="block text-sm font-semibold text-black uppercase mb-2">Descripción</label>
+                        <input className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" value={item.descripcion} onChange={(e) => updateItem(index, 'descripcion', e.target.value)} />
+                      </div>
+                      
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-semibold text-black uppercase mb-2">Código</label>
+                          <input className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" value={item.codigo} onChange={(e) => updateItem(index, 'codigo', e.target.value)} placeholder="Opcional" />
                         </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Código</label>
-                          <input className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.codigo} onChange={(e) => updateItem(index, 'codigo', e.target.value)} placeholder="Opcional" />
+                        <div>
+                          <label className="block text-sm font-semibold text-black uppercase mb-2">Precio unitario sin IVA</label>
+                          <input type="number" min="0" step="0.01" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" value={item.precioUni.toFixed(2)} onChange={(e) => updateItem(index, 'precioUni', Number(e.target.value) || 0)} />
                         </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Precio unitario sin IVA</label>
-                          <input type="number" min="0" step="0.01" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.precioUni.toFixed(2)} onChange={(e) => updateItem(index, 'precioUni', Number(e.target.value) || 0)} />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-xs font-medium text-slate-500 uppercase mb-1">Descuento</label>
-                          <input type="number" min="0" step="0.00000001" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" value={item.montoDescu} onChange={(e) => updateItem(index, 'montoDescu', Number(e.target.value) || 0)} />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="inline-flex items-center gap-2 text-sm text-slate-700 mt-7">
-                            <input type="checkbox" className="rounded border-slate-300" checked={item.esExento} onChange={(e) => updateItem(index, 'esExento', e.target.checked)} />
-                            Exento
-                          </label>
+                        <div>
+                          <label className="block text-sm font-semibold text-black uppercase mb-2">Descuento</label>
+                          <input 
+                            type="number" 
+                            min="0" 
+                            step="1" 
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" 
+                            value={item.montoDescu.toFixed(2)} 
+                            onChange={(e) => updateItem(index, 'montoDescu', Number(e.target.value) || 0)} 
+                          />
                         </div>
                       </div>
-                      <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                        <PayloadTag label="Base línea" value={redondear((item.cantidad || 0) * (item.precioUni || 0) - (item.montoDescu || 0), 2).toFixed(2)} />
-                        <PayloadTag label="Venta gravada" value={preview ? preview.ventaGravada.toFixed(2) : '0.00'} />
-                        <PayloadTag label="IVA línea" value={preview ? Number(preview.ivaItem || 0).toFixed(2) : '0.00'} />
-                        <PayloadTag label="Tributo" value={item.esExento ? 'Ninguno' : '20 / IVA 13%' } />
+                      
+                      <div className="mt-4">
+                        <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                          <input type="checkbox" className="rounded border-gray-300" checked={item.esExento} onChange={(e) => updateItem(index, 'esExento', e.target.checked)} />
+                          Exento de Impuestos
+                        </label>
+                      </div>
+                      <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="rounded-lg border border-gray-300 bg-gray-50 p-3">
+                          <p className="text-xs text-gray-500 uppercase">Base línea</p>
+                          <p className="text-sm font-semibold text-gray-900">{redondear((item.cantidad || 0) * (item.precioUni || 0) - (item.montoDescu || 0), 2).toFixed(2)}</p>
+                        </div>
+                        <div className="rounded-lg border border-gray-300 bg-gray-50 p-3">
+                          <p className="text-xs text-gray-500 uppercase">Venta gravada</p>
+                          <p className="text-sm font-semibold text-gray-900">{preview ? preview.ventaGravada.toFixed(2) : '0.00'}</p>
+                        </div>
+                        <div className="rounded-lg border border-gray-300 bg-gray-50 p-3">
+                          <p className="text-xs text-gray-500 uppercase">IVA línea</p>
+                          <p className="text-sm font-semibold text-gray-900">{preview ? Number(preview.ivaItem || 0).toFixed(2) : '0.00'}</p>
+                        </div>
+                        <div className="rounded-lg border border-gray-300 bg-gray-50 p-3">
+                          <p className="text-xs text-gray-500 uppercase">Tributo</p>
+                          <p className="text-sm font-semibold text-gray-900">{item.esExento ? 'Ninguno' : '20 / IVA 13%' }</p>
+                        </div>
                       </div>
                     </div>
                   );
@@ -711,43 +727,66 @@ const CCF03Generator: React.FC = () => {
             )}
           </div>
 
-          <aside className="xl:col-span-4 space-y-5 xl:sticky xl:top-24">
+          <aside className="xl:col-span-4 space-y-8 xl:sticky xl:top-24">
             <SectionCard title="">
-              <div className="space-y-3">
-                <SelectCatalogo
-                  label="Condición de operación"
-                  catalogo={condicionesOperacion}
-                  value={condicionOperacion}
-                  onChange={(value) => setCondicionOperacion(Number(value) as number)}
-                  showCode
-                />
-                <SelectCatalogo
-                  label="Forma de pago"
-                  catalogo={formasPago}
-                  value={formaPago}
-                  onChange={setFormaPago}
-                  showCode
-                />
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <p className="text-xs uppercase tracking-wide text-slate-400 font-semibold">Total gravada</p>
-                  <p className="mt-1 text-2xl font-bold text-slate-900">{totales.totalGravada.toFixed(2)}</p>
-                  <p className="mt-2 text-xs text-slate-500">Subtotal ventas: {totales.subTotalVentas.toFixed(2)} · IVA 13%: {totales.iva.toFixed(2)}</p>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <SelectCatalogo
+                    label="CONDICIÓN DE OPERACIÓN"
+                    catalogo={condicionesOperacion}
+                    value={condicionOperacion}
+                    onChange={(value) => setCondicionOperacion(Number(value) as number)}
+                    showCode
+                  />
+                  <SelectCatalogo
+                    label="FORMA DE PAGO"
+                    catalogo={formasPago}
+                    value={formaPago}
+                    onChange={setFormaPago}
+                    showCode
+                  />
                 </div>
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
-                  <p className="text-xs uppercase tracking-wide text-emerald-600 font-semibold">Total a pagar</p>
-                  <p className="mt-1 text-2xl font-bold text-emerald-900">{totales.totalPagar.toFixed(2)}</p>
-                  <p className="mt-2 text-sm font-medium text-emerald-900">{payableLabel}</p>
+                
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-4">Resumen del Documento</h3>
+                  
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Subtotal (Gravada):</span>
+                      <span className="text-sm font-medium text-gray-900">${totales.totalGravada.toFixed(2)}</span>
+                    </div>
+                    
+                    {totales.totalDescu > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">(-) Total Descuento:</span>
+                        <span className="text-sm font-medium text-red-600">-${totales.totalDescu.toFixed(2)}</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">(+) IVA (13%):</span>
+                      <span className="text-sm font-medium text-gray-900">${totales.iva.toFixed(2)}</span>
+                    </div>
+                    
+                    <div className="border-t border-gray-300 pt-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-base font-semibold text-gray-800">TOTAL A PAGAR:</span>
+                        <span className="text-lg font-bold text-gray-900">${totales.totalPagar.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-2">
+                
+                <div className="flex flex-col gap-2 pt-2">
                   <button
                     onClick={handleTransmit}
                     disabled={isTransmitting}
-                    title={isTransmitting ? 'Transmitiendo...' : 'Transmitir'}
-                    aria-label={isTransmitting ? 'Transmitiendo' : 'Transmitir'}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white px-4 py-3 text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-50 w-full"
+                    title={isTransmitting ? 'Transmitiendo...' : 'Firmar y Emitir Documento'}
+                    aria-label={isTransmitting ? 'Transmitiendo' : 'Firmar y Emitir Documento'}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-black text-white px-4 py-3 text-sm font-medium hover:bg-gray-800 transition disabled:opacity-50 w-full"
                   >
                     <Send className="w-4 h-4" />
-                    <span>{isTransmitting ? 'Transmitiendo...' : 'Transmitir'}</span>
+                    <span>{isTransmitting ? 'Transmitiendo...' : 'Firmar y Emitir Documento'}</span>
                   </button>
                   <button
                     onClick={handleReset}
