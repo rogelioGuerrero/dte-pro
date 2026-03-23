@@ -364,7 +364,7 @@ const PosCF: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(360px,0.95fr)] lg:p-6">
+          <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,0.78fr)] lg:p-6">
             <section className={`${mobileView === 'carrito' ? 'hidden lg:flex' : 'flex'} min-h-0 flex-col rounded-3xl border border-gray-200 bg-gray-50`}>
               <div className="space-y-4 border-b border-gray-200 p-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
