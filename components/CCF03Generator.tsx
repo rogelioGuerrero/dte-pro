@@ -783,7 +783,7 @@ const CCF03Generator: React.FC = () => {
                     disabled={isTransmitting}
                     title={isTransmitting ? 'Transmitiendo...' : 'Firmar y Emitir Documento'}
                     aria-label={isTransmitting ? 'Transmitiendo' : 'Firmar y Emitir Documento'}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-black text-white px-4 py-3 text-sm font-medium hover:bg-gray-800 transition disabled:opacity-50 w-full"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-100 text-slate-800 px-4 py-3 text-sm font-medium hover:bg-slate-200 transition disabled:opacity-50 w-full border border-slate-200"
                   >
                     <Send className="w-4 h-4" />
                     <span>{isTransmitting ? 'Transmitiendo...' : 'Firmar y Emitir Documento'}</span>

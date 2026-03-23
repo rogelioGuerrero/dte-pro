@@ -1,4 +1,5 @@
-import { BACKEND_CONFIG, buildBackendHeaders } from '../backendConfig';
+import { BACKEND_CONFIG, getBackendAuthToken } from '../backendConfig';
+import { apiFetch } from '../apiClient';
 import type { DTEHistoryParams, DTEHistoryResponse, ResumenVentasParams, ResumenVentasResponse } from '../../types/history';
 
 /**
@@ -15,19 +16,9 @@ export async function getDTEHistory(businessId: string, params?: DTEHistoryParam
   if (params?.limit) queryParams.append('limit', params.limit.toString());
   if (params?.offset) queryParams.append('offset', params.offset.toString());
 
-  const response = await fetch(
-    `${BACKEND_CONFIG.API_URL}/api/dte/business/${businessId}/dtes?${queryParams.toString()}`,
-    {
-      method: 'GET',
-      headers: buildBackendHeaders(),
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Error al obtener historial: ${response.statusText}`);
-  }
-
-  return response.json();
+  return apiFetch<DTEHistoryResponse>(`/api/dte/business/${businessId}/dtes?${queryParams.toString()}`, {
+    method: 'GET',
+  });
 }
 
 /**
@@ -39,30 +30,23 @@ export async function getResumenVentas(businessId: string, params: ResumenVentas
   queryParams.append('fechaHasta', params.fechaHasta);
   if (params.tipoDte) queryParams.append('tipoDte', params.tipoDte);
 
-  const response = await fetch(
-    `${BACKEND_CONFIG.API_URL}/api/dte/business/${businessId}/resumen?${queryParams.toString()}`,
-    {
-      method: 'GET',
-      headers: buildBackendHeaders(),
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Error al obtener resumen: ${response.statusText}`);
-  }
-
-  return response.json();
+  return apiFetch<ResumenVentasResponse>(`/api/dte/business/${businessId}/resumen?${queryParams.toString()}`, {
+    method: 'GET',
+  });
 }
 
 /**
  * Descarga el PDF de un DTE
  */
 export async function downloadDTEPdf(businessId: string, codigoGeneracion: string): Promise<Blob> {
+  const token = getBackendAuthToken();
   const response = await fetch(
     `${BACKEND_CONFIG.API_URL}/api/dte/business/${businessId}/dtes/${codigoGeneracion}/pdf`,
     {
       method: 'GET',
-      headers: buildBackendHeaders(),
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     }
   );
 
@@ -77,11 +61,14 @@ export async function downloadDTEPdf(businessId: string, codigoGeneracion: strin
  * Descarga el XML de un DTE
  */
 export async function downloadDTEXml(businessId: string, codigoGeneracion: string): Promise<Blob> {
+  const token = getBackendAuthToken();
   const response = await fetch(
     `${BACKEND_CONFIG.API_URL}/api/dte/business/${businessId}/dtes/${codigoGeneracion}/xml`,
     {
       method: 'GET',
-      headers: buildBackendHeaders(),
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     }
   );
 
