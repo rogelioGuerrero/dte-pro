@@ -335,7 +335,7 @@ const App: React.FC = () => {
         ) : <Placeholder />)}
         {activeTab === 'poscf' && (businessId ? (
           <React.Suspense fallback={<div>Cargando...</div>}>
-            {React.createElement(React.lazy(() => import('./components/pages/PosCF')))}
+            {React.createElement(React.lazy(() => import('./components/pages/Factura01')))}
           </React.Suspense>
         ) : <Placeholder />)}
       </main>
