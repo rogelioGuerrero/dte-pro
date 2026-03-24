@@ -175,196 +175,184 @@ const Factura01Page: React.FC = () => {
     : '';
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 px-4 py-4 md:space-y-6 md:px-6 md:py-6">
-      <section className="rounded-3xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-4 border-b border-gray-100 p-4 md:p-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <div className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-gray-600">
+    <div className="mx-auto max-w-4xl px-3 py-3 sm:px-4 md:px-6 md:py-6">
+      <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="border-b border-gray-100 px-4 py-4 md:px-6 md:py-5">
+          <div className="flex flex-col gap-3">
+            <div className="inline-flex w-fit items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-600">
               Factura 01
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900 md:text-2xl">Consumidor final</h1>
-              <p className="text-sm text-gray-500">Captura lo esencial y envía.</p>
+              <h1 className="text-2xl font-semibold text-gray-900 md:text-3xl">Consumidor final</h1>
+              <p className="mt-1 text-sm text-gray-500 md:text-base">Escribe lo mínimo y pulsa enviar.</p>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-              <div className="text-[11px] uppercase tracking-wide text-gray-500">Líneas</div>
-              <div className="mt-1 text-lg font-semibold text-gray-900">{lines.length}</div>
-            </div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-              <div className="text-[11px] uppercase tracking-wide text-gray-500">IVA</div>
-              <div className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(lineTotals.iva)}</div>
-            </div>
-            <div className="col-span-2 rounded-2xl border border-gray-900 bg-gray-900 px-4 py-3 text-white sm:col-span-1">
-              <div className="text-[11px] uppercase tracking-wide text-gray-300">Total</div>
-              <div className="mt-1 text-lg font-semibold">{formatCurrency(lineTotals.total)}</div>
+            <div className="flex flex-wrap gap-2 text-sm text-gray-600">
+              <span className="rounded-full bg-gray-100 px-3 py-1">Líneas: {lines.length}</span>
+              <span className="rounded-full bg-gray-100 px-3 py-1">IVA: {formatCurrency(lineTotals.iva)}</span>
+              <span className="rounded-full bg-gray-900 px-3 py-1 font-semibold text-white">Total: {formatCurrency(lineTotals.total)}</span>
             </div>
           </div>
         </div>
 
         {!emisor && (
-          <div className="mx-4 mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 md:mx-5 md:mt-5">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
-              <span>Guarda el emisor antes de emitir.</span>
+          <div className="mx-4 mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900 md:mx-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+              <span>Primero guarda el emisor para poder emitir.</span>
             </div>
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 p-4 md:p-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="space-y-4">
-            <section className="rounded-3xl border border-gray-200 bg-gray-50 p-4">
-              <div className="grid gap-3 md:grid-cols-[160px_minmax(0,1fr)] md:items-end">
-                <label className="space-y-1">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Ambiente</span>
-                  <select
-                    value={ambiente}
-                    onChange={(e) => setAmbiente(e.target.value as '00' | '01')}
-                    className="w-full rounded-2xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-700 outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
-                  >
-                    <option value="00">Pruebas</option>
-                    <option value="01">Producción</option>
-                  </select>
-                </label>
-
-                <label className="space-y-1">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Correo del cliente</span>
-                  <input
-                    type="email"
-                    value={receptorEmail}
-                    onChange={(e) => setReceptorEmail(e.target.value)}
-                    placeholder="opcional@correo.com"
-                    className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
-                  />
-                </label>
-              </div>
-            </section>
-
-            <section className="rounded-3xl border border-gray-200 bg-white">
-              <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 md:px-5">
-                <div>
-                  <h2 className="text-sm font-semibold text-gray-900">Líneas</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={addLine}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:border-gray-300 hover:bg-gray-50"
+        <div className="space-y-5 px-4 py-4 md:px-6 md:py-6">
+          <section className="rounded-2xl border border-gray-200 bg-gray-50 p-4 md:p-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="space-y-2">
+                <span className="block text-sm font-medium text-gray-700">Ambiente</span>
+                <select
+                  value={ambiente}
+                  onChange={(e) => setAmbiente(e.target.value as '00' | '01')}
+                  className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-base text-gray-800 outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
                 >
-                  <Plus className="h-4 w-4" />
-                  Agregar línea
-                </button>
-              </div>
+                  <option value="00">Pruebas</option>
+                  <option value="01">Producción</option>
+                </select>
+              </label>
 
-              <div className="space-y-3 p-4 md:p-5">
-                {lines.map((line, index) => (
-                  <div key={line.id} className="grid gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4 md:grid-cols-[minmax(0,1.6fr)_96px_116px_96px_auto] md:items-end">
-                    <label className="space-y-1 md:col-span-1">
-                      <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Producto</span>
+              <label className="space-y-2">
+                <span className="block text-sm font-medium text-gray-700">Correo del cliente</span>
+                <input
+                  type="email"
+                  value={receptorEmail}
+                  onChange={(e) => setReceptorEmail(e.target.value)}
+                  placeholder="opcional@correo.com"
+                  className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-base text-gray-800 outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                />
+              </label>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-gray-200 bg-white">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 md:px-5">
+              <h2 className="text-base font-semibold text-gray-900">Líneas</h2>
+              <button
+                type="button"
+                onClick={addLine}
+                className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50"
+              >
+                <Plus className="h-4 w-4" />
+                Agregar
+              </button>
+            </div>
+
+            <div className="space-y-4 px-4 py-4 md:px-5 md:py-5">
+              {lines.map((line, index) => (
+                <div key={line.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-800">Línea {index + 1}</p>
+                    <button
+                      type="button"
+                      onClick={() => removeLine(line.id)}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium text-gray-500 transition hover:bg-white hover:text-red-600"
+                      title="Eliminar línea"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Quitar
+                    </button>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-4">
+                    <label className="space-y-2 md:col-span-2">
+                      <span className="block text-sm font-medium text-gray-700">Producto</span>
                       <input
                         type="text"
                         value={line.descripcion}
                         onChange={(e) => updateLine(line.id, { descripcion: e.target.value })}
                         placeholder={`Producto ${index + 1}`}
-                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-base text-gray-800 outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
                       />
                     </label>
 
-                    <label className="space-y-1">
-                      <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Cant.</span>
+                    <label className="space-y-2">
+                      <span className="block text-sm font-medium text-gray-700">Cant.</span>
                       <input
                         type="number"
                         min="1"
                         step="1"
                         value={line.cantidad}
                         onChange={(e) => updateLine(line.id, { cantidad: Number(e.target.value) })}
-                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-base text-gray-800 outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
                       />
                     </label>
 
-                    <label className="space-y-1">
-                      <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Precio</span>
+                    <label className="space-y-2">
+                      <span className="block text-sm font-medium text-gray-700">Precio</span>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
                         value={line.precioUnitario}
                         onChange={(e) => updateLine(line.id, { precioUnitario: Number(e.target.value) })}
-                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-base text-gray-800 outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
                       />
                     </label>
 
-                    <label className="space-y-1">
-                      <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Desc.</span>
+                    <label className="space-y-2">
+                      <span className="block text-sm font-medium text-gray-700">Desc.</span>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
                         value={line.descuento}
                         onChange={(e) => updateLine(line.id, { descuento: Number(e.target.value) })}
-                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+                        className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-base text-gray-800 outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
                       />
                     </label>
-
-                    <button
-                      type="button"
-                      onClick={() => removeLine(line.id)}
-                      className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-400 transition hover:border-red-200 hover:text-red-600"
-                      title="Eliminar línea"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
                   </div>
-                ))}
-              </div>
-            </section>
-          </div>
+                </div>
+              ))}
+            </div>
+          </section>
 
-          <aside className="space-y-4">
-            <section className="rounded-3xl border border-gray-200 bg-white p-4 md:p-5">
-              <h2 className="text-sm font-semibold text-gray-900">Resumen</h2>
-              <div className="mt-4 space-y-3 text-sm">
-                <div className="flex items-center justify-between text-gray-600">
-                  <span>Base gravada estimada</span>
-                  <span className="font-medium text-gray-900">{formatCurrency(lineTotals.base)}</span>
-                </div>
-                <div className="flex items-center justify-between text-gray-600">
-                  <span>IVA 13%</span>
-                  <span className="font-medium text-gray-900">{formatCurrency(lineTotals.iva)}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-2xl bg-gray-900 px-4 py-3 text-white">
-                  <span>Total a pagar</span>
-                  <span className="text-base font-semibold">{formatCurrency(lineTotals.total)}</span>
-                </div>
-              </div>
-            </section>
+          <section className="rounded-2xl border border-gray-200 bg-gray-50 p-4 md:p-5">
+            <div className="flex items-center justify-between text-sm text-gray-700">
+              <span>Base gravada</span>
+              <span className="font-medium text-gray-900">{formatCurrency(lineTotals.base)}</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between text-sm text-gray-700">
+              <span>IVA 13%</span>
+              <span className="font-medium text-gray-900">{formatCurrency(lineTotals.iva)}</span>
+            </div>
+            <div className="mt-4 rounded-2xl bg-gray-900 px-4 py-4 text-white">
+              <div className="text-sm text-gray-300">Total a pagar</div>
+              <div className="mt-1 text-2xl font-semibold">{formatCurrency(lineTotals.total)}</div>
+            </div>
+          </section>
 
-            <section className="rounded-3xl border border-gray-200 bg-gray-50 p-4">
-              <h2 className="text-sm font-semibold text-gray-900">Acciones</h2>
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={!canSend || isSending}
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                {isSending ? 'Enviando...' : 'Enviar'}
-              </button>
-              <button
-                type="button"
-                onClick={resetForm}
-                className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-              >
-                Nueva factura
-              </button>
-              {mhMessage && (
-                <div className={`mt-3 rounded-2xl border px-3 py-2 text-xs ${response && 'error' in response ? 'border-red-200 bg-red-50 text-red-800' : 'border-gray-200 bg-white text-gray-700'}`}>
-                  {mhMessage}
-                </div>
-              )}
-            </section>
-          </aside>
+          <section className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={!canSend || isSending}
+              className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gray-900 px-5 text-base font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+              {isSending ? 'Enviando...' : 'Enviar factura'}
+            </button>
+
+            <button
+              type="button"
+              onClick={resetForm}
+              className="h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+            >
+              Nueva factura
+            </button>
+
+            {mhMessage && (
+              <div className={`rounded-2xl border px-4 py-3 text-sm ${response && 'error' in response ? 'border-red-200 bg-red-50 text-red-800' : 'border-gray-200 bg-gray-50 text-gray-700'}`}>
+                {mhMessage}
+              </div>
+            )}
+          </section>
         </div>
       </section>
     </div>
