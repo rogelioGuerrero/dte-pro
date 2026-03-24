@@ -348,7 +348,7 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
       montoTotalOperacion,
       totalNoGravado: 0,
       totalPagar,
-      totalLetras: `${numeroALetras(totalPagar)} USD`,
+      totalLetras: numeroALetras(totalPagar),
       saldoFavor: 0,
       condicionOperacion: 1,
       pagos: [{
