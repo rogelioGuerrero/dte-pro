@@ -106,11 +106,12 @@ export interface Fe01Dte {
     ventaNoSuj: 0;
     ventaExenta: 0;
     ventaGravada: number;
-    tributos: string[];
+    tributos: string[] | null;
     numeroDocumento: null;
     codTributo: null;
     psv: 0;
     noGravado: 0;
+    ivaItem?: number;
   }>;
   resumen: {
     totalNoSuj: 0;
@@ -166,6 +167,20 @@ const normalizedOrNull = (value?: string | null): string | null => {
   return text ? text : null;
 };
 
+const normalizedCommercialName = (value?: string | null): string | null => {
+  const text = normalizedText(value);
+  if (!text) {
+    return null;
+  }
+
+  const lowered = text.toLowerCase();
+  if (lowered === 'n/a' || lowered === 'na' || lowered === 'none' || lowered === 'null' || lowered === 'sin nombre') {
+    return null;
+  }
+
+  return text;
+};
+
 const generateUuidV4Upper = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID().toUpperCase();
@@ -213,7 +228,7 @@ const resolveEmisor = (emisor: Fe01BuildInput['emisor']): Fe01EmisorInput => {
     correo: normalizedText(emisor.correo),
     codEstableMH: normalizedText(emisor.codEstableMH) || 'M001',
     codPuntoVentaMH: normalizedText(emisor.codPuntoVentaMH) || 'P001',
-    nombreComercial: normalizedOrNull('nombreComercial' in emisor ? emisor.nombreComercial : null) ?? null,
+    nombreComercial: normalizedCommercialName('nombreComercial' in emisor ? emisor.nombreComercial : null),
   };
 };
 
@@ -227,10 +242,13 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
 
   const cuerpoDocumento = input.items.map((item, index) => {
     const cantidad = redondear(Number(item.cantidad) || 0, 8);
-    const precioUni = redondear(Number(item.precioUnitario) || 0, 8);
-    const montoDescu = redondear(Number(item.descuento) || 0, 8);
-    const brutoLinea = redondear((cantidad * precioUni) - montoDescu, 8);
+    const precioUnitarioBruto = redondear(Number(item.precioUnitario) || 0, 8);
+    const montoDescuBruto = redondear(Number(item.descuento) || 0, 8);
+    const brutoLinea = redondear((cantidad * precioUnitarioBruto) - montoDescuBruto, 8);
     const baseGravada = brutoLinea > 0 ? redondear(brutoLinea / 1.13, 8) : 0;
+    const precioUni = cantidad > 0 ? redondear(baseGravada / cantidad, 8) : 0;
+    const montoDescu = redondear(montoDescuBruto / 1.13, 8);
+    const ivaItem = baseGravada > 0 ? redondear(baseGravada * 0.13, 2) : 0;
 
     return {
       numItem: index + 1,
@@ -244,11 +262,12 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
       ventaNoSuj: 0 as const,
       ventaExenta: 0 as const,
       ventaGravada: baseGravada,
-      tributos: ['20'],
+      tributos: ivaItem > 0 ? ['20'] : null,
       numeroDocumento: null,
       codTributo: null,
       psv: 0 as const,
       noGravado: 0 as const,
+      ivaItem,
     };
   });
 
@@ -256,9 +275,9 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
   const subTotalVentas = totalGravada;
   const totalDescu = redondear(cuerpoDocumento.reduce((sum, item) => sum + item.montoDescu, 0), 2);
   const descuGravada = totalDescu;
-  const totalIva = redondear(totalGravada * 0.13, 2);
-  const subTotal = redondear(totalGravada - totalDescu, 2);
-  const montoTotalOperacion = redondear(subTotal + totalIva, 2);
+  const totalIva = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.ivaItem || 0), 0), 2);
+  const subTotal = redondear(totalGravada + 0, 2);
+  const montoTotalOperacion = subTotal;
   const totalPagar = montoTotalOperacion;
 
   const dte: Fe01Dte = {
@@ -333,7 +352,7 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
       montoTotalOperacion,
       totalNoGravado: 0,
       totalPagar,
-      totalLetras: `${numeroALetras(totalPagar)} USD`,
+      totalLetras: numeroALetras(totalPagar),
       saldoFavor: 0,
       condicionOperacion: 1,
       pagos: [{

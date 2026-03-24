@@ -28,6 +28,14 @@ const createLine = (): SaleLine => ({
 const formatCurrency = (value: number): string => `$${redondear(value || 0, 2).toFixed(2)}`;
 const safeText = (value: string): string => value.trim();
 
+const buildDebugPayloadText = (value: unknown): string => {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return 'No se pudo serializar el payload de diagnóstico.';
+  }
+};
+
 const Factura01Page: React.FC = () => {
   const { addToast } = useToast();
   const { businessId, operationalBusinessId } = useEmisor();
@@ -41,6 +49,7 @@ const Factura01Page: React.FC = () => {
   const [lines, setLines] = useState<SaleLine[]>([createLine()]);
   const [isSending, setIsSending] = useState(false);
   const [response, setResponse] = useState<TransmitDTEResponse | { error: string } | null>(null);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -73,6 +82,49 @@ const Factura01Page: React.FC = () => {
   }, [lines]);
 
   const resolvedBusinessId = businessId || operationalBusinessId || emisor?.nit || null;
+
+  const debugPayload = useMemo(() => {
+    const validLines = lines
+      .filter((line) => safeText(line.descripcion))
+      .map((line) => ({
+        cantidad: Number(line.cantidad) || 0,
+        descripcion: safeText(line.descripcion),
+        precioUnitario: Number(line.precioUnitario) || 0,
+        descuento: Number(line.descuento) || 0,
+      }));
+
+    if (!emisor || !resolvedBusinessId || !validLines.length) {
+      return null;
+    }
+
+    try {
+      const request = buildFe01EmissionRequest({
+        ambiente,
+        businessId: resolvedBusinessId,
+        receptorEmail: safeText(receptorEmail) || null,
+        emisor,
+        items: validLines,
+      });
+
+      const cleanedDte = limpiarDteParaFirma(request.dte as unknown as Record<string, unknown>);
+
+      return {
+        request: {
+          ambiente: request.ambiente,
+          flowType: request.flowType,
+          businessId: request.businessId,
+          receptorEmail: request.receptorEmail,
+        },
+        dte: cleanedDte,
+      };
+    } catch (error: any) {
+      return {
+        error: error?.message || 'No se pudo generar el payload de diagnóstico.',
+      };
+    }
+  }, [ambiente, emisor, lines, receptorEmail, resolvedBusinessId]);
+
+  const debugPayloadText = useMemo(() => buildDebugPayloadText(debugPayload), [debugPayload]);
   const canSend = Boolean(
     emisor &&
       resolvedBusinessId &&
@@ -154,15 +206,27 @@ const Factura01Page: React.FC = () => {
         resetForm();
       } else if (transmitted.isOffline) {
         addToast(transmitted.contingencyReason || 'Documento enviado en contingencia.', 'info');
+        setShowDebugPanel(true);
       } else {
         addToast(transmitted.mhResponse?.mensaje || 'No se pudo transmitir la factura.', 'error');
+        setShowDebugPanel(true);
       }
     } catch (error: any) {
       const message = error?.message || 'Error al transmitir la factura 01';
       setResponse({ error: message });
+      setShowDebugPanel(true);
       addToast(message, 'error');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const copyDebugPayload = async () => {
+    try {
+      await navigator.clipboard.writeText(debugPayloadText);
+      addToast('Payload de diagnóstico copiado.', 'success');
+    } catch {
+      addToast('No se pudo copiar el payload.', 'error');
     }
   };
 
@@ -347,9 +411,38 @@ const Factura01Page: React.FC = () => {
               Nueva factura
             </button>
 
+            <button
+              type="button"
+              onClick={() => setShowDebugPanel((current) => !current)}
+              className="h-11 w-full rounded-2xl border border-dashed border-gray-300 bg-white px-4 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+            >
+              {showDebugPanel ? 'Ocultar diagnóstico' : 'Ver diagnóstico'}
+            </button>
+
             {mhMessage && (
               <div className={`rounded-2xl border px-4 py-3 text-sm ${response && 'error' in response ? 'border-red-200 bg-red-50 text-red-800' : 'border-gray-200 bg-gray-50 text-gray-700'}`}>
                 {mhMessage}
+              </div>
+            )}
+
+            {showDebugPanel && (
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Diagnóstico</h3>
+                    <p className="text-xs text-gray-500">Payload limpio antes de enviar y últimos datos útiles para depurar.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={copyDebugPayload}
+                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50"
+                  >
+                    Copiar
+                  </button>
+                </div>
+                <pre className="mt-3 max-h-72 overflow-auto rounded-2xl bg-white p-3 text-[11px] leading-5 text-gray-700">
+                  {debugPayloadText}
+                </pre>
               </div>
             )}
           </section>
