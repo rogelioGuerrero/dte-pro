@@ -1,0 +1,27 @@
+{
+  "ignores": [
+    "@types/stripe",
+    "node-forge",
+    "qrcode",
+    "web-push"
+  ],
+  "ignorePatterns": [
+    "dist/**",
+    "node_modules/**",
+    "temp/**",
+    "svfe-json-schemas/**",
+    "backend/**",
+    "trash/**"
+  ],
+  "parsers": {
+    "*.ts": "typescript",
+    "*.tsx": "typescript",
+    "*.js": "javascript",
+    "*.jsx": "jsx"
+  },
+  "specials": [
+    "typescript",
+    "webpack",
+    "babel"
+  ]
+}

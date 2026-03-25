@@ -38,3 +38,6 @@ test-dte.p12
 # Schema folders (local only)
 svfe-api-firmador/
 svfe-json-schemas/
+
+# Dead code quarantine
+trash/

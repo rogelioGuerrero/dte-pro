@@ -1,0 +1,47 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": [
+    "index.html",
+    "index.tsx",
+    "App.tsx",
+    "vite.config.ts",
+    "tsconfig.json",
+    "scripts/**/*.mjs",
+    "components/**/*.{ts,tsx}",
+    "contexts/**/*.{ts,tsx}",
+    "hooks/**/*.{ts,tsx}",
+    "utils/**/*.{ts,tsx}",
+    "types.ts"
+  ],
+  "project": [
+    "**/*.{ts,tsx,js,jsx,mjs,cjs}",
+    "!dist/**",
+    "!node_modules/**",
+    "!temp/**",
+    "!svfe-json-schemas/**",
+    "!backend/**",
+    "!trash/**"
+  ],
+  "ignore": [
+    "dist/**",
+    "node_modules/**",
+    "temp/**",
+    "svfe-json-schemas/**",
+    "backend/**",
+    "trash/**"
+  ],
+  "ignoreDependencies": [
+    "@types/stripe"
+  ],
+  "workspaces": {
+    ".": {
+      "entry": [
+        "index.html",
+        "index.tsx",
+        "App.tsx",
+        "vite.config.ts",
+        "scripts/**/*.mjs"
+      ]
+    }
+  }
+}
