@@ -19,6 +19,10 @@ import {
   validateEmail,
   formatTextInput,
   formatMultilineTextInput,
+  formatNitOrDuiInput,
+  formatNRCInput,
+  formatPhoneInput,
+  formatEmailInput,
 } from '../utils/validators';
 import { savePendingClient, savePendingClientApi, exportClientAsJson } from '../utils/qrClientCapture';
 import { emitGlobalToast } from '../utils/globalToast';
@@ -71,12 +75,12 @@ const ClientFormPage: React.FC<ClientFormPageProps> = ({ vendorId }) => {
           setFormData(prev => ({
             ...prev,
             name: extracted.name ? formatTextInput(extracted.name) : prev.name,
-            nit: extracted.nit ? extracted.nit : prev.nit,
-            nrc: extracted.nrc ? extracted.nrc : prev.nrc,
+            nit: extracted.nit ? formatNitOrDuiInput(extracted.nit) : prev.nit,
+            nrc: extracted.nrc ? formatNRCInput(extracted.nrc) : prev.nrc,
             activity: extracted.activity || prev.activity,
             address: extracted.address ? formatMultilineTextInput(extracted.address) : prev.address,
-            phone: extracted.phone ? extracted.phone : prev.phone,
-            email: extracted.email ? extracted.email : prev.email,
+            phone: extracted.phone ? formatPhoneInput(extracted.phone) : prev.phone,
+            email: extracted.email ? formatEmailInput(extracted.email) : prev.email,
           }));
         } catch (err) {
           console.error('Error scanning:', err);

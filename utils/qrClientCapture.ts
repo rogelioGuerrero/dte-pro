@@ -3,10 +3,26 @@
 // Usa Netlify Function para sincronizacion entre dispositivos
 
 import { ClientData } from './clientDb';
+import { formatEmailInput, formatMultilineTextInput, formatTextInput, normalizeIdDigits } from './validators';
 
 const STORAGE_KEY = 'dte_pending_clients';
 const SESSION_KEY = 'dte_vendor_session';
 const API_ENDPOINT = '/api/pending-clients';
+
+const normalizeClientPayload = (client: Partial<ClientData>): Partial<ClientData> => ({
+  ...client,
+  nit: normalizeIdDigits(client.nit || ''),
+  nrc: normalizeIdDigits(client.nrc || ''),
+  name: formatTextInput(client.name || ''),
+  nombreComercial: formatTextInput(client.nombreComercial || ''),
+  actividadEconomica: (client.actividadEconomica || '').trim(),
+  descActividad: formatTextInput(client.descActividad || '').trim(),
+  departamento: (client.departamento || '').trim(),
+  municipio: (client.municipio || '').trim(),
+  direccion: formatMultilineTextInput(client.direccion || '').trim(),
+  email: formatEmailInput(client.email || ''),
+  telefono: normalizeIdDigits(client.telefono || ''),
+});
 
 export interface PendingClient {
   id: string;
@@ -46,10 +62,11 @@ export const generateClientFormUrl = (baseUrl?: string): string => {
 export const savePendingClient = (clientData: Partial<ClientData>): string => {
   const pending = getPendingClients();
   const id = `pc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const normalizedData = normalizeClientPayload(clientData);
   
   const newClient: PendingClient = {
     id,
-    data: clientData,
+    data: normalizedData,
     receivedAt: new Date().toISOString(),
     status: 'pending',
   };
@@ -65,7 +82,13 @@ export const getPendingClients = (): PendingClient[] => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed)
+        ? parsed.map((client) => ({
+            ...client,
+            data: normalizeClientPayload(client?.data || {}),
+          }))
+        : [];
     }
   } catch {
     console.error('Error loading pending clients');
@@ -114,7 +137,7 @@ export const exportClientAsJson = (client: Partial<ClientData>): string => {
   return JSON.stringify({
     type: 'dte_client_data',
     version: '1.0',
-    data: client,
+    data: normalizeClientPayload(client),
     exportedAt: new Date().toISOString(),
   }, null, 2);
 };
@@ -124,11 +147,11 @@ export const importClientFromJson = (jsonString: string): Partial<ClientData> | 
   try {
     const parsed = JSON.parse(jsonString);
     if (parsed.type === 'dte_client_data' && parsed.data) {
-      return parsed.data;
+      return normalizeClientPayload(parsed.data);
     }
     // Intentar parsear como datos directos
     if (parsed.name || parsed.nit) {
-      return parsed;
+      return normalizeClientPayload(parsed);
     }
   } catch {
     console.error('Error parsing client JSON');
@@ -146,10 +169,11 @@ export const savePendingClientApi = async (
   clientData: Partial<ClientData>
 ): Promise<{ id: string } | null> => {
   try {
+    const normalizedData = normalizeClientPayload(clientData);
     const res = await fetch(`${API_ENDPOINT}?v=${encodeURIComponent(vendorId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create', data: clientData }),
+      body: JSON.stringify({ action: 'create', data: normalizedData }),
     });
     if (!res.ok) {
       console.error('API error saving client:', res.status);
@@ -187,7 +211,12 @@ export const getUnimportedClientsApi = async (
       return null;
     }
     const data = await res.json();
-    return Array.isArray(data) ? data : [];
+    return Array.isArray(data)
+      ? data.map((client) => ({
+          ...client,
+          data: normalizeClientPayload(client?.data || {}),
+        }))
+      : [];
   } catch (err) {
     console.error('Network error fetching clients:', err);
     return null;

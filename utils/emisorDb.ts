@@ -1,4 +1,5 @@
 import { openDB } from 'idb';
+import { formatEmailInput, formatMultilineTextInput, formatTextInput, normalizeIdDigits } from './validators';
 
 export interface EmisorData {
   id?: number;
@@ -23,6 +24,24 @@ const DB_NAME = 'dte-emisor-db';
 const DB_VERSION = 1;
 const STORE_NAME = 'emisor';
 
+const normalizeEmisorRecord = (emisor: EmisorData): EmisorData => ({
+  ...emisor,
+  nit: normalizeIdDigits(emisor.nit),
+  nrc: normalizeIdDigits(emisor.nrc),
+  nombre: formatTextInput(emisor.nombre),
+  nombreComercial: formatTextInput(emisor.nombreComercial || ''),
+  actividadEconomica: (emisor.actividadEconomica || '').trim(),
+  descActividad: formatTextInput(emisor.descActividad || '').trim(),
+  tipoEstablecimiento: (emisor.tipoEstablecimiento || '').trim(),
+  departamento: (emisor.departamento || '').trim(),
+  municipio: (emisor.municipio || '').trim(),
+  direccion: formatMultilineTextInput(emisor.direccion || '').trim(),
+  telefono: normalizeIdDigits(emisor.telefono),
+  correo: formatEmailInput(emisor.correo),
+  codEstableMH: emisor.codEstableMH ? String(emisor.codEstableMH).trim() : null,
+  codPuntoVentaMH: emisor.codPuntoVentaMH ? String(emisor.codPuntoVentaMH).trim() : null,
+});
+
 export const openEmisorDb = async () => {
   return openDB(DB_NAME, DB_VERSION, {
     upgrade(db) {
@@ -39,16 +58,17 @@ export const openEmisorDb = async () => {
 export const getEmisor = async (): Promise<EmisorData | null> => {
   const db = await openEmisorDb();
   const all = await db.getAll(STORE_NAME);
-  return all[0] || null;
+  return all[0] ? normalizeEmisorRecord(all[0] as EmisorData) : null;
 };
 
 export const saveEmisor = async (emisor: Omit<EmisorData, 'id'>): Promise<void> => {
   const db = await openEmisorDb();
   const existing = await getEmisor();
+  const normalized = normalizeEmisorRecord(emisor as EmisorData);
   if (existing?.id) {
-    await db.put(STORE_NAME, { ...emisor, id: existing.id });
+    await db.put(STORE_NAME, { ...normalized, id: existing.id });
   } else {
-    await db.add(STORE_NAME, emisor);
+    await db.add(STORE_NAME, normalized);
   }
 };
 

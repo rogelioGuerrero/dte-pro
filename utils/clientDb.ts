@@ -1,4 +1,5 @@
 import { openDB } from 'idb';
+import { formatEmailInput, formatMultilineTextInput, formatTextInput, normalizeIdDigits } from './validators';
 
 export interface ClientData {
   id?: number;
@@ -21,6 +22,21 @@ const normalizeId = (value: string): string => {
   return value.replace(/[-\s]/g, '').trim();
 };
 
+const normalizeClientRecord = (client: ClientData): ClientData => ({
+  ...client,
+  nit: normalizeIdDigits(client.nit),
+  nrc: normalizeIdDigits(client.nrc),
+  name: formatTextInput(client.name),
+  nombreComercial: formatTextInput(client.nombreComercial || ''),
+  actividadEconomica: (client.actividadEconomica || '').trim(),
+  descActividad: formatTextInput(client.descActividad || '').trim(),
+  departamento: (client.departamento || '').trim(),
+  municipio: (client.municipio || '').trim(),
+  direccion: formatMultilineTextInput(client.direccion || '').trim(),
+  email: formatEmailInput(client.email),
+  telefono: normalizeIdDigits(client.telefono),
+});
+
 const DB_NAME = 'dte-clients-db';
 const DB_VERSION = 1;
 const STORE_NAME = 'clients';
@@ -42,13 +58,13 @@ export const openClientsDb = async () => {
 
 export const addClient = async (client: Omit<ClientData, 'id'>): Promise<void> => {
   const db = await openClientsDb();
-  await db.add(STORE_NAME, client);
+  await db.add(STORE_NAME, normalizeClientRecord(client as ClientData));
 };
 
 // Guardar cliente y retornar con ID
 export const saveClient = async (client: Omit<ClientData, 'id' | 'timestamp'>): Promise<ClientData> => {
   const db = await openClientsDb();
-  const clientWithTimestamp = { ...client, timestamp: Date.now() };
+  const clientWithTimestamp = normalizeClientRecord({ ...client, timestamp: Date.now() } as ClientData);
   const id = await db.add(STORE_NAME, clientWithTimestamp);
   return { ...clientWithTimestamp, id: id as number };
 };
@@ -56,7 +72,7 @@ export const saveClient = async (client: Omit<ClientData, 'id' | 'timestamp'>): 
 export const getClients = async (): Promise<ClientData[]> => {
   const db = await openClientsDb();
   const all = await db.getAll(STORE_NAME);
-  return all.sort((a, b) => b.timestamp - a.timestamp);
+  return all.map((client) => normalizeClientRecord(client as ClientData)).sort((a, b) => b.timestamp - a.timestamp);
 };
 
 export const deleteClient = async (id: number): Promise<void> => {
@@ -71,7 +87,7 @@ export const clearClients = async (): Promise<void> => {
 
 export const updateClient = async (client: ClientData): Promise<void> => {
   const db = await openClientsDb();
-  await db.put(STORE_NAME, client);
+  await db.put(STORE_NAME, normalizeClientRecord(client));
 };
 
 export const getClientByNit = async (nit: string): Promise<ClientData | undefined> => {
@@ -87,7 +103,7 @@ export const getClientByNitOrNrc = async (nit: string, nrc: string): Promise<Cli
   const nitKey = normalizeId(nit);
   const nrcKey = normalizeId(nrc);
 
-  return all.find((c) => {
+  const found = all.find((c) => {
     const existingNitKey = normalizeId(c.nit);
     const existingNrcKey = normalizeId(c.nrc);
 
@@ -95,6 +111,8 @@ export const getClientByNitOrNrc = async (nit: string, nrc: string): Promise<Cli
     if (nrcKey && existingNrcKey && nrcKey === existingNrcKey) return true;
     return false;
   });
+
+  return found ? normalizeClientRecord(found as ClientData) : undefined;
 };
 
 // Exportar todos los clientes a JSON

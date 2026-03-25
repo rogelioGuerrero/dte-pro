@@ -244,7 +244,7 @@ const ClientManager: React.FC = () => {
         setIsEditing(false);
       }
       addToast('Cliente eliminado', 'info');
-    } catch (error) {
+    } catch {
       addToast('Error al eliminar cliente', 'error');
     }
   };
@@ -276,7 +276,7 @@ const ClientManager: React.FC = () => {
       }
       await loadClients();
       setIsEditing(false);
-    } catch (error) {
+    } catch {
       addToast('Error al guardar', 'error');
     } finally {
       setIsSaving(false);
@@ -294,7 +294,7 @@ const ClientManager: React.FC = () => {
       a.click();
       URL.revokeObjectURL(url);
       addToast(`${clients.length} clientes exportados`, 'success');
-    } catch (error) {
+    } catch {
       addToast('Error al exportar', 'error');
     }
   };
@@ -338,7 +338,7 @@ const ClientManager: React.FC = () => {
         ? ` Revisa si seleccionaste el modo correcto (${importMode === 'ventas' ? 'Ventas' : 'Compras'}).`
         : '';
       addToast(`${imported} importados, ${skipped} omitidos (ya existían o repetidos).${hint}`, 'success');
-    } catch (error) {
+    } catch {
       addToast('Error al importar: formato inválido', 'error');
     }
     if (importInputRef.current) importInputRef.current.value = '';
@@ -370,9 +370,8 @@ const ClientManager: React.FC = () => {
             telefono: extracted.phone ? formatPhoneInput(extracted.phone) : prev.telefono,
             email: extracted.email ? formatEmailInput(extracted.email) : prev.email,
           }));
-          addToast('Datos extraídos con IA', 'success');
-        } catch {
-          addToast('No se pudieron extraer datos', 'error');
+        } catch (err) {
+          console.error('Error scanning:', err);
         } finally {
           setIsProcessingOCR(false);
         }
@@ -380,8 +379,9 @@ const ClientManager: React.FC = () => {
       reader.readAsDataURL(file);
     } catch {
       setIsProcessingOCR(false);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -489,7 +489,7 @@ const ClientManager: React.FC = () => {
 
               <select
                 value={clientsGroupMode}
-                onChange={(e) => setClientsGroupMode(e.target.value as any)}
+                onChange={(e) => setClientsGroupMode(e.target.value as 'none' | 'az' | 'tipo' | 'departamento')}
                 className="h-9 text-sm border border-gray-200 rounded-lg bg-white px-2 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 title="Agrupar"
               >

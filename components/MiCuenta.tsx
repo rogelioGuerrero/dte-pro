@@ -14,6 +14,7 @@ import { apiFetch } from '../utils/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { EmisorSelector } from './EmisorSelector';
 import { BusinessSettings, DEFAULT_BUSINESS_SETTINGS } from '../utils/businessSettings';
+import { formatNitOrDuiInput, formatNRCInput, formatPhoneInput } from '../utils/validators';
 
 interface MiCuentaProps {
   onBack?: () => void;
@@ -130,14 +131,14 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, businessSettings = DEFAULT_
 
           setBusinessData({
             nombre: remote.business.nombre_comercial || remote.business.nombre || selectedEmisor?.nombre || 'Empresa',
-            nit: remote.business.nit || 'No definido',
+            nit: remote.business.nit ? formatNitOrDuiInput(remote.business.nit) : 'No definido',
             ambiente: storedAmbiente,
           });
 
           setEmisorForm((prev) => ({
             ...prev,
-            nit: remote.business.nit || prev.nit,
-            nrc: remote.business.nrc || prev.nrc,
+            nit: remote.business.nit ? formatNitOrDuiInput(remote.business.nit) : prev.nit,
+            nrc: remote.business.nrc ? formatNRCInput(remote.business.nrc) : prev.nrc,
             nombre: remote.business.nombre || prev.nombre,
             nombreComercial: remote.business.nombre_comercial || prev.nombreComercial,
             actividadEconomica: remote.business.cod_actividad || prev.actividadEconomica,
@@ -146,7 +147,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, businessSettings = DEFAULT_
             departamento: remote.business.dir_departamento || prev.departamento,
             municipio: remote.business.dir_municipio || prev.municipio,
             direccion: remote.business.dir_complemento || prev.direccion,
-            telefono: remote.business.telefono || prev.telefono,
+            telefono: remote.business.telefono ? formatPhoneInput(remote.business.telefono) : prev.telefono,
             correo: remote.business.correo || prev.correo,
             codEstableMH: remote.business.cod_estable_mh ?? prev.codEstableMH,
             codPuntoVentaMH: remote.business.cod_punto_venta_mh ?? prev.codPuntoVentaMH,
@@ -167,13 +168,16 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, businessSettings = DEFAULT_
         const nit = (localEmisor.nit || '').replace(/[-\s]/g, '');
         setBusinessData((prev) => ({
           nombre: prev.nombre || localEmisor.nombreComercial || localEmisor.nombre || 'Empresa',
-          nit: prev.nit || nit || localEmisor.nit,
+          nit: prev.nit || (nit ? formatNitOrDuiInput(nit) : '') || (localEmisor.nit ? formatNitOrDuiInput(localEmisor.nit) : ''),
           ambiente: storedAmbiente,
         }));
         setEmisorForm((prev) => ({
           ...prev,
           ...localEmisor,
-          logoUrl: (localEmisor as any).logo || prev.logoUrl,
+          nit: localEmisor.nit ? formatNitOrDuiInput(localEmisor.nit) : prev.nit,
+          nrc: localEmisor.nrc ? formatNRCInput(localEmisor.nrc) : prev.nrc,
+          telefono: localEmisor.telefono ? formatPhoneInput(localEmisor.telefono) : prev.telefono,
+          logoUrl: localEmisor.logo || prev.logoUrl,
         }));
       }
 
@@ -221,7 +225,7 @@ const MiCuenta: React.FC<MiCuentaProps> = ({ onBack, businessSettings = DEFAULT_
       setBusinessData((prev) => ({
         ...prev,
         nombre: emisorForm.nombreComercial || emisorForm.nombre || prev.nombre,
-        nit: (emisorForm.nit || '').replace(/[\s-]/g, '') || prev.nit
+        nit: emisorForm.nit ? formatNitOrDuiInput(emisorForm.nit) : prev.nit,
       }));
     } catch (error) {
       console.error(error);
