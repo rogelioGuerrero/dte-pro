@@ -333,11 +333,6 @@ const App: React.FC = () => {
             {React.createElement(React.lazy(() => import('./components/pages/GeneradorSimple')))}
           </React.Suspense>
         ) : <Placeholder />)}
-        {activeTab === 'poscf' && (businessId ? (
-          <React.Suspense fallback={<div>Cargando...</div>}>
-            {React.createElement(React.lazy(() => import('./components/pages/Factura01')))}
-          </React.Suspense>
-        ) : <Placeholder />)}
       </main>
 
       {/* Mobile Bottom Navigation */}

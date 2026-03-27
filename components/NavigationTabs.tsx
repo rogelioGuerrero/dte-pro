@@ -23,7 +23,6 @@ const TABS_CONFIG = [
   { key: 'historial', label: 'Historial', icon: History, color: 'purple' },
   { key: 'simple', label: 'Test DTE', icon: Zap, color: 'pink' },
   { key: 'ccftester', label: 'CCF Tester', icon: Zap, color: 'rose', tooltip: 'Payload limpio DTE-03' },
-  { key: 'poscf', label: 'Facturas', icon: Zap, color: 'emerald', tooltip: 'Consumidor Final DTE-01' }
 ];
 
 export const NavigationTabs: React.FC<NavigationTabsProps> = ({ 
