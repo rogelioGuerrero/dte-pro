@@ -127,12 +127,13 @@ export const FE01V2: React.FC = () => {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">Factura Electrónica 01 V2</p>
             <h1 className="text-2xl font-bold text-gray-900">Flujo nuevo y separado</h1>
-            <p className="mt-1 text-sm text-gray-500">Construye el payload correcto y transmite sin tocar la pantalla anterior.</p>
+            <p className="mt-1 text-sm text-gray-500">Precio unitario en neto, IVA separado y total calculado desde una sola base.</p>
           </div>
           <div className="rounded-xl bg-gray-50 px-4 py-3 text-right text-sm text-gray-600">
             <div>Líneas: {lineas.length}</div>
+            <div>Base neta: {formatCurrency(resumen?.totalGravada ?? 0)}</div>
             <div>IVA: {formatCurrency(resumen?.totalIva ?? 0)}</div>
-            <div className="text-base font-semibold text-gray-900">Total: {formatCurrency(resumen?.totalPagar ?? 0)}</div>
+            <div className="text-base font-semibold text-gray-900">Total esperado: {formatCurrency((resumen?.totalPagar ?? 0) + (resumen?.totalIva ?? 0))}</div>
           </div>
         </div>
       </div>
@@ -166,8 +167,8 @@ export const FE01V2: React.FC = () => {
             <div key={index} className="grid gap-3 rounded-2xl border border-gray-200 p-4 md:grid-cols-[1.4fr,0.6fr,0.6fr,0.6fr,auto]">
               <input value={linea.descripcion} onChange={(e) => updateLine(index, { descripcion: e.target.value })} className="rounded-xl border border-gray-300 px-3 py-2" placeholder="Descripción" />
               <input type="number" min="1" step="1" value={linea.cantidad} onChange={(e) => updateLine(index, { cantidad: Number(e.target.value) })} className="rounded-xl border border-gray-300 px-3 py-2" placeholder="Cantidad" />
-              <input type="number" min="0" step="0.01" value={linea.precioUnitario} onChange={(e) => updateLine(index, { precioUnitario: Number(e.target.value) })} className="rounded-xl border border-gray-300 px-3 py-2" placeholder="Precio" />
-              <input type="number" min="0" step="0.01" value={linea.descuento} onChange={(e) => updateLine(index, { descuento: Number(e.target.value) })} className="rounded-xl border border-gray-300 px-3 py-2" placeholder="Descuento" />
+              <input type="number" min="0" step="0.01" value={linea.precioUnitario} onChange={(e) => updateLine(index, { precioUnitario: Number(e.target.value) })} className="rounded-xl border border-gray-300 px-3 py-2" placeholder="Precio neto" />
+              <input type="number" min="0" step="0.01" value={linea.descuento} onChange={(e) => updateLine(index, { descuento: Number(e.target.value) })} className="rounded-xl border border-gray-300 px-3 py-2" placeholder="Descuento neto" />
               <button type="button" onClick={() => setLineas((current) => current.filter((_, i) => i !== index))} disabled={lineas.length === 1} className="inline-flex items-center justify-center rounded-xl border border-gray-300 px-3 py-2 text-gray-600 disabled:opacity-40">
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -186,6 +187,18 @@ export const FE01V2: React.FC = () => {
           </button>
         </div>
       </section>
+
+      {request && !('error' in request) && (
+        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900">Base del formulario</h2>
+          <div className="mt-3 grid gap-3 md:grid-cols-3 text-sm text-gray-700">
+            <div className="rounded-xl bg-gray-50 p-3">Neto base: <span className="font-semibold">{formatCurrency(resumen?.subTotal ?? 0)}</span></div>
+            <div className="rounded-xl bg-gray-50 p-3">IVA separado: <span className="font-semibold">{formatCurrency(resumen?.totalIva ?? 0)}</span></div>
+            <div className="rounded-xl bg-gray-50 p-3">Monto operativo: <span className="font-semibold">{formatCurrency(resumen?.montoTotalOperacion ?? 0)}</span></div>
+          </div>
+          <p className="mt-3 text-sm text-gray-500">Cada línea se envía con precio neto; el IVA se calcula aparte para evitar inconsistencias entre formulario y payload.</p>
+        </section>
+      )}
 
       {showDebug && request && !('error' in request) && (
         <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
