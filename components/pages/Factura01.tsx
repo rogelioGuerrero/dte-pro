@@ -6,7 +6,7 @@ import { getEmisor, type EmisorData } from '../../utils/emisorDb';
 import { checkLicense } from '../../utils/licenseValidator';
 import { getCertificate } from '../../utils/secureStorage';
 import { limpiarDteParaFirma, transmitirDocumento, type TransmitDTEResponse } from '../../utils/firmaApiClient';
-import { buildFe01EmissionRequest } from '../../utils/dte01Builder';
+import { buildFe01EmissionRequest } from '../../utils/fe01Builder';
 import { redondear } from '../../utils/formatters';
 
 interface SaleLine {
@@ -16,6 +16,10 @@ interface SaleLine {
   precioUnitario: number;
   descuento: number;
 }
+
+type Fe01BuilderResult = ReturnType<typeof buildFe01EmissionRequest>;
+type Fe01BuilderError = { error: string };
+type Fe01BuilderState = Fe01BuilderResult | Fe01BuilderError | null;
 
 const createLine = (): SaleLine => ({
   id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `line-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -66,24 +70,9 @@ const Factura01Page: React.FC = () => {
     localStorage.setItem('dte_ambiente', ambiente);
   }, [ambiente]);
 
-  const lineTotals = useMemo(() => {
-    const gross = lines.reduce((sum, line) => {
-      const qty = redondear(Number(line.cantidad) || 0, 8);
-      const price = redondear(Number(line.precioUnitario) || 0, 8);
-      const discount = redondear(Number(line.descuento) || 0, 8);
-      return sum + Math.max(0, redondear((qty * price) - discount, 8));
-    }, 0);
-
-    const base = gross > 0 ? redondear(gross / 1.13, 8) : 0;
-    const iva = gross > 0 ? redondear(base * 0.13, 2) : 0;
-    const total = redondear(gross, 2);
-
-    return { gross, base, iva, total };
-  }, [lines]);
-
   const resolvedBusinessId = businessId || operationalBusinessId || emisor?.nit || null;
 
-  const debugPayload = useMemo(() => {
+  const builderResult = useMemo<Fe01BuilderState>(() => {
     const validLines = lines
       .filter((line) => safeText(line.descripcion))
       .map((line) => ({
@@ -98,31 +87,36 @@ const Factura01Page: React.FC = () => {
     }
 
     try {
-      const request = buildFe01EmissionRequest({
+      return buildFe01EmissionRequest({
         ambiente,
         businessId: resolvedBusinessId,
         receptorEmail: safeText(receptorEmail) || null,
         emisor,
         items: validLines,
       });
-
-      const cleanedDte = limpiarDteParaFirma(request.dte as unknown as Record<string, unknown>);
-
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'No se pudo generar el payload de diagnóstico.';
       return {
-        request: {
-          ambiente: request.ambiente,
-          flowType: request.flowType,
-          businessId: request.businessId,
-          receptorEmail: request.receptorEmail,
-        },
-        dte: cleanedDte,
-      };
-    } catch (error: any) {
-      return {
-        error: error?.message || 'No se pudo generar el payload de diagnóstico.',
+        error: message,
       };
     }
   }, [ambiente, emisor, lines, receptorEmail, resolvedBusinessId]);
+
+  const debugPayload = useMemo(() => {
+    if (!builderResult || 'error' in builderResult) {
+      return builderResult;
+    }
+
+    return {
+      request: {
+        ambiente: builderResult.ambiente,
+        flowType: builderResult.flowType,
+        businessId: builderResult.businessId,
+        receptorEmail: builderResult.receptorEmail,
+      },
+      dte: limpiarDteParaFirma(builderResult.dte as unknown as Record<string, unknown>),
+    };
+  }, [builderResult]);
 
   const debugPayloadText = useMemo(() => buildDebugPayloadText(debugPayload), [debugPayload]);
   const canSend = Boolean(
@@ -176,18 +170,20 @@ const Factura01Page: React.FC = () => {
       }
 
       const certificate = await getCertificate();
-      const request = buildFe01EmissionRequest({
-        ambiente,
-        businessId: resolvedBusinessId,
-        receptorEmail: safeText(receptorEmail) || null,
-        emisor,
-        items: validLines.map((line) => ({
-          cantidad: Number(line.cantidad) || 0,
-          descripcion: safeText(line.descripcion),
-          precioUnitario: Number(line.precioUnitario) || 0,
-          descuento: Number(line.descuento) || 0,
-        })),
-      });
+      const request = builderResult && !('error' in builderResult)
+        ? builderResult
+        : buildFe01EmissionRequest({
+            ambiente,
+            businessId: resolvedBusinessId,
+            receptorEmail: safeText(receptorEmail) || null,
+            emisor,
+            items: validLines.map((line) => ({
+              cantidad: Number(line.cantidad) || 0,
+              descripcion: safeText(line.descripcion),
+              precioUnitario: Number(line.precioUnitario) || 0,
+              descuento: Number(line.descuento) || 0,
+            })),
+          });
 
       const transmitted = await transmitirDocumento({
         dte: limpiarDteParaFirma(request.dte as unknown as Record<string, unknown>),
@@ -211,8 +207,8 @@ const Factura01Page: React.FC = () => {
         addToast(transmitted.mhResponse?.mensaje || 'No se pudo transmitir la factura.', 'error');
         setShowDebugPanel(true);
       }
-    } catch (error: any) {
-      const message = error?.message || 'Error al transmitir la factura 01';
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error al transmitir la factura 01';
       setResponse({ error: message });
       setShowDebugPanel(true);
       addToast(message, 'error');
@@ -252,8 +248,8 @@ const Factura01Page: React.FC = () => {
             </div>
             <div className="flex flex-wrap gap-2 text-sm text-gray-600">
               <span className="rounded-full bg-gray-100 px-3 py-1">Líneas: {lines.length}</span>
-              <span className="rounded-full bg-gray-100 px-3 py-1">IVA: {formatCurrency(lineTotals.iva)}</span>
-              <span className="rounded-full bg-gray-900 px-3 py-1 font-semibold text-white">Total: {formatCurrency(lineTotals.total)}</span>
+              <span className="rounded-full bg-gray-100 px-3 py-1">IVA: {formatCurrency(builderResult && !('error' in builderResult) ? builderResult.dte.resumen.totalIva : 0)}</span>
+              <span className="rounded-full bg-gray-900 px-3 py-1 font-semibold text-white">Total: {formatCurrency(builderResult && !('error' in builderResult) ? builderResult.dte.resumen.totalPagar : 0)}</span>
             </div>
           </div>
         </div>
@@ -380,15 +376,15 @@ const Factura01Page: React.FC = () => {
           <section className="rounded-2xl border border-gray-200 bg-gray-50 p-4 md:p-5">
             <div className="flex items-center justify-between text-sm text-gray-700">
               <span>Base gravada</span>
-              <span className="font-medium text-gray-900">{formatCurrency(lineTotals.base)}</span>
+              <span className="font-medium text-gray-900">{formatCurrency(builderResult && !('error' in builderResult) ? builderResult.dte.resumen.totalGravada : 0)}</span>
             </div>
             <div className="mt-2 flex items-center justify-between text-sm text-gray-700">
               <span>IVA 13%</span>
-              <span className="font-medium text-gray-900">{formatCurrency(lineTotals.iva)}</span>
+              <span className="font-medium text-gray-900">{formatCurrency(builderResult && !('error' in builderResult) ? builderResult.dte.resumen.totalIva : 0)}</span>
             </div>
             <div className="mt-4 rounded-2xl bg-gray-900 px-4 py-4 text-white">
               <div className="text-sm text-gray-300">Total a pagar</div>
-              <div className="mt-1 text-2xl font-semibold">{formatCurrency(lineTotals.total)}</div>
+              <div className="mt-1 text-2xl font-semibold">{formatCurrency(builderResult && !('error' in builderResult) ? builderResult.dte.resumen.totalPagar : 0)}</div>
             </div>
           </section>
 

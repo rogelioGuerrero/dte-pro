@@ -45,11 +45,10 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const saldoFavor = 0;
   const ivaPerci1 = 0;
 
-  // Para FE (01) incluimos IVA calculado cuando aplica
   const montoTotalOperacion = tipoDocumento === '03'
     ? redondear(subTotal - totalDescu + totalNoGravado + iva, 2)
     : (tipoDocumento === '01'
-      ? redondear(totalGravada + totalExenta + totalNoSuj + totalNoGravado, 2)
+      ? redondear(subTotalVentas - totalDescu + totalNoGravado + iva, 2)
       : redondear(subTotal + iva + tributosAdicionales + totalNoGravado, 2));
 
   const totalPagar = tipoDocumento === '03'
