@@ -23,7 +23,6 @@ const TABS_CONFIG = [
   { key: 'historial', label: 'Historial', icon: History, color: 'purple' },
   { key: 'simple', label: 'Test DTE', icon: Zap, color: 'pink' },
   { key: 'fe01', label: 'Factura 01', icon: FileText, color: 'sky', tooltip: 'Factura Electrónica 01 limpia' },
-  { key: 'fe01v2', label: 'Factura 01 V2', icon: FileText, color: 'cyan', tooltip: 'Nueva variante separada de FE 01' },
   { key: 'ccftester', label: 'CCF Tester', icon: Zap, color: 'rose', tooltip: 'Payload limpio DTE-03' },
 ];
 

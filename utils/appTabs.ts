@@ -9,7 +9,6 @@ export type AppTab =
   | 'micuenta'
   | 'simple'
   | 'fe01'
-  | 'fe01v2'
   | 'ccftester';
 
 export type ManagedAppTab = Exclude<AppTab, 'micuenta' | 'products'>;
@@ -23,7 +22,6 @@ export const MANAGED_APP_TABS: ManagedAppTab[] = [
   'historial',
   'simple',
   'fe01',
-  'fe01v2',
   'ccftester'
 ];
 
@@ -36,7 +34,6 @@ export const APP_TAB_LABELS: Record<AppTab, string> = {
   historial: 'Historial',
   simple: 'Test DTE',
   fe01: 'Factura 01',
-  fe01v2: 'Factura 01 V2',
   micuenta: 'Mi Cuenta',
   products: 'Productos',
   ccftester: 'CCF Tester'
