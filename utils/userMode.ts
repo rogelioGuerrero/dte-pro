@@ -34,8 +34,8 @@ export const USER_MODE_CONFIGS: Record<UserMode, UserModeConfig> = {
   },
   negocio: {
     mode: 'negocio',
-    allowedTabs: ['batch', 'fiscal', 'clients', 'products', 'inventory', 'factura', 'historial', 'simple', 'poscf'],
-    preferredDefaultTab: 'poscf',
+    allowedTabs: ['batch', 'fiscal', 'clients', 'products', 'inventory', 'factura', 'historial', 'simple', 'fe01'],
+    preferredDefaultTab: 'fe01',
     billingStyle: 'inventory_first',
     features: {
       librosIVA: true,

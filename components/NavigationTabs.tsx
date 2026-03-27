@@ -22,6 +22,7 @@ const TABS_CONFIG = [
   { key: 'factura', label: 'Crédito Fiscal', icon: FileText, color: 'green', tooltip: 'Contribuyentes DTE-03' },
   { key: 'historial', label: 'Historial', icon: History, color: 'purple' },
   { key: 'simple', label: 'Test DTE', icon: Zap, color: 'pink' },
+  { key: 'fe01', label: 'Factura 01', icon: FileText, color: 'sky', tooltip: 'Factura Electrónica 01 limpia' },
   { key: 'ccftester', label: 'CCF Tester', icon: Zap, color: 'rose', tooltip: 'Payload limpio DTE-03' },
 ];
 

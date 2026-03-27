@@ -6,9 +6,9 @@ export function normalizeRole(value: unknown): Role {
 
 // Tabs disponibles por rol. micuenta se maneja como excepción en navegación.
 const ROLE_TABS: Record<Exclude<Role, null>, string[]> = {
-  owner: ['batch', 'fiscal', 'clients', 'inventory', 'factura', 'historial', 'simple', 'poscf', 'products'],
-  admin: ['batch', 'fiscal', 'clients', 'inventory', 'factura', 'historial', 'simple', 'poscf', 'products'],
-  operator: ['factura', 'historial', 'simple', 'poscf'],
+  owner: ['batch', 'fiscal', 'clients', 'inventory', 'factura', 'historial', 'simple', 'fe01', 'products'],
+  admin: ['batch', 'fiscal', 'clients', 'inventory', 'factura', 'historial', 'simple', 'fe01', 'products'],
+  operator: ['factura', 'historial', 'simple', 'fe01'],
 };
 
 export function isTabAllowedForRole(tab: string, role: Role): boolean {

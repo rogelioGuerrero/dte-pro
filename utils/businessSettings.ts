@@ -12,6 +12,7 @@ export interface BusinessFeatureFlags {
   factura: boolean;
   historial: boolean;
   simple: boolean;
+  fe01: boolean;
   poscf: boolean;
   ccftester: boolean;
 }
@@ -25,6 +26,7 @@ function sanitizeBackendFeatures(input?: Record<string, boolean> | null): Busine
     factura: input?.factura,
     historial: input?.historial,
     simple: input?.simple,
+    fe01: input?.fe01,
     poscf: input?.poscf,
     ccftester: input?.ccftester,
   });
@@ -72,6 +74,7 @@ const DEFAULT_FEATURES: BusinessFeatureFlags = {
   factura: true,
   historial: true,
   simple: false,
+  fe01: true,
   poscf: false,
   ccftester: true,
 };
@@ -115,6 +118,7 @@ function sanitizeFeatures(input?: Partial<BusinessFeatureFlags> | null): Busines
     factura: input?.factura ?? DEFAULT_FEATURES.factura,
     historial: input?.historial ?? DEFAULT_FEATURES.historial,
     simple: input?.simple ?? DEFAULT_FEATURES.simple,
+    fe01: input?.fe01 ?? DEFAULT_FEATURES.fe01,
     poscf: input?.poscf ?? DEFAULT_FEATURES.poscf,
     ccftester: input?.ccftester ?? DEFAULT_FEATURES.ccftester,
   };

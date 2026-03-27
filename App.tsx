@@ -7,13 +7,13 @@ import CCF03Generator from './components/CCF03Generator';
 import HistoryWrapper from './components/HistoryWrapper';
 import AdminModal from './components/AdminModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
-import ClientFormPage from './components/ClientFormPage';
 import GlobalToastHost from './components/GlobalToastHost';
 import PushNotificationManager from './components/PushNotificationManager';
 import { LicenseManager } from './components/LicenseManager';
 import { MagicLicenseActivator } from './components/MagicLicenseActivator';
 import { LicenseStatus } from './components/LicenseStatus';
 import { UserModeSetup } from './components/UserModeSetup';
+import FE01 from './components/pages/FE01';
 import { shouldShowUserModeSelection } from './utils/remoteLicensing';
 import { licenseValidator } from './utils/licenseValidator';
 import { NavigationTabs } from './components/NavigationTabs';
@@ -34,28 +34,7 @@ const Placeholder: React.FC = () => (
   </div>
 );
 
-// Detectar si estamos en la pagina publica del cliente
-const isClientFormPage = (): boolean => {
-  return window.location.pathname === '/cliente';
-};
-
-const getVendorIdFromUrl = (): string | undefined => {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('v') || undefined;
-};
-
 const App: React.FC = () => {
-
-  // Si estamos en /cliente, mostrar solo el formulario publico
-  if (isClientFormPage()) {
-    return (
-      <>
-        <ClientFormPage vendorId={getVendorIdFromUrl()} />
-        <GlobalToastHost />
-      </>
-    );
-  }
-
   const [activeTab, setActiveTab] = useState<AppTab>('factura');
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showLicenseManager, setShowLicenseManager] = useState(false);
@@ -322,6 +301,7 @@ const App: React.FC = () => {
         {activeTab === 'inventory' && (businessId ? <SistemaInventario /> : <Placeholder />)}
         {activeTab === 'factura' && <CCF03Generator />}
         {activeTab === 'historial' && (businessId ? <HistoryWrapper /> : <Placeholder />)}
+        {activeTab === 'fe01' && (businessId ? <FE01 /> : <Placeholder />)}
         {activeTab === 'micuenta' && (
           <MiCuenta
             onBack={() => setActiveTab('factura')}
