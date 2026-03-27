@@ -169,6 +169,15 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
   const emisor = resolveEmisor(input.emisor);
   const now = input.fecha ?? new Date();
   const cuerpoDocumento = input.items.map(buildLine);
+  const totalBruto = redondear(
+    input.items.reduce((sum, item) => {
+      const cantidad = redondear(Number(item.cantidad) || 0, 8);
+      const precioUni = redondear(Number(item.precioUnitario) || 0, 8);
+      const montoDescu = redondear(Number(item.descuento) || 0, 8);
+      return sum + Math.max(0, redondear((cantidad * precioUni) - montoDescu, 8));
+    }, 0),
+    2
+  );
   const {
     totalNoSuj,
     totalExenta,
@@ -178,13 +187,13 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
     subTotal,
     totalDescu,
     iva: totalIva,
-    montoTotalOperacion,
-    totalPagar,
   } = calcularTotales(cuerpoDocumento, '01');
   const descuGravada = totalDescu;
   const ivaRete1 = 0;
   const reteRenta = 0;
   const saldoFavor = 0;
+  const montoTotalOperacion = totalBruto;
+  const totalPagar = totalBruto;
 
   const dte: DTEJSON = {
     identificacion: {

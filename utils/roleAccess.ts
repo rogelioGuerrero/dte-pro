@@ -1,14 +1,16 @@
-export type Role = 'owner' | 'admin' | 'operator' | null;
+export type Role = 'owner' | 'admin' | 'operator' | 'viewer' | 'guest' | null;
 
 export function normalizeRole(value: unknown): Role {
-  return value === 'owner' || value === 'admin' || value === 'operator' ? value : null;
+  return value === 'owner' || value === 'admin' || value === 'operator' || value === 'viewer' || value === 'guest' ? value : null;
 }
 
 // Tabs disponibles por rol. micuenta se maneja como excepción en navegación.
 const ROLE_TABS: Record<Exclude<Role, null>, string[]> = {
-  owner: ['batch', 'fiscal', 'clients', 'inventory', 'factura', 'historial', 'simple', 'fe01', 'products'],
-  admin: ['batch', 'fiscal', 'clients', 'inventory', 'factura', 'historial', 'simple', 'fe01', 'products'],
-  operator: ['factura', 'historial', 'simple', 'fe01'],
+  owner: ['batch', 'fiscal', 'clients', 'inventory', 'factura', 'historial', 'simple', 'fe01', 'fe01v2', 'ccftester', 'micuenta'],
+  admin: ['batch', 'fiscal', 'clients', 'inventory', 'factura', 'historial', 'simple', 'fe01', 'fe01v2', 'ccftester', 'micuenta'],
+  operator: ['batch', 'fiscal', 'clients', 'inventory', 'factura', 'historial', 'simple', 'fe01', 'fe01v2', 'ccftester', 'micuenta'],
+  viewer: ['historial', 'micuenta'],
+  guest: ['simple', 'micuenta'],
 };
 
 export function isTabAllowedForRole(tab: string, role: Role): boolean {

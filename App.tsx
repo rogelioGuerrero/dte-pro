@@ -14,6 +14,7 @@ import { MagicLicenseActivator } from './components/MagicLicenseActivator';
 import { LicenseStatus } from './components/LicenseStatus';
 import { UserModeSetup } from './components/UserModeSetup';
 import FE01 from './components/pages/FE01';
+import FE01V2 from './components/pages/FE01V2';
 import { shouldShowUserModeSelection } from './utils/remoteLicensing';
 import { licenseValidator } from './utils/licenseValidator';
 import { NavigationTabs } from './components/NavigationTabs';
@@ -105,10 +106,8 @@ const App: React.FC = () => {
     // Temporarily disabled auto-subscription due to backend 500 error
     // if (isSupported && permission === 'granted') {
     //   // Auto-suscribir si ya tiene permiso
-    //   subscribeToPush();
+    //   // subscribeToPush();
     // }
-    // Ignoramos subscribeToPush en las dependencias para evitar bucles infinitos
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSupported, permission]);
 
   // Ejecutar backup automático mensual (deshabilitado)
@@ -302,6 +301,7 @@ const App: React.FC = () => {
         {activeTab === 'factura' && <CCF03Generator />}
         {activeTab === 'historial' && (businessId ? <HistoryWrapper /> : <Placeholder />)}
         {activeTab === 'fe01' && (businessId ? <FE01 /> : <Placeholder />)}
+        {activeTab === 'fe01v2' && (businessId ? <FE01V2 /> : <Placeholder />)}
         {activeTab === 'micuenta' && (
           <MiCuenta
             onBack={() => setActiveTab('factura')}

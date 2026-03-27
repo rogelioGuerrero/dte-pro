@@ -13,6 +13,7 @@ export interface BusinessFeatureFlags {
   historial: boolean;
   simple: boolean;
   fe01: boolean;
+  fe01v2: boolean;
   poscf: boolean;
   ccftester: boolean;
 }
@@ -27,6 +28,7 @@ function sanitizeBackendFeatures(input?: Record<string, boolean> | null): Busine
     historial: input?.historial,
     simple: input?.simple,
     fe01: input?.fe01,
+    fe01v2: input?.fe01v2,
     poscf: input?.poscf,
     ccftester: input?.ccftester,
   });
@@ -75,6 +77,7 @@ const DEFAULT_FEATURES: BusinessFeatureFlags = {
   historial: true,
   simple: false,
   fe01: true,
+  fe01v2: true,
   poscf: false,
   ccftester: true,
 };
@@ -119,6 +122,7 @@ function sanitizeFeatures(input?: Partial<BusinessFeatureFlags> | null): Busines
     historial: input?.historial ?? DEFAULT_FEATURES.historial,
     simple: input?.simple ?? DEFAULT_FEATURES.simple,
     fe01: input?.fe01 ?? DEFAULT_FEATURES.fe01,
+    fe01v2: input?.fe01v2 ?? DEFAULT_FEATURES.fe01v2,
     poscf: input?.poscf ?? DEFAULT_FEATURES.poscf,
     ccftester: input?.ccftester ?? DEFAULT_FEATURES.ccftester,
   };
