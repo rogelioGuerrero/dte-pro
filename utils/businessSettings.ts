@@ -119,7 +119,6 @@ function sanitizeFeatures(input?: Partial<BusinessFeatureFlags> | null): Busines
     historial: input?.historial ?? DEFAULT_FEATURES.historial,
     simple: input?.simple ?? DEFAULT_FEATURES.simple,
     fe01: input?.fe01 ?? DEFAULT_FEATURES.fe01,
-    fe01v2: input?.fe01v2 ?? DEFAULT_FEATURES.fe01v2,
     poscf: input?.poscf ?? DEFAULT_FEATURES.poscf,
     ccftester: input?.ccftester ?? DEFAULT_FEATURES.ccftester,
   };
@@ -213,6 +212,7 @@ function mapBusinessSettingsToBackendPayload(settings: BusinessSettings) {
       factura: settings.features.factura,
       historial: settings.features.historial,
       simple: settings.features.simple,
+      fe01: settings.features.fe01,
       poscf: settings.features.poscf,
       ccftester: settings.features.ccftester,
     },
