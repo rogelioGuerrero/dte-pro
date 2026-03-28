@@ -1,7 +1,6 @@
 import { numeroALetras, redondear } from './formatters';
 import type { EmisorData } from './emisorDb';
 import type { DTEJSON, ItemFactura } from './types';
-import { calcularTotales } from './totales';
 
 export interface Fe01ItemInput {
   cantidad: number;
@@ -169,21 +168,19 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
   const emisor = resolveEmisor(input.emisor);
   const now = input.fecha ?? new Date();
   const cuerpoDocumento = input.items.map(buildLine);
-  const {
-    totalNoSuj,
-    totalExenta,
-    totalGravada,
-    totalNoGravado,
-    subTotalVentas,
-    subTotal,
-    totalDescu,
-    iva: totalIva,
-  } = calcularTotales(cuerpoDocumento, '01');
+  const totalNoSuj = 0;
+  const totalExenta = 0;
+  const totalGravada = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.ventaGravada || 0), 0), 2);
+  const totalNoGravado = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.noGravado || 0), 0), 2);
+  const subTotalVentas = totalGravada;
+  const totalDescu = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.montoDescu || 0), 0), 2);
   const descuGravada = totalDescu;
+  const totalIva = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.ivaItem || 0), 0), 2);
+  const subTotal = redondear(subTotalVentas - totalDescu, 2);
   const ivaRete1 = 0;
   const reteRenta = 0;
   const saldoFavor = 0;
-  const montoTotalOperacion = redondear(subTotalVentas - totalDescu + totalNoGravado + totalIva, 2);
+  const montoTotalOperacion = redondear(subTotal + totalNoGravado, 2);
   const totalPagar = redondear(montoTotalOperacion - ivaRete1 - reteRenta + saldoFavor, 2);
 
   const dte: DTEJSON = {
