@@ -183,7 +183,7 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
   const ivaRete1 = 0;
   const reteRenta = 0;
   const saldoFavor = 0;
-  const montoTotalOperacion = redondear(subTotalVentas - totalDescu + totalNoGravado, 2);
+  const montoTotalOperacion = redondear(subTotalVentas - totalDescu + totalNoGravado + totalIva, 2);
   const totalPagar = redondear(montoTotalOperacion - ivaRete1 - reteRenta + saldoFavor, 2);
 
   const dte: DTEJSON = {
