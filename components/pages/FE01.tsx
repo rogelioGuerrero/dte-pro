@@ -13,9 +13,10 @@ const formatCurrency = (value: number): string => `$${redondear(value || 0, 2).t
 const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): DTEJSON => {
   const cantidad = 1;
   const totalVenta = 10;
+  const ventaGravada = totalVenta;
   const baseGravadaParaIva = redondear(totalVenta / 1.13, 2);
   const totalIva = redondear(totalVenta - baseGravadaParaIva, 2);
-  const subTotal = redondear(totalVenta, 2);
+  const subTotal = redondear(ventaGravada, 2);
   const montoTotalOperacion = redondear(totalVenta, 2);
 
   return {
@@ -82,11 +83,11 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
         codigo: null,
         uniMedida: 59,
         descripcion: 'Prueba FE01',
-        precioUni: totalVenta,
+        precioUni: ventaGravada,
         montoDescu: 0,
         ventaNoSuj: 0,
         ventaExenta: 0,
-        ventaGravada: totalVenta,
+        ventaGravada: ventaGravada,
         tributos: ['20'],
         numeroDocumento: null,
         codTributo: null,
@@ -98,8 +99,8 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
     resumen: {
       totalNoSuj: 0,
       totalExenta: 0,
-      totalGravada: totalVenta,
-      subTotalVentas: totalVenta,
+      totalGravada: ventaGravada,
+      subTotalVentas: ventaGravada,
       descuNoSuj: 0,
       descuExenta: 0,
       descuGravada: 0,
@@ -263,7 +264,7 @@ export const FE01: React.FC = () => {
         <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900">Resumen</h2>
           <div className="mt-3 grid gap-3 md:grid-cols-3 text-sm text-gray-700">
-            <div className="rounded-xl bg-gray-50 p-3">Base gravada: <span className="font-semibold">{formatCurrency(resumen?.totalGravada ?? 0)}</span></div>
+            <div className="rounded-xl bg-gray-50 p-3">Monto gravado: <span className="font-semibold">{formatCurrency(resumen?.totalGravada ?? 0)}</span></div>
             <div className="rounded-xl bg-gray-50 p-3">IVA: <span className="font-semibold">{formatCurrency(resumen?.totalIva ?? 0)}</span></div>
             <div className="rounded-xl bg-gray-50 p-3">Total: <span className="font-semibold">{formatCurrency(resumen?.totalPagar ?? 0)}</span></div>
           </div>
