@@ -13,9 +13,9 @@ const formatCurrency = (value: number): string => `$${redondear(value || 0, 2).t
 const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): DTEJSON => {
   const cantidad = 1;
   const totalVenta = 10;
-  const baseGravada = redondear(totalVenta / 1.13, 2);
-  const totalIva = redondear(totalVenta - baseGravada, 2);
-  const subTotal = redondear(baseGravada, 2);
+  const baseGravadaParaIva = redondear(totalVenta / 1.13, 2);
+  const totalIva = redondear(totalVenta - baseGravadaParaIva, 2);
+  const subTotal = redondear(totalVenta, 2);
   const montoTotalOperacion = redondear(totalVenta, 2);
 
   return {
@@ -82,11 +82,11 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
         codigo: null,
         uniMedida: 59,
         descripcion: 'Prueba FE01',
-        precioUni: baseGravada,
+        precioUni: totalVenta,
         montoDescu: 0,
         ventaNoSuj: 0,
         ventaExenta: 0,
-        ventaGravada: baseGravada,
+        ventaGravada: totalVenta,
         tributos: ['20'],
         numeroDocumento: null,
         codTributo: null,
@@ -98,8 +98,8 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
     resumen: {
       totalNoSuj: 0,
       totalExenta: 0,
-      totalGravada: baseGravada,
-      subTotalVentas: baseGravada,
+      totalGravada: totalVenta,
+      subTotalVentas: totalVenta,
       descuNoSuj: 0,
       descuExenta: 0,
       descuGravada: 0,
