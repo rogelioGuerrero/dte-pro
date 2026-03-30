@@ -99,7 +99,6 @@ export interface DTEJSON {
     descuGravada: number;
     porcentajeDescuento: number;
     totalDescu: number;
-    totalIva: number;
     tributos: Array<{
       codigo: string;
       descripcion: string;
@@ -112,8 +111,8 @@ export interface DTEJSON {
     montoTotalOperacion: number;
     totalNoGravado: number;
     totalPagar: number;
-    totalCargosNoBase?: number;
     totalLetras: string;
+    totalIva: number;
     saldoFavor: number;
     condicionOperacion: number;
     pagos: Array<{
@@ -124,6 +123,7 @@ export interface DTEJSON {
       periodo: number | null;
     }> | null;
     numPagoElectronico: string | null;
+    totalCargosNoBase?: number;
   };
   extension: {
     nombEntrega: string | null;

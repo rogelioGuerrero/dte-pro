@@ -27,9 +27,30 @@ export interface DTEResumen {
   totalExenta: number;
   totalNoSuj: number;
   totalGravada: number;
-  subTotal: number;
-  montoTotalOperacion: number;
+  subTotalVentas: number;
+  descuNoSuj: number;
+  descuExenta: number;
+  descuGravada: number;
+  porcentajeDescuento: number;
+  totalDescu: number;
+  totalIva: number;
   tributos: DTETributo[] | null;
+  subTotal: number;
+  ivaRete1: number;
+  reteRenta: number;
+  montoTotalOperacion: number;
+  totalNoGravado: number;
+  totalPagar: number;
+  totalLetras: string;
+  saldoFavor: number;
+  condicionOperacion: number;
+  pagos: Array<{
+    codigo: string;
+    montoPago: number;
+    referencia: string | null;
+    plazo: string | null;
+    periodo: number | null;
+  }> | null;
 }
 
 export interface DTEData {

@@ -184,7 +184,15 @@ const normalizeDteForTransport = <T extends Record<string, unknown>>(dte: T): T 
     }
 
     if (tipoDte === '03' && cloned.resumen) {
-      delete cloned.resumen.totalCargosNoBase;
+      delete (cloned.resumen as any).totalCargosNoBase;
+    }
+
+    if (tipoDte === '01' && cloned.resumen) {
+      // Para FE 01 NO eliminamos campos, solo nos aseguramos de que totalIva exista si hay gravada
+      const res = cloned.resumen as any;
+      if (res.totalGravada > 0 && (res.totalIva === undefined || res.totalIva === null)) {
+        res.totalIva = 0;
+      }
     }
   }
 

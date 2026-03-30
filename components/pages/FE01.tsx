@@ -22,8 +22,10 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
   // Parte alfanumérica de 8 caracteres: 4 estable + 4 punto
   const estable = String(emisor.codEstableMH || 'M001').replace(/[^A-Z0-9]/gi, '').padStart(4, '0').toUpperCase().slice(-4);
   const punto = String(emisor.codPuntoVentaMH || 'P001').replace(/[^A-Z0-9]/gi, '').padStart(4, '0').toUpperCase().slice(-4);
-  // Parte numérica de exactamente 15 dígitos
-  const sequence = Date.now().toString().padStart(15, '0').slice(-15);
+  // Parte numérica de exactamente 15 dígitos al final. 
+  // MH regex: ^DTE-01-[A-Z0-9]{8}-\d{15}$
+  const now = Date.now().toString();
+  const sequence = now.slice(-15).padStart(15, '0');
 
   return {
     identificacion: {
