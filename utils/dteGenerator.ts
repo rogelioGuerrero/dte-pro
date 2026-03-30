@@ -81,7 +81,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
 
     const ivaItem = datos.tipoDocumento === '03'
       ? 0
-      : (ventaGravada > 0 ? redondear(ventaGravada * 0.13, 2) : 0);
+      : (ventaGravada > 0 ? redondear(ventaGravada - (ventaGravada / 1.13), 2) : 0);
 
     const tributos = datos.tipoDocumento === '01'
       ? (ivaItem > 0 ? ['20'] : null)

@@ -133,11 +133,13 @@ const resolveEmisor = (emisor: Fe01BuildInput['emisor']): Fe01EmisorInput => ({
 
 const buildLine = (item: Fe01ItemInput, index: number): ItemFactura => {
   const cantidad = redondear(Number(item.cantidad) || 0, 8);
-  const precioUni = redondear(Number(item.precioUnitario) || 0, 8);
+  const precioUniConIva = redondear(Number(item.precioUnitario) || 0, 8);
   const montoDescu = redondear(Number(item.descuento) || 0, 8);
-  const importeBruto = redondear((cantidad * precioUni) - montoDescu, 8);
-  const importeNeto = importeBruto > 0 ? redondear(importeBruto / (1 + IVA_RATE), 8) : 0;
-  const ivaItem = importeBruto > 0 ? redondear(importeBruto - importeNeto, 2) : 0;
+  const ventaGravada = redondear((cantidad * precioUniConIva) - montoDescu, 8);
+  
+  // Para 01, el IVA se extrae para información, no se suma al precio
+  const baseImponible = redondear(ventaGravada / (1 + IVA_RATE), 8);
+  const ivaItem = redondear(ventaGravada - baseImponible, 2);
 
   return {
     numItem: index + 1,
@@ -146,12 +148,12 @@ const buildLine = (item: Fe01ItemInput, index: number): ItemFactura => {
     codigo: null,
     uniMedida: 59,
     descripcion: sanitizeText(item.descripcion),
-    precioUni: importeNeto,
+    precioUni: precioUniConIva,
     montoDescu,
     ventaNoSuj: 0,
     ventaExenta: 0,
-    ventaGravada: importeNeto,
-    tributos: importeBruto > 0 ? ['20'] : null,
+    ventaGravada: ventaGravada,
+    tributos: ventaGravada > 0 ? ['20'] : null,
     numeroDocumento: null,
     codTributo: null,
     psv: 0,
