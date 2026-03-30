@@ -19,12 +19,18 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
   const subTotal = redondear(ventaGravada, 2);
   const montoTotalOperacion = redondear(totalVenta, 2);
 
+  // Parte alfanumérica de 8 caracteres: 4 estable + 4 punto
+  const estable = String(emisor.codEstableMH || 'M001').replace(/[^A-Z0-9]/gi, '').padStart(4, '0').toUpperCase().slice(-4);
+  const punto = String(emisor.codPuntoVentaMH || 'P001').replace(/[^A-Z0-9]/gi, '').padStart(4, '0').toUpperCase().slice(-4);
+  // Parte numérica de exactamente 15 dígitos
+  const sequence = Date.now().toString().padStart(15, '0').slice(-15);
+
   return {
     identificacion: {
       version: 1,
       ambiente: '00',
       tipoDte: '01',
-      numeroControl: `DTE-01-${String(emisor.codEstableMH || 'M001').replace(/\D/g, '').padStart(4, '0').slice(-4)}${String(emisor.codPuntoVentaMH || 'P001').replace(/\D/g, '').padStart(4, '0').slice(-4)}-${Date.now().toString().slice(-15)}`,
+      numeroControl: `DTE-01-${estable}${punto}-${sequence}`,
       codigoGeneracion: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID().toUpperCase()
         : `XXXXXXXX-XXXX-4XXX-YXXX-${Date.now().toString(16).toUpperCase().padStart(12, '0')}`,
@@ -106,7 +112,6 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
       descuGravada: 0,
       porcentajeDescuento: 0,
       totalDescu: 0,
-      totalIva,
       tributos: [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }],
       subTotal,
       ivaRete1: 0,
@@ -115,6 +120,7 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
       totalNoGravado: 0,
       totalPagar: montoTotalOperacion,
       totalLetras: numeroALetras(montoTotalOperacion),
+      totalIva, // MH Schema for 01 often expects this field in resumen
       saldoFavor: 0,
       condicionOperacion: 1,
       pagos: [
@@ -138,7 +144,7 @@ export const FE01: React.FC = () => {
   const { addToast } = useToast();
   const { businessId, operationalBusinessId } = useEmisor();
   const [emisor, setEmisor] = useState<EmisorData | null>(null);
-  const [receptorEmail, setReceptorEmail] = useState('');
+  const [receptorEmail, setReceptorEmail] = useState('guerrero_vi@yahoo.com');
   const [isSending, setIsSending] = useState(false);
   const [respuesta, setRespuesta] = useState<TransmitDTEResponse | { error: string } | null>(null);
   const [showDebug, setShowDebug] = useState(false);
