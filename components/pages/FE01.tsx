@@ -61,7 +61,7 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
       nombre: emisor.nombre,
       codActividad: emisor.actividadEconomica || '00000',
       descActividad: emisor.descActividad,
-      nombreComercial: emisor.nombreComercial ?? null,
+      nombreComercial: (emisor.nombreComercial && emisor.nombreComercial.length >= 5 && emisor.nombreComercial !== 'n/a') ? emisor.nombreComercial : emisor.nombre,
       tipoEstablecimiento: emisor.tipoEstablecimiento,
       codEstable: emisor.codEstableMH || '0001',
       codPuntoVenta: emisor.codPuntoVentaMH || '0001',
@@ -76,11 +76,10 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
       codPuntoVentaMH: emisor.codPuntoVentaMH,
     },
     receptor: {
-      tipoDocumento: null,
-      numDocumento: null,
+      tipoDocumento: '13',
+      numDocumento: '12345678-9',
       nrc: null,
       nombre: 'Consumidor Final',
-      nombreComercial: null,
       codActividad: null,
       descActividad: null,
       direccion: {
