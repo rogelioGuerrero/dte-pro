@@ -134,7 +134,6 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
           periodo: null,
         },
       ],
-      ivaPerci1: 0,
       numPagoElectronico: null,
     },
     extension: null,

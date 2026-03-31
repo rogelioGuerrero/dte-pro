@@ -250,7 +250,6 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
       descuGravada,
       porcentajeDescuento: 0,
       totalDescu,
-      totalIva,
       tributos: totalIva > 0
         ? [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }]
         : null,
@@ -261,6 +260,7 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
       totalNoGravado,
       totalPagar,
       totalLetras: numeroALetras(totalPagar),
+      totalIva,
       saldoFavor,
       condicionOperacion: 1,
       pagos: [
@@ -272,7 +272,6 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
           periodo: null,
         },
       ],
-      ivaPerci1: 0,
       numPagoElectronico: null,
     },
     extension: null,
