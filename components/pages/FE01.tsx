@@ -12,12 +12,22 @@ const formatCurrency = (value: number): string => `$${redondear(value || 0, 2).t
 
 const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): DTEJSON => {
   const cantidad = 1;
-  const totalVenta = 10;
-  const ventaGravada = totalVenta;
-  const baseGravadaParaIva = redondear(totalVenta / 1.13, 2);
-  const totalIva = redondear(totalVenta - baseGravadaParaIva, 2);
-  const subTotal = redondear(ventaGravada, 2);
-  const montoTotalOperacion = redondear(totalVenta, 2);
+  // Para FE01 (Factura), el total pagado ya incluye IVA.
+  // MH valida que totalGravada + totalIva = totalPagar
+  const totalPagar = 10.00;
+  const baseGravadaParaIva = redondear(totalPagar / 1.13, 2);
+  const totalIva = redondear(totalPagar - baseGravadaParaIva, 2);
+  const subTotal = redondear(baseGravadaParaIva, 2);
+  const montoTotalOperacion = redondear(totalPagar, 2);
+
+  // Para el cuerpo, los valores unitarios en DTE 01 deben incluir el IVA según el caso de uso típico de consumidor final,
+  // o pueden enviarse desglosados si se prefiere. Sin embargo, para no complicar y mantener coherencia
+  // con el resumen donde los desglosamos:
+  // Precio Unitario en cuerpo debe ir con 8 decimales. Si total es 10 con IVA, enviamos 10.
+  // MH acepta que en el cuerpo el precioUnitario de factura incluya IVA o no dependiendo del tributo asociado.
+  // En este caso, para ser consistentes con la corrección:
+  const precioUni = totalPagar;
+  const ventaGravadaCuerpo = totalPagar;
 
   // Parte alfanumérica de 8 caracteres: 4 estable + 4 punto
   const estable = String(emisor.codEstableMH || 'M001').replace(/[^A-Z0-9]/gi, '').padStart(4, '0').toUpperCase().slice(-4);
@@ -53,8 +63,8 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
       descActividad: emisor.descActividad,
       nombreComercial: emisor.nombreComercial ?? null,
       tipoEstablecimiento: emisor.tipoEstablecimiento,
-      codEstable: null,
-      codPuntoVenta: null,
+      codEstable: emisor.codEstableMH || '0001',
+      codPuntoVenta: emisor.codPuntoVentaMH || '0001',
       direccion: {
         departamento: emisor.departamento,
         municipio: emisor.municipio,
@@ -91,30 +101,30 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
         codigo: null,
         uniMedida: 59,
         descripcion: 'Prueba FE01',
-        precioUni: ventaGravada,
+        precioUni: precioUni,
         montoDescu: 0,
         ventaNoSuj: 0,
         ventaExenta: 0,
-        ventaGravada: ventaGravada,
+        ventaGravada: ventaGravadaCuerpo,
         tributos: ['20'],
         numeroDocumento: null,
         codTributo: null,
         psv: 0,
         noGravado: 0,
-        ivaItem: totalIva,
+        ivaItem: 0, // En factura el cuerpo puede no desglosar ivaItem si precio ya lo incluye, aunque MH prefiere desglose en resumen
       },
     ],
     resumen: {
       totalNoSuj: 0,
       totalExenta: 0,
-      totalGravada: ventaGravada,
-      subTotalVentas: ventaGravada,
+      totalGravada: baseGravadaParaIva,
+      subTotalVentas: baseGravadaParaIva,
       descuNoSuj: 0,
       descuExenta: 0,
       descuGravada: 0,
       porcentajeDescuento: 0,
       totalDescu: 0,
-      tributos: [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }],
+      tributos: [{ codigo: '20', descripcion: 'Impuesto al Valor Agregado 13%', valor: totalIva }],
       subTotal,
       ivaPerci1: 0,
       ivaRete1: 0,
