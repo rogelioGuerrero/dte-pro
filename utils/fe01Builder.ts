@@ -254,6 +254,7 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
         ? [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }]
         : null,
       subTotal,
+      ivaPerci1: 0,
       ivaRete1,
       reteRenta,
       montoTotalOperacion,

@@ -105,7 +105,7 @@ export interface DTEJSON {
       valor: number;
     }> | null;
     subTotal: number;
-    ivaPerci1?: number;
+    ivaPerci1: number;
     ivaRete1: number;
     reteRenta: number;
     montoTotalOperacion: number;

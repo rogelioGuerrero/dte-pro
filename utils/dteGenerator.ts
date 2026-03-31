@@ -258,6 +258,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       totalIva: totalIva,
       tributos: tributosResumen,
       subTotal: subTotal,
+      ivaPerci1: 0,
       ivaRete1: 0,
       reteRenta: 0,
       montoTotalOperacion: montoTotalOperacion,

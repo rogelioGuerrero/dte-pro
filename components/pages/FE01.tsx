@@ -116,6 +116,7 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
       totalDescu: 0,
       tributos: [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }],
       subTotal,
+      ivaPerci1: 0,
       ivaRete1: 0,
       reteRenta: 0,
       montoTotalOperacion,
