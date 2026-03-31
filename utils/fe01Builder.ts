@@ -224,8 +224,8 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
       codPuntoVentaMH: emisor.codPuntoVentaMH,
     },
     receptor: {
-      tipoDocumento: '13',
-      numDocumento: '12345678-9',
+      tipoDocumento: totalPagar >= 1095 ? '13' : null,
+      numDocumento: totalPagar >= 1095 ? '12345678-9' : null,
       nrc: null,
       nombre: 'Consumidor Final',
       codActividad: null,
