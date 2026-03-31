@@ -135,11 +135,13 @@ const buildLine = (item: Fe01ItemInput, index: number): ItemFactura => {
   const cantidad = redondear(Number(item.cantidad) || 0, 8);
   const precioUniConIva = redondear(Number(item.precioUnitario) || 0, 8);
   const montoDescu = redondear(Number(item.descuento) || 0, 8);
-  const ventaGravada = redondear((cantidad * precioUniConIva) - montoDescu, 8);
   
-  // Para 01, el IVA se extrae para información, no se suma al precio
-  const baseImponible = redondear(ventaGravada / (1 + IVA_RATE), 8);
-  const ivaItem = redondear(ventaGravada - baseImponible, 2);
+  // Para DTE 01 (Factura), los precios y ventas deben ser SIN IVA
+  // si el IVA se está reportando explícitamente en el campo ivaItem.
+  // MH valida que sumatoria(ventaGravada) == resumen.totalGravada
+  const precioUniSinIva = redondear(precioUniConIva / (1 + IVA_RATE), 8);
+  const ventaGravada = redondear((cantidad * precioUniSinIva) - montoDescu, 8);
+  const ivaItem = redondear((cantidad * precioUniConIva - montoDescu) - ventaGravada, 2);
 
   return {
     numItem: index + 1,
@@ -148,12 +150,12 @@ const buildLine = (item: Fe01ItemInput, index: number): ItemFactura => {
     codigo: null,
     uniMedida: 59,
     descripcion: sanitizeText(item.descripcion),
-    precioUni: precioUniConIva,
+    precioUni: precioUniSinIva,
     montoDescu,
     ventaNoSuj: 0,
     ventaExenta: 0,
     ventaGravada: ventaGravada,
-    tributos: ventaGravada > 0 ? ['20'] : null,
+    tributos: null, // Para Factura 01, el código 20 (IVA) NO es válido en el array de tributos
     numeroDocumento: null,
     codTributo: null,
     psv: 0,
@@ -249,11 +251,8 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
       descuGravada,
       porcentajeDescuento: 0,
       totalDescu,
-      tributos: totalIva > 0
-        ? [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }]
-        : null,
+      tributos: null, // En DTE 01, los tributos no aplican el código 20 en la sección resumen, el IVA va directo a totalIva
       subTotal,
-      ivaPerci1: 0,
       ivaRete1,
       reteRenta,
       montoTotalOperacion,

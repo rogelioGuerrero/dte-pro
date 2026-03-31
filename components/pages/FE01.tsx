@@ -25,9 +25,10 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
   // con el resumen donde los desglosamos:
   // Precio Unitario en cuerpo debe ir con 8 decimales. Si total es 10 con IVA, enviamos 10.
   // MH acepta que en el cuerpo el precioUnitario de factura incluya IVA o no dependiendo del tributo asociado.
-  // En este caso, para ser consistentes con la corrección:
-  const precioUni = totalPagar;
-  const ventaGravadaCuerpo = totalPagar;
+  // En Factura (01), si se calculan impuestos en el resumen, los ítems del cuerpo DEBEN sumar exactamente la base gravada sin impuestos
+  // y el ivaItem del cuerpo DEBE sumar el totalIva del resumen.
+  const precioUni = baseGravadaParaIva;
+  const ventaGravadaCuerpo = baseGravadaParaIva;
 
   // Parte alfanumérica de 8 caracteres: 4 estable + 4 punto
   const estable = String(emisor.codEstableMH || 'M001').replace(/[^A-Z0-9]/gi, '').padStart(4, '0').toUpperCase().slice(-4);
@@ -105,12 +106,12 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
         ventaNoSuj: 0,
         ventaExenta: 0,
         ventaGravada: ventaGravadaCuerpo,
-        tributos: ['20'],
+        tributos: null,
         numeroDocumento: null,
         codTributo: null,
         psv: 0,
         noGravado: 0,
-        ivaItem: 0, // En factura el cuerpo puede no desglosar ivaItem si precio ya lo incluye, aunque MH prefiere desglose en resumen
+        ivaItem: totalIva, // En factura el cuerpo puede no desglosar ivaItem si precio ya lo incluye, aunque MH prefiere desglose en resumen
       },
     ],
     resumen: {
@@ -123,9 +124,8 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
       descuGravada: 0,
       porcentajeDescuento: 0,
       totalDescu: 0,
-      tributos: [{ codigo: '20', descripcion: 'Impuesto al Valor Agregado 13%', valor: totalIva }],
+      tributos: null,
       subTotal,
-      ivaPerci1: 0,
       ivaRete1: 0,
       reteRenta: 0,
       montoTotalOperacion,

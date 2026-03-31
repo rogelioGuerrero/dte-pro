@@ -105,7 +105,7 @@ export interface DTEJSON {
       valor: number;
     }> | null;
     subTotal: number;
-    ivaPerci1: number;
+    ivaPerci1?: number; // Opcional porque en FE 01 el validador estricto lo rechaza si no estÃ¡ declarado en JSON schema
     ivaRete1: number;
     reteRenta: number;
     montoTotalOperacion: number;
