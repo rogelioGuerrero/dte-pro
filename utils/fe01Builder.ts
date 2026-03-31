@@ -133,15 +133,12 @@ const resolveEmisor = (emisor: Fe01BuildInput['emisor']): Fe01EmisorInput => ({
 
 const buildLine = (item: Fe01ItemInput, index: number): ItemFactura => {
   const cantidad = redondear(Number(item.cantidad) || 0, 8);
-  const precioUniConIva = redondear(Number(item.precioUnitario) || 0, 8);
+  const precioUni = redondear(Number(item.precioUnitario) || 0, 8); 
   const montoDescu = redondear(Number(item.descuento) || 0, 8);
   
-  // Para DTE 01 (Factura), los precios y ventas deben ser SIN IVA
-  // si el IVA se está reportando explícitamente en el campo ivaItem.
-  // MH valida que sumatoria(ventaGravada) == resumen.totalGravada
-  const precioUniSinIva = redondear(precioUniConIva / (1 + IVA_RATE), 8);
-  const ventaGravada = redondear((cantidad * precioUniSinIva) - montoDescu, 8);
-  const ivaItem = redondear((cantidad * precioUniConIva - montoDescu) - ventaGravada, 2);
+  const ventaGravada = redondear((cantidad * precioUni) - montoDescu, 8);
+  const baseImponible = redondear(ventaGravada / (1 + IVA_RATE), 8);
+  const ivaItem = redondear(ventaGravada - baseImponible, 8);
 
   return {
     numItem: index + 1,
@@ -150,12 +147,12 @@ const buildLine = (item: Fe01ItemInput, index: number): ItemFactura => {
     codigo: null,
     uniMedida: 59,
     descripcion: sanitizeText(item.descripcion),
-    precioUni: precioUniSinIva,
+    precioUni: precioUni,
     montoDescu,
     ventaNoSuj: 0,
     ventaExenta: 0,
     ventaGravada: ventaGravada,
-    tributos: null, // Para Factura 01, el código 20 (IVA) NO es válido en el array de tributos
+    tributos: ventaGravada > 0 ? ['20'] : null, 
     numeroDocumento: null,
     codTributo: null,
     psv: 0,
@@ -166,25 +163,31 @@ const buildLine = (item: Fe01ItemInput, index: number): ItemFactura => {
 
 export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionRequest => {
   if (!input.items.length) {
-    throw new Error('Agrega al menos un item para facturar consumidora final 01.');
+    throw new Error('DTE01 requires at least one item');
   }
 
   const emisor = resolveEmisor(input.emisor);
-  const now = input.fecha ?? new Date();
+  const now = input.fecha || new Date();
   const cuerpoDocumento = input.items.map(buildLine);
   const totalNoSuj = 0;
   const totalExenta = 0;
-  const totalGravada = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.ventaGravada || 0), 0), 2);
+  
+  const sumaVentasCuerpo = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.ventaGravada || 0), 0), 2);
+  const totalGravada = redondear(sumaVentasCuerpo / (1 + IVA_RATE), 2);
   const totalNoGravado = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.noGravado || 0), 0), 2);
   const subTotalVentas = totalGravada;
-  const totalDescu = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.montoDescu || 0), 0), 2);
+  
+  const sumaDescuentoCuerpo = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.montoDescu || 0), 0), 2);
+  const totalDescu = redondear(sumaDescuentoCuerpo / (1 + IVA_RATE), 2);
   const descuGravada = totalDescu;
-  const totalIva = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.ivaItem || 0), 0), 2);
+  
   const subTotal = redondear(subTotalVentas - totalDescu, 2);
+  const totalIva = redondear(sumaVentasCuerpo - sumaDescuentoCuerpo - subTotal, 2);
   const ivaRete1 = 0;
   const reteRenta = 0;
   const saldoFavor = 0;
-  const montoTotalOperacion = redondear(subTotal + totalNoGravado, 2);
+  
+  const montoTotalOperacion = redondear(subTotal + totalNoGravado + totalIva, 2);
   const totalPagar = redondear(montoTotalOperacion - ivaRete1 - reteRenta + saldoFavor, 2);
 
   const dte: DTEJSON = {
@@ -251,7 +254,7 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
       descuGravada,
       porcentajeDescuento: 0,
       totalDescu,
-      tributos: null, // En DTE 01, los tributos no aplican el código 20 en la sección resumen, el IVA va directo a totalIva
+      tributos: totalIva > 0 ? [{ codigo: '20', descripcion: 'Impuesto al Valor Agregado 13%', valor: totalIva }] : null, 
       subTotal,
       ivaRete1,
       reteRenta,
