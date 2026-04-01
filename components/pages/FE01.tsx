@@ -18,7 +18,6 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
   const baseGravadaParaIva = redondear(totalPagar / 1.13, 2);
   const totalIva = redondear(totalPagar - baseGravadaParaIva, 2);
   const subTotal = redondear(baseGravadaParaIva, 2);
-  const montoTotalOperacion = redondear(subTotal, 2);
 
   // Para el cuerpo, los valores unitarios en DTE 01 deben incluir el IVA según el caso de uso típico de consumidor final,
   // o pueden enviarse desglosados si se prefiere. Sin embargo, para no complicar y mantener coherencia
@@ -138,7 +137,7 @@ const buildMinimalFe01Dte = (emisor: EmisorData, receptorEmail: string | null): 
       pagos: [
         {
           codigo: '01',
-          montoPago: montoTotalOperacion,
+          montoPago: totalPagar,
           referencia: null,
           plazo: null,
           periodo: null,
