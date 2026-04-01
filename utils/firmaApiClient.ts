@@ -361,10 +361,16 @@ export const transmitirDocumento = async (params: {
   businessId?: string | null;
   receptorEmail?: string | null;
   timeoutMs?: number;
+  retries?: number;
+  baseDelayMs?: number;
 }): Promise<TransmitDTEResponse> => {
   const timeoutMs = params.timeoutMs ?? 45000;
   const url = buildUrl('/api/dte/transmit');
   const normalizedDte = normalizeDteForTransport(params.dte);
+
+  console.log('=== PAYLOAD FINAL QUE SE ENVÍA AL BACKEND ===');
+  console.log(JSON.stringify(normalizedDte, null, 2));
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(new Error('Timeout transmitiendo documento')), timeoutMs);
 

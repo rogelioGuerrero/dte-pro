@@ -200,8 +200,16 @@ export const FE01: React.FC = () => {
         return;
       }
 
+      console.log('=== PAYLOAD ANTES DE LIMPIAR ===');
+      console.log(JSON.stringify(request.dte, null, 2));
+      
+      const dteLimpio = limpiarDteParaFirma(request.dte as unknown as Record<string, unknown>);
+      
+      console.log('=== PAYLOAD DESPUÉS DE LIMPIAR ===');
+      console.log(JSON.stringify(dteLimpio, null, 2));
+
       const transmitted = await transmitirDocumento({
-        dte: limpiarDteParaFirma(request.dte as unknown as Record<string, unknown>),
+        dte: dteLimpio,
         passwordPri: '',
         ambiente: request.ambiente,
         flowType: request.flowType,
