@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FileJson, Plus, Search, Sparkles, Trash2, Send, FilePlus2 } from 'lucide-react';
 import { useEmisor } from '../contexts/EmisorContext';
-import { useToast, ToastContainer } from './Toast';
+import { useToast, ToastContainer, type ToastType } from './Toast';
 import { getClients, type ClientData } from '../utils/clientDb';
 import { getEmisor, type EmisorData } from '../utils/emisorDb';
 import { checkLicense } from '../utils/licenseValidator';
@@ -115,6 +115,10 @@ const trimOrNull = (value: string): string | null => {
   const normalized = (value || '').trim();
   return normalized ? normalized : null;
 };
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  return 'Error desconocido';
+};
 const normalizeEmail = (value: string): string | null => {
   const normalized = (value || '').trim();
   if (!normalized) return null;
@@ -171,9 +175,14 @@ const CCF03Generator: React.FC = () => {
   const [observaciones, setObservaciones] = useState('');
   const [generatedDTE, setGeneratedDTE] = useState<DTEJSON | null>(null);
   const [isTransmitting, setIsTransmitting] = useState(false);
-  const [mhResult, setMhResult] = useState<any>(null);
+  const [mhResult, setMhResult] = useState<unknown>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showDebugModal, setShowDebugModal] = useState(false);
+  const addToastRef = React.useRef(addToast);
+
+  useEffect(() => {
+    addToastRef.current = addToast;
+  }, [addToast]);
 
   useEffect(() => {
     let mounted = true;
@@ -209,7 +218,7 @@ const CCF03Generator: React.FC = () => {
             localStorage.removeItem('ccf_forma_pago_temp');
             localStorage.removeItem('ccf_condicion_temp');
             
-            addToast('Items convertidos desde Factura. Precios ajustados sin IVA.', 'info');
+            addToastRef.current('Items convertidos desde Factura. Precios ajustados sin IVA.', 'info' as ToastType);
           } catch (error) {
             console.error('Error al cargar items convertidos:', error);
           }
@@ -316,7 +325,7 @@ const CCF03Generator: React.FC = () => {
       return null;
     }
 
-    const datosFactura = {
+    const datosFactura: Parameters<typeof generarDTE>[0] = {
       emisor: {
         ...emisorForm,
         nit: nitEmisor,
@@ -346,7 +355,7 @@ const CCF03Generator: React.FC = () => {
       formaPago,
       condicionOperacion,
       observaciones,
-    } as any;
+    };
 
     const correlativo = generarCorrelativoControlado('03', datosFactura.emisor.codEstableMH, datosFactura.emisor.codPuntoVentaMH);
     const dte = generarDTE(datosFactura, correlativo, ambiente);
@@ -429,9 +438,10 @@ const CCF03Generator: React.FC = () => {
       } else {
         addToast(response.mhResponse?.mensaje || response.message || 'No se pudo transmitir el documento.', 'error');
       }
-    } catch (error: any) {
-      setMhResult({ error: error?.message || 'Error desconocido' });
-      addToast(error?.message || 'Error al transmitir', 'error');
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error);
+      setMhResult({ error: errorMessage });
+      addToast(errorMessage, 'error');
     } finally {
       setIsTransmitting(false);
     }
@@ -470,7 +480,7 @@ const CCF03Generator: React.FC = () => {
         <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h1 className="mt-3 text-2xl md:text-3xl font-bold text-slate-900">Comprobante de Crédito Fiscal Electrónico 03</h1>
+              <h1 className="mt-3 text-2xl md:text-2xl font-bold text-slate-900">Comprobante de Crédito Fiscal Electrónico 03</h1>
                           </div>
             <div className="flex flex-wrap gap-2">
               <button

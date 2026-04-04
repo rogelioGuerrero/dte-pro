@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Send, Trash2 } from 'lucide-react';
+import { FileJson, FilePlus2, Plus, Send, Trash2, X } from 'lucide-react';
 import { ToastContainer, useToast } from '../Toast';
 import { useEmisor } from '../../contexts/EmisorContext';
 import { checkLicense } from '../../utils/licenseValidator';
@@ -56,6 +56,14 @@ export const FE01: React.FC = () => {
       mounted = false;
     };
   }, [businessId, operationalBusinessId]);
+
+  const handleReset = () => {
+    setReceptorEmail('');
+    setReceptorDireccion('');
+    setItems([createItem(1)]);
+    setRespuesta(null);
+    setShowDebug(false);
+  };
 
   const resolvedBusinessId = businessId || operationalBusinessId;
 
@@ -344,12 +352,20 @@ export const FE01: React.FC = () => {
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">Factura Electrónica 01</p>
-            <h1 className="text-2xl font-bold text-gray-900">Consumidor final limpio</h1>
-            <p className="mt-1 text-sm text-gray-500">Diseño de captura profesional con panel de resumen lateral.</p>
+            
+            <h1 className="text-2xl font-bold text-gray-900">Factura Electrónica Consumidor Final 01</h1>
+            
           </div>
-          <div className="inline-flex items-center rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 border border-indigo-100">
-            Panel FE 01
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowDebug(true)}
+              title="Detalle técnico"
+              aria-label="Detalle técnico"
+              className="inline-flex items-center gap-2 rounded-full bg-indigo-50 text-indigo-700 px-3 py-2 text-sm font-medium hover:bg-indigo-100 transition border border-indigo-200"
+            >
+              <FileJson className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>
@@ -362,9 +378,7 @@ export const FE01: React.FC = () => {
 
       <div className="grid gap-4 lg:grid-cols-12">
         <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-4 lg:col-span-8">
-          <div className="rounded-xl bg-indigo-50 border border-indigo-100 px-4 py-3 text-sm text-indigo-900">
-            Captura precios <span className="font-semibold">sin IVA</span>. El sistema calcula automáticamente <span className="font-semibold">venta gravada</span> e <span className="font-semibold">IVA por ítem</span>.
-          </div>
+          
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
@@ -491,7 +505,7 @@ export const FE01: React.FC = () => {
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-4 lg:sticky lg:top-20">
             <div>
               <h2 className="text-sm font-semibold text-gray-800">Resumen del documento</h2>
-              <p className="text-xs text-gray-500 mt-1">Cálculo en tiempo real para FE 01</p>
+              
             </div>
 
             <div className="space-y-2 text-sm">
@@ -531,23 +545,49 @@ export const FE01: React.FC = () => {
               <Send className="h-4 w-4" />
               {isSending ? 'Enviando...' : 'Firmar y Enviar FE 01'}
             </button>
+
+            <button
+              type="button"
+              onClick={handleReset}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-slate-100 text-slate-700 px-4 py-3 text-sm font-medium hover:bg-slate-200 transition border border-slate-200"
+            >
+              <FilePlus2 className="h-4 w-4" />
+              Nueva Factura
+            </button>
           </div>
         </aside>
       </div>
 
       {showDebug && (
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900">Resumen</h2>
-          <div className="mt-3 grid gap-3 md:grid-cols-3 text-sm text-gray-700">
-            <div className="rounded-xl bg-gray-50 p-3">Monto gravado: <span className="font-semibold">{formatCurrency(resumenPreview.totalGravada)}</span></div>
-            <div className="rounded-xl bg-gray-50 p-3">IVA: <span className="font-semibold">{formatCurrency(resumenPreview.totalIva)}</span></div>
-            <div className="rounded-xl bg-gray-50 p-3">Total: <span className="font-semibold">{formatCurrency(resumenPreview.totalPagar)}</span></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+              <h2 className="text-lg font-semibold text-gray-900">Detalle técnico FE 01</h2>
+              <button
+                type="button"
+                onClick={() => setShowDebug(false)}
+                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                aria-label="Cerrar detalle técnico"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 overflow-y-auto p-5">
+              <div className="grid gap-3 md:grid-cols-3 text-sm text-gray-700">
+                <div className="rounded-xl bg-gray-50 p-3">Monto gravado: <span className="font-semibold">{formatCurrency(resumenPreview.totalGravada)}</span></div>
+                <div className="rounded-xl bg-gray-50 p-3">IVA: <span className="font-semibold">{formatCurrency(resumenPreview.totalIva)}</span></div>
+                <div className="rounded-xl bg-gray-50 p-3">Total: <span className="font-semibold">{formatCurrency(resumenPreview.totalPagar)}</span></div>
+              </div>
+              <p className="text-sm text-gray-500">{numeroALetras(resumenPreview.totalPagar)}</p>
+              {respuesta ? (
+                <pre className="overflow-auto rounded-xl bg-gray-900 p-4 text-xs text-gray-100">{JSON.stringify(respuesta, null, 2)}</pre>
+              ) : (
+                <p className="text-sm text-gray-500">Aún no hay respuesta de transmisión para mostrar.</p>
+              )}
+            </div>
           </div>
-          <p className="mt-3 text-sm text-gray-500">{numeroALetras(resumenPreview.totalPagar)}</p>
-          {respuesta && (
-            <pre className="mt-4 overflow-auto rounded-xl bg-gray-900 p-4 text-xs text-gray-100">{JSON.stringify(respuesta, null, 2)}</pre>
-          )}
-        </section>
+        </div>
       )}
 
       <ToastContainer toasts={toasts} removeToast={removeToast} />

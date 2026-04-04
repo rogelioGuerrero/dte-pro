@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, FileText, History, Boxes, PieChart, Zap } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, History, Boxes, PieChart } from 'lucide-react';
 import { isTabAllowed } from '../utils/userMode';
 import { isTabAllowedForRole, firstAllowedTab, Role, normalizeRole } from '../utils/roleAccess';
 import { useEmisor } from '../contexts/EmisorContext';
@@ -20,9 +20,8 @@ const TABS_CONFIG = [
   { key: 'clients', label: 'Clientes', icon: Users, color: 'blue' },
   { key: 'inventory', label: 'Inventario', icon: Boxes, color: 'amber' },
   { key: 'factura', label: 'Crédito Fiscal', icon: FileText, color: 'green', tooltip: 'Contribuyentes DTE-03' },
+  { key: 'fe01', label: 'Factura', icon: FileText, color: 'sky', tooltip: 'Consumidor Final DTE-01' },
   { key: 'historial', label: 'Historial', icon: History, color: 'purple' },
-  { key: 'fe01', label: 'Factura 01', icon: FileText, color: 'sky', tooltip: 'Factura Electrónica 01 limpia' },
-  { key: 'ccftester', label: 'CCF Tester', icon: Zap, color: 'rose', tooltip: 'Payload limpio DTE-03' },
 ];
 
 export const NavigationTabs: React.FC<NavigationTabsProps> = ({ 
