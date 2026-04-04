@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Send, Trash2 } from 'lucide-react';
-import { useToast } from '../Toast';
+import { ToastContainer, useToast } from '../Toast';
 import { useEmisor } from '../../contexts/EmisorContext';
 import { checkLicense } from '../../utils/licenseValidator';
 import { limpiarDteParaFirma, transmitirDocumento, type TransmitDTEResponse } from '../../utils/firmaApiClient';
@@ -32,7 +32,7 @@ const normalizeEmail = (value: string): string | null => {
 };
 
 export const FE01: React.FC = () => {
-  const { addToast } = useToast();
+  const { toasts, addToast, removeToast } = useToast();
   const { businessId, operationalBusinessId } = useEmisor();
   const [emisor, setEmisor] = useState<EmisorData | null>(null);
   const [receptorEmail, setReceptorEmail] = useState('');
@@ -342,33 +342,14 @@ export const FE01: React.FC = () => {
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">Factura Electrónica 01</p>
             <h1 className="text-2xl font-bold text-gray-900">Consumidor final limpio</h1>
-            <p className="mt-1 text-sm text-gray-500">Múltiples ítems, precio base sin IVA y cálculos alineados al backend.</p>
+            <p className="mt-1 text-sm text-gray-500">Diseño de captura profesional con panel de resumen lateral.</p>
           </div>
-          <div className="grid grid-cols-2 gap-2 rounded-xl bg-gray-50 p-3 text-sm text-gray-600 md:min-w-[320px]">
-            <div className="rounded-lg bg-white px-3 py-2 border border-gray-100">
-              <div className="text-xs text-gray-500">Items</div>
-              <div className="font-semibold text-gray-900">{totalItems}</div>
-            </div>
-            <div className="rounded-lg bg-white px-3 py-2 border border-gray-100">
-              <div className="text-xs text-gray-500">Descuento</div>
-              <div className="font-semibold text-gray-900">{formatCurrency(resumenPreview.totalDescu)}</div>
-            </div>
-            <div className="rounded-lg bg-white px-3 py-2 border border-gray-100">
-              <div className="text-xs text-gray-500">Base gravada</div>
-              <div className="font-semibold text-gray-900">{formatCurrency(resumenPreview.totalGravada)}</div>
-            </div>
-            <div className="rounded-lg bg-white px-3 py-2 border border-gray-100">
-              <div className="text-xs text-gray-500">IVA total</div>
-              <div className="font-semibold text-gray-900">{formatCurrency(resumenPreview.totalIva)}</div>
-            </div>
-            <div className="col-span-2 rounded-lg bg-gray-900 px-3 py-2 text-white">
-              <div className="text-xs text-gray-300">Total a pagar</div>
-              <div className="text-lg font-semibold">{formatCurrency(resumenPreview.totalPagar)}</div>
-            </div>
+          <div className="inline-flex items-center rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 border border-indigo-100">
+            Panel FE 01
           </div>
         </div>
       </div>
@@ -379,110 +360,109 @@ export const FE01: React.FC = () => {
         </div>
       )}
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
-        <div className="rounded-xl bg-indigo-50 border border-indigo-100 px-4 py-3 text-sm text-indigo-900">
-          Captura precios <span className="font-semibold">sin IVA</span>. El sistema calcula automáticamente <span className="font-semibold">venta gravada</span> e <span className="font-semibold">IVA por ítem</span>.
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="text-sm font-medium text-gray-700">Correo del receptor</label>
-            <input
-              type="email"
-              value={receptorEmail}
-              onChange={(e) => setReceptorEmail(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500"
-              placeholder="correo@cliente.com"
-            />
+      <div className="grid gap-4 lg:grid-cols-12">
+        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-4 lg:col-span-8">
+          <div className="rounded-xl bg-indigo-50 border border-indigo-100 px-4 py-3 text-sm text-indigo-900">
+            Captura precios <span className="font-semibold">sin IVA</span>. El sistema calcula automáticamente <span className="font-semibold">venta gravada</span> e <span className="font-semibold">IVA por ítem</span>.
           </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Dirección receptor (complemento)</label>
-            <input
-              type="text"
-              value={receptorDireccion}
-              onChange={(e) => setReceptorDireccion(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500"
-              placeholder="Colonia, calle y referencia"
-            />
-            <p className="mt-1 text-xs text-gray-500">Si lo dejas vacío se enviará "DIRECCION NO ESPECIFICADA".</p>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Correo del receptor</label>
+              <input
+                type="email"
+                value={receptorEmail}
+                onChange={(e) => setReceptorEmail(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500"
+                placeholder="correo@cliente.com"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Dirección receptor</label>
+              <input
+                type="text"
+                value={receptorDireccion}
+                onChange={(e) => setReceptorDireccion(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500"
+                placeholder="Opcional: Colonia, calle y referencia"
+              />
+            </div>
           </div>
-        </div>
 
-        <div className="space-y-3">
-          {items.map((item, index) => {
-            const ventaGravada = redondear(((Number(item.precioUni) || 0) * (Number(item.cantidad) || 0)) - (Number(item.montoDescu) || 0), 8);
-            const ivaItem = redondear(ventaGravada > 0 ? ventaGravada * 0.13 : 0, 8);
-            const totalLineaFinal = redondear(ventaGravada + ivaItem, 2);
-            return (
-              <div key={item.id} className="rounded-xl border border-gray-200 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-gray-900">Ítem #{index + 1}</h3>
-                  <span className="text-xs text-gray-500">Unidad 59</span>
-                </div>
+          <div className="space-y-3">
+            {items.map((item, index) => {
+              const ventaGravada = redondear(((Number(item.precioUni) || 0) * (Number(item.cantidad) || 0)) - (Number(item.montoDescu) || 0), 8);
+              const ivaItem = redondear(ventaGravada > 0 ? ventaGravada * 0.13 : 0, 8);
+              const totalLineaFinal = redondear(ventaGravada + ivaItem, 2);
+              return (
+                <div key={item.id} className="rounded-xl border border-gray-200 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-gray-900">Ítem #{index + 1}</h3>
+                    <span className="text-xs text-gray-500">Unidad 59</span>
+                  </div>
 
-                <div className="grid gap-3 md:grid-cols-4">
-                  <div className="md:col-span-2">
-                    <label className="text-sm font-medium text-gray-700">Descripción</label>
-                    <input
-                      type="text"
-                      value={item.descripcion}
-                      onChange={(e) => updateItem(index, 'descripcion', e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500"
-                      placeholder="Producto o servicio"
-                    />
+                  <div className="grid gap-3 md:grid-cols-12">
+                    <div className="md:col-span-7">
+                      <label className="text-sm font-medium text-gray-700">Descripción</label>
+                      <input
+                        type="text"
+                        value={item.descripcion}
+                        onChange={(e) => updateItem(index, 'descripcion', e.target.value)}
+                        className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500"
+                        placeholder="Producto o servicio"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-sm font-medium text-gray-700">Cantidad</label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={item.cantidad}
+                        onChange={(e) => updateItem(index, 'cantidad', e.target.value)}
+                        className="mt-1 w-full max-w-[110px] rounded-xl border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="text-sm font-medium text-gray-700">Precio Unitario</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.precioUni}
+                        onChange={(e) => updateItem(index, 'precioUni', e.target.value)}
+                        className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">Cantidad</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.00000001"
-                      value={item.cantidad}
-                      onChange={(e) => updateItem(index, 'cantidad', e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">Precio unitario (sin IVA)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.00000001"
-                      value={item.precioUni}
-                      onChange={(e) => updateItem(index, 'precioUni', e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid gap-3 md:grid-cols-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">Descuento línea</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.00000001"
-                      value={item.montoDescu}
-                      onChange={(e) => updateItem(index, 'montoDescu', e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500"
-                    />
+                  <div className="grid gap-3 md:grid-cols-12">
+                    <div className="md:col-span-3">
+                      <label className="text-sm font-medium text-gray-700">Descuento</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.montoDescu}
+                        onChange={(e) => updateItem(index, 'montoDescu', e.target.value)}
+                        className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <div className="md:col-span-3 rounded-xl bg-gray-50 p-3 text-sm text-gray-700">
+                      <div className="text-xs text-gray-500">Venta gravada</div>
+                      <div className="font-semibold">{formatCurrency(ventaGravada)}</div>
+                    </div>
+                    <div className="md:col-span-3 rounded-xl bg-gray-50 p-3 text-sm text-gray-700">
+                      <div className="text-xs text-gray-500">IVA</div>
+                      <div className="font-semibold">{formatCurrency(ivaItem)}</div>
+                    </div>
+                    <div className="md:col-span-3 rounded-xl bg-gray-900 p-3 text-sm text-white">
+                      <div className="text-xs text-gray-300">Total</div>
+                      <div className="font-semibold">{formatCurrency(totalLineaFinal)}</div>
+                    </div>
                   </div>
-                  <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-700">
-                    <div className="text-xs text-gray-500">Venta gravada</div>
-                    <div className="font-semibold">{ventaGravada.toFixed(8)}</div>
-                  </div>
-                  <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-700">
-                    <div className="text-xs text-gray-500">IVA ítem</div>
-                    <div className="font-semibold">{ivaItem.toFixed(8)}</div>
-                  </div>
-                  <div className="rounded-xl bg-gray-900 p-3 text-sm text-white">
-                    <div className="text-xs text-gray-300">Total línea (base + IVA)</div>
-                    <div className="font-semibold">{formatCurrency(totalLineaFinal)}</div>
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-end">
-                  <div className="flex items-end justify-end">
+                  <div className="flex items-center justify-end">
                     <button
                       type="button"
                       onClick={() => removeItem(index)}
@@ -493,49 +473,67 @@ export const FE01: React.FC = () => {
                     </button>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={addItem}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            <Plus className="h-4 w-4" />
+            Agregar ítem
+          </button>
+        </section>
+
+        <aside className="lg:col-span-4">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-4 lg:sticky lg:top-20">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-800">Resumen del documento</h2>
+              <p className="text-xs text-gray-500 mt-1">Cálculo en tiempo real para FE 01</p>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between text-gray-600">
+                <span>Items</span>
+                <span className="font-semibold text-gray-900">{totalItems}</span>
               </div>
-            );
-          })}
-        </div>
+              <div className="flex items-center justify-between text-gray-600">
+                <span>Subtotal (gravada)</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(resumenPreview.totalGravada)}</span>
+              </div>
+              <div className="flex items-center justify-between text-gray-600">
+                <span>Descuento total</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(resumenPreview.totalDescu)}</span>
+              </div>
+              <div className="flex items-center justify-between text-gray-600">
+                <span>Subtotal final</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(resumenPreview.subTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between text-gray-600">
+                <span>IVA (13%)</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(resumenPreview.totalIva)}</span>
+              </div>
+            </div>
 
-        <button
-          type="button"
-          onClick={addItem}
-          className="inline-flex items-center gap-2 rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-        >
-          <Plus className="h-4 w-4" />
-          Agregar ítem
-        </button>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+              <div className="text-xs text-gray-600">Total a pagar</div>
+              <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalBaseMasIva)}</div>
+            </div>
 
-        <div className="grid gap-2 rounded-xl border border-gray-200 bg-gray-50 p-4 md:grid-cols-2 text-sm">
-          <div className="flex items-center justify-between text-gray-700">
-            <span>SubTotal ventas (base)</span>
-            <span className="font-semibold">{formatCurrency(resumenPreview.subTotalVentas)}</span>
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={!emisor || !resolvedBusinessId || isSending}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              <Send className="h-4 w-4" />
+              {isSending ? 'Enviando...' : 'Firmar y Enviar FE 01'}
+            </button>
           </div>
-          <div className="flex items-center justify-between text-gray-700">
-            <span>SubTotal (después de descuentos)</span>
-            <span className="font-semibold">{formatCurrency(resumenPreview.subTotal)}</span>
-          </div>
-          <div className="flex items-center justify-between text-gray-700">
-            <span>IVA total</span>
-            <span className="font-semibold">{formatCurrency(resumenPreview.totalIva)}</span>
-          </div>
-          <div className="flex items-center justify-between text-gray-900">
-            <span className="font-semibold">Total final cobrado</span>
-            <span className="text-base font-bold">{formatCurrency(totalBaseMasIva)}</span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={!emisor || !resolvedBusinessId || isSending}
-          className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          <Send className="h-4 w-4" />
-          {isSending ? 'Enviando...' : 'Enviar FE 01'}
-        </button>
-      </section>
+        </aside>
+      </div>
 
       {showDebug && (
         <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -551,6 +549,8 @@ export const FE01: React.FC = () => {
           )}
         </section>
       )}
+
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 };
