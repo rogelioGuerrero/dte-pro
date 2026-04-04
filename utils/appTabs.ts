@@ -7,7 +7,6 @@ export type AppTab =
   | 'historial'
   | 'fiscal'
   | 'micuenta'
-  | 'simple'
   | 'fe01'
   | 'ccftester';
 
@@ -20,7 +19,6 @@ export const MANAGED_APP_TABS: ManagedAppTab[] = [
   'inventory',
   'factura',
   'historial',
-  'simple',
   'fe01',
   'ccftester'
 ];
@@ -32,7 +30,6 @@ export const APP_TAB_LABELS: Record<AppTab, string> = {
   inventory: 'Inventario',
   factura: 'Crédito Fiscal',
   historial: 'Historial',
-  simple: 'Test DTE',
   fe01: 'Factura 01',
   micuenta: 'Mi Cuenta',
   products: 'Productos',

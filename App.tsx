@@ -306,11 +306,6 @@ const App: React.FC = () => {
             businessSettings={businessSettings}
           />
         )}
-        {activeTab === 'simple' && (businessId ? (
-          <React.Suspense fallback={<div>Cargando...</div>}>
-            {React.createElement(React.lazy(() => import('./components/pages/GeneradorSimple')))}
-          </React.Suspense>
-        ) : <Placeholder />)}
       </main>
 
       {/* Mobile Bottom Navigation */}
