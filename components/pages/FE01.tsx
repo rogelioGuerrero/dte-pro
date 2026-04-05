@@ -87,7 +87,7 @@ export const FE01: React.FC = () => {
         ventaNoSuj: 0,
         ventaExenta: 0,
         ventaGravada,
-        tributos: null,
+        tributos: ventaGravada > 0 ? ['20'] : null,
         numeroDocumento: null,
         codTributo: null,
         psv: 0,
@@ -97,12 +97,14 @@ export const FE01: React.FC = () => {
   }, [items]);
 
   const resumenPreview = useMemo(() => {
-    const totalGravada = redondear(itemPreview.reduce((sum, item) => sum + item.ventaGravada, 0), 2);
+    const totalVentaGravadaItems = redondear(itemPreview.reduce((sum, item) => sum + item.ventaGravada, 0), 2);
+    const totalGravada = redondear(totalVentaGravadaItems / 1.13, 2);
     const totalIva = redondear(itemPreview.reduce((sum, item) => sum + item.ivaItem, 0), 2);
     const totalDescu = redondear(itemPreview.reduce((sum, item) => sum + item.montoDescu, 0), 2);
     const subTotalVentas = redondear(totalGravada, 2);
-    const subTotal = redondear(subTotalVentas - totalDescu, 2);
-    const totalPagar = redondear(totalGravada + totalIva, 2);
+    const subTotal = subTotalVentas;
+    const montoTotalOperacion = redondear(subTotal + totalIva, 2);
+    const totalPagar = montoTotalOperacion;
     return {
       totalGravada,
       totalIva,
@@ -110,7 +112,7 @@ export const FE01: React.FC = () => {
       subTotalVentas,
       subTotal,
       totalPagar,
-      montoTotalOperacion: totalPagar,
+      montoTotalOperacion,
     };
   }, [itemPreview]);
 
@@ -173,8 +175,8 @@ export const FE01: React.FC = () => {
     if (Math.abs(resumenPreview.totalIva - sumIvaBody) > 0.01) {
       errors.push('Descuadre: totalIva y suma(ivaItem) no coinciden.');
     }
-    if (Math.abs(resumenPreview.subTotal - (resumenPreview.subTotalVentas - resumenPreview.totalDescu)) > 0.01) {
-      errors.push('Descuadre: subTotal no coincide con subTotalVentas - totalDescu.');
+    if (Math.abs(resumenPreview.subTotal - resumenPreview.subTotalVentas) > 0.01) {
+      errors.push('Descuadre: subTotal no coincide con subTotalVentas.');
     }
 
     if (errors.length > 0) {
@@ -253,7 +255,9 @@ export const FE01: React.FC = () => {
         descuGravada: resumenPreview.totalDescu,
         porcentajeDescuento: 0,
         totalDescu: resumenPreview.totalDescu,
-        tributos: null,
+        tributos: resumenPreview.totalIva > 0
+          ? [{ codigo: '20', descripcion: 'Impuesto al Valor Agregado 13%', valor: resumenPreview.totalIva }]
+          : null,
         subTotal: resumenPreview.subTotal,
         ivaRete1: 0,
         reteRenta: 0,
