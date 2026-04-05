@@ -35,10 +35,11 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
     ? redondear(ivaItemsRaw > 0 ? ivaItemsRaw : totalGravada * 0.13, 2)
     : redondear(ivaItemsRaw, 2);
 
-  // En FE (01), el subtotal ya incluye el IVA porque ventaGravada lo incluye
-  const subTotal = tipoDocumento === '03' || tipoDocumento === '01'
-    ? subTotalVentas
-    : redondear(subTotalVentas - totalDescu, 2);
+  const subTotal = tipoDocumento === '03'
+    ? redondear(subTotalVentas - totalDescu, 2)
+    : (tipoDocumento === '01'
+      ? subTotalVentas
+      : redondear(subTotalVentas - totalDescu, 2));
 
   const tributosAdicionales = 0;
   const ivaRete1 = 0;
@@ -46,9 +47,11 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const saldoFavor = 0;
   const ivaPerci1 = 0;
 
-  const montoTotalOperacion = tipoDocumento === '03' || tipoDocumento === '01'
-    ? redondear(subTotal - totalDescu + totalNoGravado + (tipoDocumento === '03' ? iva : 0), 2)
-    : redondear(subTotal + iva + tributosAdicionales + totalNoGravado, 2);
+  const montoTotalOperacion = tipoDocumento === '03'
+    ? redondear(subTotal + totalNoGravado + iva, 2)
+    : (tipoDocumento === '01'
+      ? redondear(subTotal - totalDescu + totalNoGravado, 2)
+      : redondear(subTotal + iva + tributosAdicionales + totalNoGravado, 2));
 
   const totalPagar = tipoDocumento === '03'
     ? redondear(montoTotalOperacion - ivaRete1 - reteRenta + saldoFavor, 2)
