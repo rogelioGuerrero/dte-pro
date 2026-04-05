@@ -291,10 +291,6 @@ export const FE01: React.FC = () => {
       apendice: null,
     };
 
-    if (dte.identificacion.tipoDte === '01' && dte.resumen.tributos !== null) {
-      dte.resumen.tributos = null;
-    }
-
     return {
       dte,
       ambiente,
