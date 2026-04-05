@@ -87,7 +87,7 @@ export const FE01: React.FC = () => {
         ventaNoSuj: 0,
         ventaExenta: 0,
         ventaGravada,
-        tributos: ventaGravada > 0 ? ['20'] : null,
+        tributos: ventaGravada > 0 ? ['C3'] : null,
         numeroDocumento: null,
         codTributo: null,
         psv: 0,
@@ -256,7 +256,7 @@ export const FE01: React.FC = () => {
         porcentajeDescuento: 0,
         totalDescu: resumenPreview.totalDescu,
         tributos: resumenPreview.totalIva > 0
-          ? [{ codigo: '20', descripcion: 'Impuesto al Valor Agregado 13%', valor: resumenPreview.totalIva }]
+          ? [{ codigo: 'C3', descripcion: 'Impuesto al Valor Agregado 13%', valor: resumenPreview.totalIva }]
           : null,
         subTotal: resumenPreview.subTotal,
         ivaRete1: 0,
