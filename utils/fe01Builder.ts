@@ -133,13 +133,15 @@ const resolveEmisor = (emisor: Fe01BuildInput['emisor']): Fe01EmisorInput => ({
 
 const buildLine = (item: Fe01ItemInput, index: number): ItemFactura => {
   const cantidad = redondear(Number(item.cantidad) || 0, 8);
-  const precioUniConIva = redondear(Number(item.precioUnitario) || 0, 8); 
+  const precioUniConIva = redondear(Number(item.precioUnitario) || 0, 8);
   const montoDescu = redondear(Number(item.descuento) || 0, 8);
-  
-  const precioUniSinIva = redondear(precioUniConIva / (1 + IVA_RATE), 8);
-  const ventaGravada = redondear((cantidad * precioUniSinIva) - montoDescu, 8);
-  const ivaItem = redondear((cantidad * precioUniConIva - montoDescu) - ventaGravada, 2);
-  
+
+  const ventaGravada = redondear((cantidad * precioUniConIva) - montoDescu, 8);
+  const ivaItem = redondear(
+    ventaGravada > 0 ? ventaGravada - (ventaGravada / (1 + IVA_RATE)) : 0,
+    2
+  );
+
   return {
     numItem: index + 1,
     tipoItem: 2,
@@ -147,7 +149,7 @@ const buildLine = (item: Fe01ItemInput, index: number): ItemFactura => {
     codigo: null,
     uniMedida: 59,
     descripcion: sanitizeText(item.descripcion),
-    precioUni: precioUniSinIva,
+    precioUni: precioUniConIva,
     montoDescu,
     ventaNoSuj: 0,
     ventaExenta: 0,
@@ -172,21 +174,25 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
   const totalNoSuj = 0;
   const totalExenta = 0;
   
-  const totalGravada = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.ventaGravada || 0), 0), 2);
+  const totalVentaGravadaItems = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.ventaGravada || 0), 0), 2);
+  const totalGravada = redondear(totalVentaGravadaItems / (1 + IVA_RATE), 2);
   const totalNoGravado = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.noGravado || 0), 0), 2);
-  const subTotalVentas = totalGravada;
+  const subTotalVentas = redondear(totalGravada + totalExenta + totalNoSuj, 2);
   
   const totalDescu = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.montoDescu || 0), 0), 2);
   const descuGravada = totalDescu;
   
-  const subTotal = redondear(subTotalVentas - totalDescu, 2);
+  const subTotal = subTotalVentas;
   const totalIva = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.ivaItem || 0), 0), 2);
   const ivaRete1 = 0;
   const reteRenta = 0;
   const saldoFavor = 0;
-  
-  const montoTotalOperacion = redondear(subTotal + totalNoGravado, 2);
-  const totalPagar = redondear(montoTotalOperacion - ivaRete1 - reteRenta + saldoFavor, 2);
+
+  const montoTotalOperacion = redondear(
+    subTotal + totalIva + totalNoGravado - ivaRete1 - reteRenta + saldoFavor,
+    2
+  );
+  const totalPagar = montoTotalOperacion;
 
   const dte: DTEJSON = {
     identificacion: {
@@ -252,7 +258,7 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
       descuGravada,
       porcentajeDescuento: 0,
       totalDescu,
-      tributos: totalIva > 0 ? [{ codigo: '20', descripcion: 'Impuesto al Valor Agregado 13%', valor: totalIva }] : null, 
+      tributos: null,
       subTotal,
       ivaRete1,
       reteRenta,

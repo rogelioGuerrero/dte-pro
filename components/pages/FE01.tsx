@@ -73,7 +73,7 @@ export const FE01: React.FC = () => {
       const precioUni = redondear(Number(item.precioUni) || 0, 8);
       const montoDescu = redondear(Number(item.montoDescu) || 0, 8);
       const ventaGravada = redondear((precioUni * cantidad) - montoDescu, 8);
-      const ivaItem = redondear(ventaGravada > 0 ? ventaGravada * 0.13 : 0, 8);
+      const ivaItem = redondear(ventaGravada > 0 ? ventaGravada - (ventaGravada / 1.13) : 0, 2);
       return {
         numItem: index + 1,
         tipoItem: 2,
@@ -87,7 +87,7 @@ export const FE01: React.FC = () => {
         ventaNoSuj: 0,
         ventaExenta: 0,
         ventaGravada,
-        tributos: ventaGravada > 0 ? ['20'] : null,
+        tributos: null,
         numeroDocumento: null,
         codTributo: null,
         psv: 0,
@@ -118,8 +118,8 @@ export const FE01: React.FC = () => {
 
   const totalItems = itemPreview.length;
   const totalBaseMasIva = useMemo(() => {
-    return redondear(resumenPreview.totalGravada + resumenPreview.totalIva, 2);
-  }, [resumenPreview.totalGravada, resumenPreview.totalIva]);
+    return redondear(resumenPreview.totalPagar, 2);
+  }, [resumenPreview.totalPagar]);
 
   const updateItem = (index: number, field: keyof FE01ItemForm, value: string) => {
     setItems((prev) => prev.map((item, idx) => {
@@ -255,9 +255,7 @@ export const FE01: React.FC = () => {
         descuGravada: resumenPreview.totalDescu,
         porcentajeDescuento: 0,
         totalDescu: resumenPreview.totalDescu,
-        tributos: resumenPreview.totalIva > 0
-          ? [{ codigo: '20', descripcion: 'Impuesto al Valor Agregado 13%', valor: resumenPreview.totalIva }]
-          : null,
+        tributos: null,
         subTotal: resumenPreview.subTotal,
         ivaRete1: 0,
         reteRenta: 0,
@@ -406,8 +404,8 @@ export const FE01: React.FC = () => {
           <div className="space-y-3">
             {items.map((item, index) => {
               const ventaGravada = redondear(((Number(item.precioUni) || 0) * (Number(item.cantidad) || 0)) - (Number(item.montoDescu) || 0), 8);
-              const ivaItem = redondear(ventaGravada > 0 ? ventaGravada * 0.13 : 0, 8);
-              const totalLineaFinal = redondear(ventaGravada + ivaItem, 2);
+              const ivaItem = redondear(ventaGravada > 0 ? ventaGravada - (ventaGravada / 1.13) : 0, 2);
+              const totalLineaFinal = redondear(ventaGravada, 2);
               return (
                 <div key={item.id} className="rounded-xl border border-gray-200 p-4 space-y-3">
                   <div className="flex items-center justify-between">

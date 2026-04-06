@@ -84,7 +84,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
       : (ventaGravada > 0 ? redondear(ventaGravada - (ventaGravada / 1.13), 2) : 0);
 
     const tributos = datos.tipoDocumento === '01'
-      ? (ivaItem > 0 ? ['20'] : null)
+      ? null
       : (datos.tipoDocumento === '03'
         ? (ventaGravada > 0 ? ['20'] : null)
         : (ventaGravada > 0 ? item.tributos : null));
@@ -130,7 +130,7 @@ export const generarDTE = (datos: DatosFactura, correlativo: number, ambiente: s
   const tributosResumen = datos.tipoDocumento === '03'
     ? (totalIva > 0 ? [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }] : null)
     : (datos.tipoDocumento === '01'
-      ? (totalIva > 0 ? [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }] : null)
+      ? null
       : (aplicaIVAResumen && totalGravada > 0 && totalIva > 0
         ? [{ codigo: '20', descripcion: 'IVA 13%', valor: totalIva }]
         : null));

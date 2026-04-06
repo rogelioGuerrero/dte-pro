@@ -22,7 +22,9 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const ivaItemsRaw = normalizados.reduce((sum, item) => sum + item.ivaItem, 0);
   const totalCargosNoBaseRaw = normalizados.reduce((sum, item) => sum + item.cargosNoBase, 0);
 
-  const totalGravada = redondear(totalGravadaRaw, 2);
+  const totalGravada = tipoDocumento === '01'
+    ? redondear(totalGravadaRaw / 1.13, 2)
+    : redondear(totalGravadaRaw, 2);
   const totalExenta = redondear(totalExentaRaw, 2);
   const totalNoSuj = redondear(totalNoSujRaw, 2);
   const totalDescu = redondear(totalDescuRaw, 2);
@@ -50,15 +52,17 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const montoTotalOperacion = tipoDocumento === '03'
     ? redondear(subTotal + totalNoGravado + iva, 2)
     : (tipoDocumento === '01'
-      ? redondear(subTotal - totalDescu + totalNoGravado, 2)
+      ? redondear(subTotal + iva + totalNoGravado - ivaRete1 - reteRenta + saldoFavor, 2)
       : redondear(subTotal + iva + tributosAdicionales + totalNoGravado, 2));
 
   const totalPagar = tipoDocumento === '03'
     ? redondear(montoTotalOperacion - ivaRete1 - reteRenta + saldoFavor, 2)
-    : redondear(
+    : (tipoDocumento === '01'
+      ? montoTotalOperacion
+      : redondear(
         montoTotalOperacion - ivaRete1 - reteRenta + saldoFavor + totalCargosNoBase,
         2
-      );
+      ));
 
   return {
     totalNoSuj,
