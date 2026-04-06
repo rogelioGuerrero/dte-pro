@@ -143,6 +143,12 @@ const cloneObject = <T>(value: T): T => {
   return JSON.parse(JSON.stringify(value)) as T;
 };
 
+const roundTo = (value: number, decimals: number): number => {
+  if (!Number.isFinite(value)) return 0;
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+};
+
 const normalizeDteForTransport = <T extends Record<string, unknown>>(dte: T): T => {
   const cloned = cloneObject(dte) as T & {
     identificacion?: {
@@ -188,10 +194,68 @@ const normalizeDteForTransport = <T extends Record<string, unknown>>(dte: T): T 
     }
 
     if (tipoDte === '01' && cloned.resumen) {
-      // Para FE 01 NO eliminamos campos, solo nos aseguramos de que totalIva exista si hay gravada
+      const body = Array.isArray(cloned.cuerpoDocumento) ? cloned.cuerpoDocumento : [];
+      const fixedBody = body.map((item: any) => {
+        const ventaGravada = Number(item?.ventaGravada ?? 0);
+        const ivaItem = ventaGravada > 0
+          ? roundTo(ventaGravada - (ventaGravada / 1.13), 2)
+          : 0;
+
+        return {
+          ...item,
+          ivaItem,
+          tributos: null,
+        };
+      });
+
+      cloned.cuerpoDocumento = fixedBody as any;
+
+      const sumVentaGravada = roundTo(
+        fixedBody.reduce((sum: number, item: any) => sum + Number(item?.ventaGravada ?? 0), 0),
+        2
+      );
+      const totalNoSuj = roundTo(Number((cloned.resumen as any).totalNoSuj ?? 0), 2);
+      const totalExenta = roundTo(Number((cloned.resumen as any).totalExenta ?? 0), 2);
+      const totalNoGravado = roundTo(Number((cloned.resumen as any).totalNoGravado ?? 0), 2);
+      const ivaRete1 = roundTo(Number((cloned.resumen as any).ivaRete1 ?? 0), 2);
+      const reteRenta = roundTo(Number((cloned.resumen as any).reteRenta ?? 0), 2);
+      const saldoFavor = roundTo(Number((cloned.resumen as any).saldoFavor ?? 0), 2);
+      const totalDescu = roundTo(Number((cloned.resumen as any).totalDescu ?? 0), 2);
+      const descuGravada = roundTo(Number((cloned.resumen as any).descuGravada ?? totalDescu), 2);
+
+      const totalGravada = roundTo(sumVentaGravada / 1.13, 2);
+      const totalIva = roundTo(
+        fixedBody.reduce((sum: number, item: any) => sum + Number(item?.ivaItem ?? 0), 0),
+        2
+      );
+      const subTotalVentas = roundTo(totalGravada + totalExenta + totalNoSuj, 2);
+      const subTotal = subTotalVentas;
+      const montoTotalOperacion = roundTo(
+        subTotal + totalIva + totalNoGravado - ivaRete1 - reteRenta + saldoFavor,
+        2
+      );
+      const totalPagar = montoTotalOperacion;
+
       const res = cloned.resumen as any;
-      if (res.totalGravada > 0 && (res.totalIva === undefined || res.totalIva === null)) {
-        res.totalIva = 0;
+      res.totalGravada = totalGravada;
+      res.subTotalVentas = subTotalVentas;
+      res.descuGravada = descuGravada;
+      res.totalDescu = totalDescu;
+      res.tributos = null;
+      res.subTotal = subTotal;
+      res.ivaRete1 = ivaRete1;
+      res.reteRenta = reteRenta;
+      res.totalNoGravado = totalNoGravado;
+      res.totalIva = totalIva;
+      res.saldoFavor = saldoFavor;
+      res.montoTotalOperacion = montoTotalOperacion;
+      res.totalPagar = totalPagar;
+
+      if (Array.isArray(res.pagos) && res.pagos.length > 0) {
+        res.pagos = res.pagos.map((p: any, idx: number) => ({
+          ...p,
+          montoPago: idx === 0 ? totalPagar : roundTo(Number(p?.montoPago ?? 0), 2),
+        }));
       }
     }
   }
