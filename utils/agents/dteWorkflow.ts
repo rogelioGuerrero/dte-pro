@@ -3,7 +3,7 @@ import { DTEState } from "./state";
 import { convertirAContingencia } from "../dteGenerator";
 import { updateTaxAccumulator, createEmptyAccumulator, getPeriodFromDate } from "../tax/taxCalculator";
 import { getAccumulator, saveAccumulator } from "../tax/taxStorage";
-import { firmarDocumento, limpiarDteParaFirma, transmitirDocumento, wakeFirmaService } from "../firmaApiClient";
+import { firmarDocumento, limpiarDteParaFirma, transmitirDocumento, wakeFirmaService } from "../dteApiClient";
 import { processDTE } from "../mh/process";
 import { TransmisionResult } from "../dteSignature";
 

@@ -3,7 +3,7 @@ import { FileJson, FilePlus2, Plus, Send, Trash2, X } from 'lucide-react';
 import { ToastContainer, useToast } from '../Toast';
 import { useEmisor } from '../../contexts/EmisorContext';
 import { checkLicense } from '../../utils/licenseValidator';
-import { limpiarDteParaFirma, transmitirDocumento, type TransmitDTEResponse } from '../../utils/firmaApiClient';
+import { limpiarDteParaFirma, transmitirDocumento, type TransmitDTEResponse } from '../../utils/dteApiClient';
 import { generarCorrelativoControlado, generarNumeroControl, generarUUID, numeroALetras, obtenerFechaActual, obtenerHoraActual, redondear } from '../../utils/formatters';
 import { getEmisor, type EmisorData } from '../../utils/emisorDb';
 import type { DTEJSON } from '../../utils/types';

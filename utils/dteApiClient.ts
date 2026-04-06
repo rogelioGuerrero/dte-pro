@@ -1,5 +1,4 @@
 import { getBackendAuthToken } from './backendConfig';
-import { getVersionByTipoDte } from './dteGenerator';
 
 export interface FirmaApiResponse {
   status?: string;
@@ -143,126 +142,6 @@ const cloneObject = <T>(value: T): T => {
   return JSON.parse(JSON.stringify(value)) as T;
 };
 
-const roundTo = (value: number, decimals: number): number => {
-  if (!Number.isFinite(value)) return 0;
-  const factor = 10 ** decimals;
-  return Math.round(value * factor) / factor;
-};
-
-const normalizeDteForTransport = <T extends Record<string, unknown>>(dte: T): T => {
-  const cloned = cloneObject(dte) as T & {
-    identificacion?: {
-      tipoDte?: string | null;
-      version?: number;
-    };
-    receptor?: {
-      tipoDocumento?: string | null;
-      numDocumento?: string | null;
-      nit?: string | null;
-    };
-    cuerpoDocumento?: Array<{
-      ivaItem?: number;
-    }>;
-    resumen?: {
-      totalCargosNoBase?: number;
-    };
-  };
-
-  if (cloned.identificacion) {
-    const tipoDte = cloned.identificacion.tipoDte;
-    cloned.identificacion.version = getVersionByTipoDte(tipoDte);
-
-    if (tipoDte === '03' && cloned.receptor) {
-      const currentNit = (cloned.receptor.nit || cloned.receptor.numDocumento || '').replace(/\D/g, '').trim();
-      if (currentNit) {
-        cloned.receptor.nit = currentNit;
-      }
-      delete cloned.receptor.tipoDocumento;
-      delete cloned.receptor.numDocumento;
-    }
-
-    if (tipoDte === '03' && Array.isArray(cloned.cuerpoDocumento)) {
-      cloned.cuerpoDocumento = cloned.cuerpoDocumento.map((item) => {
-        const normalizedItem = { ...item };
-        delete normalizedItem.ivaItem;
-        return normalizedItem;
-      });
-    }
-
-    if (tipoDte === '03' && cloned.resumen) {
-      delete (cloned.resumen as any).totalCargosNoBase;
-    }
-
-    if (tipoDte === '01' && cloned.resumen) {
-      const body = Array.isArray(cloned.cuerpoDocumento) ? cloned.cuerpoDocumento : [];
-      const fixedBody = body.map((item: any) => {
-        const ventaGravada = Number(item?.ventaGravada ?? 0);
-        const ivaItem = ventaGravada > 0
-          ? roundTo(ventaGravada - (ventaGravada / 1.13), 2)
-          : 0;
-
-        return {
-          ...item,
-          ivaItem,
-          tributos: null,
-        };
-      });
-
-      cloned.cuerpoDocumento = fixedBody as any;
-
-      const sumVentaGravada = roundTo(
-        fixedBody.reduce((sum: number, item: any) => sum + Number(item?.ventaGravada ?? 0), 0),
-        2
-      );
-      const totalNoSuj = roundTo(Number((cloned.resumen as any).totalNoSuj ?? 0), 2);
-      const totalExenta = roundTo(Number((cloned.resumen as any).totalExenta ?? 0), 2);
-      const totalNoGravado = roundTo(Number((cloned.resumen as any).totalNoGravado ?? 0), 2);
-      const ivaRete1 = roundTo(Number((cloned.resumen as any).ivaRete1 ?? 0), 2);
-      const reteRenta = roundTo(Number((cloned.resumen as any).reteRenta ?? 0), 2);
-      const saldoFavor = roundTo(Number((cloned.resumen as any).saldoFavor ?? 0), 2);
-      const totalDescu = roundTo(Number((cloned.resumen as any).totalDescu ?? 0), 2);
-      const descuGravada = roundTo(Number((cloned.resumen as any).descuGravada ?? totalDescu), 2);
-
-      const totalGravada = roundTo(sumVentaGravada / 1.13, 2);
-      const totalIva = roundTo(
-        fixedBody.reduce((sum: number, item: any) => sum + Number(item?.ivaItem ?? 0), 0),
-        2
-      );
-      const subTotalVentas = roundTo(totalGravada + totalExenta + totalNoSuj, 2);
-      const subTotal = subTotalVentas;
-      const montoTotalOperacion = roundTo(
-        subTotal + totalIva + totalNoGravado - ivaRete1 - reteRenta + saldoFavor,
-        2
-      );
-      const totalPagar = montoTotalOperacion;
-
-      const res = cloned.resumen as any;
-      res.totalGravada = totalGravada;
-      res.subTotalVentas = subTotalVentas;
-      res.descuGravada = descuGravada;
-      res.totalDescu = totalDescu;
-      res.tributos = null;
-      res.subTotal = subTotal;
-      res.ivaRete1 = ivaRete1;
-      res.reteRenta = reteRenta;
-      res.totalNoGravado = totalNoGravado;
-      res.totalIva = totalIva;
-      res.saldoFavor = saldoFavor;
-      res.montoTotalOperacion = montoTotalOperacion;
-      res.totalPagar = totalPagar;
-
-      if (Array.isArray(res.pagos) && res.pagos.length > 0) {
-        res.pagos = res.pagos.map((p: any, idx: number) => ({
-          ...p,
-          montoPago: idx === 0 ? totalPagar : roundTo(Number(p?.montoPago ?? 0), 2),
-        }));
-      }
-    }
-  }
-
-  return cloned;
-};
-
 export const wakeFirmaService = async (opts?: {
   retries?: number;
   baseDelayMs?: number;
@@ -299,9 +178,9 @@ export const wakeFirmaService = async (opts?: {
       }
 
       return;
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Detectar Timeout
-      const isTimeout = err.name === 'AbortError' || err.message?.includes('Timeout');
+      const isTimeout = err instanceof Error && (err.name === 'AbortError' || err.message.includes('Timeout'));
       const errorToThrow = isTimeout
         ? new Error('El servicio de firma tardó más de lo esperado. Reintenta en unos segundos.')
         : err;
@@ -332,7 +211,7 @@ export const firmarDocumento = async (params: {
   const retries = params.retries ?? 2;
   const baseDelayMs = params.baseDelayMs ?? 1000;
   const url = buildUrl('/api/dte/sign');
-  const normalizedDte = normalizeDteForTransport(params.dteJson as Record<string, unknown>);
+  const dte = cloneObject(params.dteJson as Record<string, unknown>);
 
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -348,7 +227,7 @@ export const firmarDocumento = async (params: {
           ...buildAuthHeaders(),
         },
         body: JSON.stringify({
-          dte: normalizedDte,
+          dte,
           ...(params.passwordPri ? { passwordPri: params.passwordPri } : {}),
         }),
         signal: controller.signal,
@@ -396,9 +275,9 @@ export const firmarDocumento = async (params: {
       }
 
       return jws;
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Detectar Timeout
-      const isTimeout = err.name === 'AbortError' || err.message?.includes('Timeout');
+      const isTimeout = err instanceof Error && (err.name === 'AbortError' || err.message.includes('Timeout'));
       const errorToThrow = isTimeout ? new Error(`Timeout firmando documento (${timeoutMs}ms)`) : err;
       
       lastError = errorToThrow;
@@ -430,17 +309,17 @@ export const transmitirDocumento = async (params: {
 }): Promise<TransmitDTEResponse> => {
   const timeoutMs = params.timeoutMs ?? 45000;
   const url = buildUrl('/api/dte/transmit');
-  const normalizedDte = normalizeDteForTransport(params.dte);
+  const dte = cloneObject(params.dte);
 
   console.log('=== PAYLOAD FINAL QUE SE ENVÍA AL BACKEND ===');
-  console.log(JSON.stringify(normalizedDte, null, 2));
+  console.log(JSON.stringify(dte, null, 2));
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(new Error('Timeout transmitiendo documento')), timeoutMs);
 
   try {
     console.log('[DTE_TRANSMIT_PAYLOAD]', JSON.stringify({
-      dte: normalizedDte,
+      dte,
       ambiente: params.ambiente ?? '00',
       flowType: params.flowType ?? 'emission',
       businessId: params.businessId ?? null,
@@ -455,7 +334,7 @@ export const transmitirDocumento = async (params: {
         ...buildAuthHeaders(),
       },
       body: JSON.stringify({
-        dte: normalizedDte,
+        dte,
         ambiente: params.ambiente ?? '00',
         flowType: params.flowType ?? 'emission',
         businessId: params.businessId ?? null,

@@ -6,7 +6,7 @@ import { getClients, type ClientData } from '../utils/clientDb';
 import { getEmisor, type EmisorData } from '../utils/emisorDb';
 import { checkLicense } from '../utils/licenseValidator';
 import { getCertificate } from '../utils/secureStorage';
-import { limpiarDteParaFirma, transmitirDocumento } from '../utils/firmaApiClient';
+import { limpiarDteParaFirma, transmitirDocumento } from '../utils/dteApiClient';
 import CCF03DebugModal from './CCF03DebugModal';
 import {
   calcularTotales,
