@@ -136,11 +136,9 @@ const buildLine = (item: Fe01ItemInput, index: number): ItemFactura => {
   const precioUniConIva = redondear(Number(item.precioUnitario) || 0, 8);
   const montoDescu = redondear(Number(item.descuento) || 0, 8);
 
-  const ventaGravada = redondear((cantidad * precioUniConIva) - montoDescu, 8);
-  const ivaItem = redondear(
-    ventaGravada > 0 ? ventaGravada - (ventaGravada / (1 + IVA_RATE)) : 0,
-    2
-  );
+  const ventaConIva = redondear((cantidad * precioUniConIva) - montoDescu, 8);
+  const ventaGravada = redondear(ventaConIva > 0 ? ventaConIva / (1 + IVA_RATE) : 0, 8);
+  const ivaItem = redondear(ventaConIva - ventaGravada, 2);
 
   return {
     numItem: index + 1,
@@ -174,8 +172,7 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
   const totalNoSuj = 0;
   const totalExenta = 0;
   
-  const totalVentaGravadaItems = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.ventaGravada || 0), 0), 2);
-  const totalGravada = redondear(totalVentaGravadaItems / (1 + IVA_RATE), 2);
+  const totalGravada = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.ventaGravada || 0), 0), 2);
   const totalNoGravado = redondear(cuerpoDocumento.reduce((sum, item) => sum + (item.noGravado || 0), 0), 2);
   const subTotalVentas = redondear(totalGravada + totalExenta + totalNoSuj, 2);
   
