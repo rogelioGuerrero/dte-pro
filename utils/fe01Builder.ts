@@ -136,8 +136,10 @@ const buildLine = (item: Fe01ItemInput, index: number): ItemFactura => {
   const precioUniConIva = redondear(Number(item.precioUnitario) || 0, 8);
   const montoDescuConIva = redondear(Number(item.descuento) || 0, 8);
 
-  const ventaGravada = redondear((cantidad * precioUniConIva) - montoDescuConIva, 8);
-  const ivaItem = redondear(ventaGravada > 0 ? ventaGravada - (ventaGravada / (1 + IVA_RATE)) : 0, 2);
+  const precioUniBase = redondear(precioUniConIva > 0 ? precioUniConIva / (1 + IVA_RATE) : 0, 8);
+  const montoDescuBase = redondear(montoDescuConIva > 0 ? montoDescuConIva / (1 + IVA_RATE) : 0, 8);
+  const ventaGravada = redondear((cantidad * precioUniBase) - montoDescuBase, 8);
+  const ivaItem = redondear(ventaGravada > 0 ? ventaGravada * IVA_RATE : 0, 2);
 
   return {
     numItem: index + 1,
@@ -146,8 +148,8 @@ const buildLine = (item: Fe01ItemInput, index: number): ItemFactura => {
     codigo: null,
     uniMedida: 59,
     descripcion: sanitizeText(item.descripcion),
-    precioUni: precioUniConIva,
-    montoDescu: montoDescuConIva,
+    precioUni: precioUniBase,
+    montoDescu: montoDescuBase,
     ventaNoSuj: 0,
     ventaExenta: 0,
     ventaGravada: ventaGravada,
@@ -185,7 +187,7 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
   const saldoFavor = 0;
 
   const montoTotalOperacion = redondear(
-    subTotal + totalNoGravado - ivaRete1 - reteRenta + saldoFavor,
+    subTotal + totalIva + totalNoGravado - ivaRete1 - reteRenta + saldoFavor,
     2
   );
   const totalPagar = montoTotalOperacion;
