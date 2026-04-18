@@ -50,7 +50,7 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const montoTotalOperacion = tipoDocumento === '03'
     ? redondear(subTotal + totalNoGravado + iva, 2)
     : (tipoDocumento === '01'
-      ? redondear(subTotal + iva + totalNoGravado - ivaRete1 - reteRenta + saldoFavor, 2)
+      ? redondear(subTotal + totalNoGravado - ivaRete1 - reteRenta + saldoFavor, 2)
       : redondear(subTotal + iva + tributosAdicionales + totalNoGravado, 2));
 
   const totalPagar = tipoDocumento === '03'
