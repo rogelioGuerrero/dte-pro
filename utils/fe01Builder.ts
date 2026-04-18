@@ -136,9 +136,8 @@ const buildLine = (item: Fe01ItemInput, index: number): ItemFactura => {
   const precioUniConIva = redondear(Number(item.precioUnitario) || 0, 8);
   const montoDescu = redondear(Number(item.descuento) || 0, 8);
 
-  const ventaConIva = redondear((cantidad * precioUniConIva) - montoDescu, 8);
-  const ventaGravada = redondear(ventaConIva > 0 ? ventaConIva / (1 + IVA_RATE) : 0, 8);
-  const ivaItem = redondear(ventaConIva - ventaGravada, 2);
+  const ventaGravada = redondear((cantidad * precioUniConIva) - montoDescu, 8);
+  const ivaItem = redondear(ventaGravada > 0 ? (ventaGravada * IVA_RATE) / (1 + IVA_RATE) : 0, 2);
 
   return {
     numItem: index + 1,
@@ -186,7 +185,7 @@ export const buildFe01EmissionRequest = (input: Fe01BuildInput): Fe01EmissionReq
   const saldoFavor = 0;
 
   const montoTotalOperacion = redondear(
-    subTotal + totalIva + totalNoGravado - ivaRete1 - reteRenta + saldoFavor,
+    subTotal + totalNoGravado - ivaRete1 - reteRenta + saldoFavor,
     2
   );
   const totalPagar = montoTotalOperacion;
