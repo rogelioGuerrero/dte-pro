@@ -311,21 +311,10 @@ export const transmitirDocumento = async (params: {
   const url = buildUrl('/api/dte/transmit');
   const dte = cloneObject(params.dte);
 
-  console.log('=== PAYLOAD FINAL QUE SE ENVÍA AL BACKEND ===');
-  console.log(JSON.stringify(dte, null, 2));
-
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(new Error('Timeout transmitiendo documento')), timeoutMs);
 
   try {
-    console.log('[DTE_TRANSMIT_PAYLOAD]', JSON.stringify({
-      dte,
-      ambiente: params.ambiente ?? '00',
-      flowType: params.flowType ?? 'emission',
-      businessId: params.businessId ?? null,
-      receptorEmail: params.receptorEmail ?? null,
-    }, null, 2));
-
     const res = await fetch(url, {
       method: 'POST',
       headers: {
