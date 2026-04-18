@@ -9,6 +9,7 @@ interface AuthContextValue {
   isConfigured: boolean;
   signInWithPassword: (email: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -74,7 +75,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
     resetPassword: async (email: string) => {
       if (!supabase) throw new Error('Supabase no está configurado.');
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      const redirectTo = typeof window !== 'undefined'
+        ? `${window.location.origin}${window.location.pathname}#type=recovery`
+        : undefined;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+      if (error) throw error;
+    },
+    updatePassword: async (password: string) => {
+      if (!supabase) throw new Error('Supabase no está configurado.');
+      const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
     },
     signOut: async () => {
