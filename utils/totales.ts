@@ -22,9 +22,7 @@ export const calcularTotales = (items: ItemFactura[], tipoDocumento: string = '0
   const ivaItemsRaw = normalizados.reduce((sum, item) => sum + item.ivaItem, 0);
   const totalCargosNoBaseRaw = normalizados.reduce((sum, item) => sum + item.cargosNoBase, 0);
 
-  const totalGravada = tipoDocumento === '01'
-    ? redondear(totalGravadaRaw / 1.13, 2)
-    : redondear(totalGravadaRaw, 2);
+  const totalGravada = redondear(totalGravadaRaw, 2);
   const totalExenta = redondear(totalExentaRaw, 2);
   const totalNoSuj = redondear(totalNoSujRaw, 2);
   const totalDescu = redondear(totalDescuRaw, 2);
