@@ -6,6 +6,8 @@ export interface AppSettings {
   useAutoDetection: boolean; // Modo empresa: auto-detecta ventas/compras basado en NIT/NRC
   aiProvider?: string;
   aiModel?: string;
+  newsApiKey?: string;
+  unsplashApiKey?: string;
 
   // --- Gestión de Licencias (solo lectura, controlado remotamente) ---
   // NOTA: Este valor es ahora controlado por variables de entorno del servidor
@@ -17,6 +19,8 @@ export interface AppSettings {
   inventoryFallbackByDescription?: boolean; // por defecto ON
   inventoryAutoMatchThreshold?: number; // 0..1
   inventoryAskMatchThreshold?: number; // 0..1
+  // --- IA & Noticias ---
+  // newsApiKey, unsplashApiKey se guardan aquí
 }
 
 const SETTINGS_KEY = 'dte_app_settings';

@@ -14,6 +14,7 @@ import { MagicLicenseActivator } from './components/MagicLicenseActivator';
 import { LicenseStatus } from './components/LicenseStatus';
 import { UserModeSetup } from './components/UserModeSetup';
 import FE01 from './components/pages/FE01';
+import InsightsDashboard from './components/InsightsDashboard';
 import { shouldShowUserModeSelection } from './utils/remoteLicensing';
 import { licenseValidator } from './utils/licenseValidator';
 import { NavigationTabs } from './components/NavigationTabs';
@@ -120,7 +121,7 @@ const App: React.FC = () => {
   }, [activeTab]);
 
   useEffect(() => {
-    if (activeTab === 'micuenta') return;
+    if (activeTab === 'micuenta' || activeTab === 'insights') return;
     if (!isManagedTabEnabled(businessSettings, activeTab) || !isTabAllowed(activeTab)) {
       setActiveTab(defaultTab);
     }
@@ -167,7 +168,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     setActiveTab((current) => {
-      if (current === 'micuenta') return current;
+      if (current === 'micuenta' || current === 'insights') return current;
       if (isManagedTabEnabled(businessSettings, current) && isTabAllowed(current)) return current;
       return defaultTab;
     });
@@ -300,6 +301,7 @@ const App: React.FC = () => {
         {activeTab === 'factura' && <CCF03Generator />}
         {activeTab === 'historial' && (businessId ? <HistoryWrapper /> : <Placeholder />)}
         {activeTab === 'fe01' && (businessId ? <FE01 /> : <Placeholder />)}
+        {activeTab === 'insights' && <InsightsDashboard />}
         {activeTab === 'micuenta' && (
           <MiCuenta
             onBack={() => setActiveTab('factura')}

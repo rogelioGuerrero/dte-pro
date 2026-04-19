@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, FileText, History, Boxes, PieChart } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, History, Boxes, PieChart, Sparkles } from 'lucide-react';
 import { isTabAllowed } from '../utils/userMode';
 import { isTabAllowedForRole, firstAllowedTab, Role, normalizeRole } from '../utils/roleAccess';
 import { useEmisor } from '../contexts/EmisorContext';
@@ -22,6 +22,7 @@ const TABS_CONFIG = [
   { key: 'factura', label: 'Crédito Fiscal', icon: FileText, color: 'green', tooltip: 'Contribuyentes DTE-03' },
   { key: 'fe01', label: 'Factura', icon: FileText, color: 'sky', tooltip: 'Consumidor Final DTE-01' },
   { key: 'historial', label: 'Historial', icon: History, color: 'purple' },
+  { key: 'insights', label: 'Insights IA', icon: Sparkles, color: 'pink' },
 ];
 
 export const NavigationTabs: React.FC<NavigationTabsProps> = ({ 
@@ -36,7 +37,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   const allowedTabs = TABS_CONFIG.filter((tab) => (
     isTabAllowed(tab.key)
     && isTabAllowedForRole(tab.key, role)
-    && isManagedTabEnabled(businessSettings, tab.key as AppTab)
+    && (tab.key === 'insights' || isManagedTabEnabled(businessSettings, tab.key as AppTab))
   ));
 
   // Encontrar la primera pestaña permitida si la actual no está permitida (y no es micuenta)

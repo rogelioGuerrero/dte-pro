@@ -7,9 +7,10 @@ export type AppTab =
   | 'historial'
   | 'fiscal'
   | 'micuenta'
-  | 'fe01';
+  | 'fe01'
+  | 'insights';
 
-export type ManagedAppTab = Exclude<AppTab, 'micuenta' | 'products'>;
+export type ManagedAppTab = Exclude<AppTab, 'micuenta' | 'products' | 'insights'>;
 
 export const MANAGED_APP_TABS: ManagedAppTab[] = [
   'batch',
@@ -29,6 +30,7 @@ export const APP_TAB_LABELS: Record<AppTab, string> = {
   factura: 'Crédito Fiscal',
   historial: 'Historial',
   fe01: 'Factura 01',
+  insights: 'Insights IA',
   micuenta: 'Mi Cuenta',
   products: 'Productos'
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Save, Settings, X, Key, LayoutTemplate, CheckCircle2, ShieldCheck, Smartphone, Trash2 } from 'lucide-react';
+import { Lock, Save, Settings, X, Key, LayoutTemplate, CheckCircle2, ShieldCheck, Smartphone, Trash2, Sparkles } from 'lucide-react';
 import QRCode from 'qrcode';
 import { loadSettings, saveSettings, AppSettings } from '../utils/settings';
 import { validateAdminPin, hasAdminPin } from '../utils/adminPin';
@@ -190,6 +190,7 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, businessId, bu
     { id: 'general', label: 'General', icon: Settings },
     { id: 'negocio', label: 'Negocio', icon: Settings },
     { id: 'modo', label: 'Modo de Uso', icon: LayoutTemplate },
+    { id: 'ia', label: 'IA & APIs', icon: Sparkles },
     { id: 'security', label: 'Seguridad', icon: ShieldCheck },
   ];
 
@@ -428,6 +429,56 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, businessId, bu
                           Completo con inventario y productos.
                         </p>
                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'ia' && (
+                  <div className="space-y-5">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700">API Keys de Inteligencia Artificial</h4>
+                      <p className="text-xs text-gray-500 mt-1">Se guardan en este dispositivo. Nunca se envían al servidor.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Gemini API Key <span className="text-gray-400 font-normal">(Google AI Studio)</span></label>
+                        <input
+                          type="password"
+                          value={settings.apiKey || ''}
+                          onChange={(e) => setSettings({ ...settings, apiKey: e.target.value })}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none font-mono"
+                          placeholder="AIzaSy..."
+                          autoComplete="off"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Gratis en <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:underline">aistudio.google.com</a></p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">NewsAPI Key</label>
+                        <input
+                          type="password"
+                          value={settings.newsApiKey || ''}
+                          onChange={(e) => setSettings({ ...settings, newsApiKey: e.target.value })}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none font-mono"
+                          placeholder="8ca958f2..."
+                          autoComplete="off"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Gratis en <a href="https://newsapi.org" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:underline">newsapi.org</a></p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Unsplash Access Key <span className="text-gray-400 font-normal">(imágenes para artículos)</span></label>
+                        <input
+                          type="password"
+                          value={settings.unsplashApiKey || ''}
+                          onChange={(e) => setSettings({ ...settings, unsplashApiKey: e.target.value })}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none font-mono"
+                          placeholder="..."
+                          autoComplete="off"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Gratis (50 req/hora) en <a href="https://unsplash.com/developers" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:underline">unsplash.com/developers</a></p>
+                      </div>
                     </div>
                   </div>
                 )}

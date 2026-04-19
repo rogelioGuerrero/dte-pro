@@ -19,7 +19,7 @@ export interface UserModeConfig {
 export const USER_MODE_CONFIGS: Record<UserMode, UserModeConfig> = {
   profesional: {
     mode: 'profesional',
-    allowedTabs: ['batch', 'fiscal', 'clients', 'factura', 'historial'],
+    allowedTabs: ['batch', 'fiscal', 'clients', 'factura', 'historial', 'insights'],
     preferredDefaultTab: 'factura',
     billingStyle: 'manual_first',
     features: {
@@ -34,7 +34,7 @@ export const USER_MODE_CONFIGS: Record<UserMode, UserModeConfig> = {
   },
   negocio: {
     mode: 'negocio',
-    allowedTabs: ['batch', 'fiscal', 'clients', 'products', 'inventory', 'factura', 'historial', 'fe01'],
+    allowedTabs: ['batch', 'fiscal', 'clients', 'products', 'inventory', 'factura', 'historial', 'fe01', 'insights'],
     preferredDefaultTab: 'fe01',
     billingStyle: 'inventory_first',
     features: {
