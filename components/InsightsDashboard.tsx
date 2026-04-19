@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Sparkles, TrendingUp, Newspaper, RefreshCw, AlertTriangle, CheckCircle, XCircle, Clock, ExternalLink, X, Image } from 'lucide-react';
-import { openCacheDb } from '../utils/dteHistoryDb';
 import { loadSettings } from '../utils/settings';
+import { getDTEHistory, getResumenVentas } from '../utils/api/historyApi';
+import { useEmisor } from '../contexts/EmisorContext';
 
 function getKeys() {
   const s = loadSettings();
@@ -26,14 +27,15 @@ interface InsightCard {
   meta?: Record<string, string | number>;
 }
 
-interface DteSummary {
-  tipoDte: string;
-  fechaEmision: string;
-  receptorNombre: string;
-  montoTotal: number;
-  montoIva: number;
-  estado: string;
-}
+const TIPO_LABELS: Record<string, string> = {
+  '01': 'Factura (FE)',
+  '03': 'Crédito Fiscal (CCFE)',
+  '04': 'Nota de Remisión',
+  '05': 'Nota de Crédito',
+  '06': 'Nota de Débito',
+  '11': 'Factura de Exportación',
+  '14': 'Sujeto Excluido',
+};
 
 interface NewsArticle {
   titulo: string;
@@ -71,8 +73,7 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
   return text;
 }
 
-async function fetchFacturasInsight(): Promise<{ content: string; meta: Record<string, string | number> }> {
-  // Intentar leer de cache
+async function fetchFacturasInsight(businessId: string): Promise<{ content: string; meta: Record<string, string | number> }> {
   const cached = JSON.parse(localStorage.getItem(FACTURAS_CACHE_KEY) || 'null');
   if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
     return { content: cached.content, meta: cached.meta };
@@ -80,43 +81,48 @@ async function fetchFacturasInsight(): Promise<{ content: string; meta: Record<s
 
   const keys = getKeys();
   if (!keys.gemini) throw new Error('Configura tu Gemini API Key en Configuración Avanzada → IA & APIs');
+  if (!businessId) throw new Error('NO_BUSINESS');
 
-  // Leer DTEs de IndexedDB
-  const db = await openCacheDb();
-  const allDtes = await db.getAll('dteCache');
-  console.log('[InsightsIA] DTEs encontrados en IndexedDB:', allDtes.length, allDtes.slice(0, 2));
+  // Leer DTEs reales del backend (igual que el Historial)
+  const fechaHasta = new Date().toISOString().split('T')[0];
+  const fechaDesde = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-  if (allDtes.length === 0) {
-    throw new Error('NO_DTES');
-  }
+  const [histRes, resumenRes] = await Promise.all([
+    getDTEHistory(businessId, { limit: 50, fechaDesde, fechaHasta }),
+    getResumenVentas(businessId, { fechaDesde, fechaHasta }).catch(() => null),
+  ]);
 
-  const dtes = allDtes;
+  if (!histRes.dtes || histRes.dtes.length === 0) throw new Error('NO_DTES');
 
-  const typed = dtes as DteSummary[];
-  const total = typed.length;
-  const aceptadas = typed.filter(d => d.estado === 'ACEPTADO').length;
-  const rechazadas = typed.filter(d => d.estado === 'RECHAZADO').length;
-  const montoTotal = typed.reduce((s, d) => s + (d.montoTotal || 0), 0);
-  const montoIva = typed.reduce((s, d) => s + (d.montoIva || 0), 0);
-  const porTipo = typed.reduce((acc: Record<string, number>, d) => {
-    const label = d.tipoDte === '01' ? 'Factura (01)' : d.tipoDte === '03' ? 'Crédito Fiscal (03)' : d.tipoDte === '14' ? 'Sujeto Excluido (14)' : `Tipo ${d.tipoDte}`;
+  const dtes = histRes.dtes;
+  const total = histRes.total;
+  const aceptadas = dtes.filter(d => d.estado === 'PROCESADO').length;
+  const rechazadas = dtes.filter(d => d.estado === 'RECHAZADO').length;
+  const montoTotal = resumenRes?.resumen?.totalVentas ?? dtes.reduce((s, d) => s + (d.montoTotal || 0), 0);
+  const montoIva = resumenRes?.resumen?.totalIva ?? 0;
+
+  const porTipo = dtes.reduce((acc: Record<string, number>, d) => {
+    const label = TIPO_LABELS[d.tipoDte] || `Tipo ${d.tipoDte}`;
     acc[label] = (acc[label] || 0) + 1;
     return acc;
   }, {});
 
-  const resumen = typed.slice(0, 15).map(d => ({
-    tipo: d.tipoDte, fecha: d.fechaEmision,
-    receptor: d.receptorNombre, total: d.montoTotal, estado: d.estado,
+  const resumen = dtes.slice(0, 15).map(d => ({
+    tipo: TIPO_LABELS[d.tipoDte] || d.tipoDte,
+    fecha: d.createdAt?.split('T')[0],
+    receptor: d.receptorNombre,
+    total: d.montoTotal,
+    estado: d.estado,
   }));
 
   const content = await callGemini(
     'Eres un asistente fiscal experto en facturación electrónica de El Salvador (DTE). Analiza los datos reales del contribuyente y da respuestas claras en español. No inventes datos.',
-    `Analiza estos documentos tributarios electrónicos y genera un análisis ejecutivo conciso (máximo 180 palabras):
+    `Analiza estos documentos tributarios electrónicos (últimos 90 días) y genera un análisis ejecutivo conciso (máximo 180 palabras):
 1. Estado general de facturación
 2. Alertas si hay rechazados
 3. Una sugerencia práctica
 
-Estadísticas: total=${total}, aceptados=${aceptadas}, rechazados=${rechazadas}, monto=$${montoTotal.toFixed(2)}, IVA=$${montoIva.toFixed(2)}
+Estadísticas: total en BD=${total}, en muestra=${dtes.length}, procesados=${aceptadas}, rechazados=${rechazadas}, monto=$${montoTotal.toFixed(2)}, IVA=$${montoIva.toFixed(2)}
 Por tipo: ${JSON.stringify(porTipo)}
 Últimos documentos: ${JSON.stringify(resumen)}`
   );
@@ -163,6 +169,9 @@ ${articulos.map((a, i) => `${i + 1}. [${a.fecha}] ${a.titulo} (${a.fuente})`).jo
 }
 
 const InsightsDashboard: React.FC = () => {
+  const { businessId, operationalBusinessId } = useEmisor();
+  const currentBusinessId = businessId || operationalBusinessId || '';
+
   const [facturasCard, setFacturasCard] = useState<InsightCard>({
     id: 'facturas', title: 'Análisis de Facturación', content: '', loading: true, error: null, updatedAt: null,
   });
@@ -179,13 +188,13 @@ const InsightsDashboard: React.FC = () => {
     if (forceRefresh) localStorage.removeItem(FACTURAS_CACHE_KEY);
     setFacturasCard(c => ({ ...c, loading: true, error: null }));
     try {
-      const { content, meta } = await fetchFacturasInsight();
+      const { content, meta } = await fetchFacturasInsight(currentBusinessId);
       setFacturasCard(c => ({ ...c, loading: false, content, meta, updatedAt: new Date().toLocaleTimeString('es-SV') }));
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error desconocido';
       setFacturasCard(c => ({ ...c, loading: false, error: msg === 'NO_DTES' ? 'NO_DTES' : msg }));
     }
-  }, []);
+  }, [currentBusinessId]);
 
   const loadNews = useCallback(async (forceRefresh = false) => {
     if (forceRefresh) localStorage.removeItem(NEWS_CACHE_KEY);
