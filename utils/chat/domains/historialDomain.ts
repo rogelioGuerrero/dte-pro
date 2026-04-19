@@ -192,7 +192,7 @@ export const createHistorialDomain = (
     'tendencia',
   ],
   llmSystemPrompt:
-    'Eres un asistente de facturación electrónica (El Salvador). Analiza los datos del historial de DTEs del usuario y responde de forma breve y clara.',
+    'Eres un asistente de facturación electrónica (El Salvador). Analiza los datos del historial de DTEs del usuario y responde de forma breve y clara.\n\nIMPORTANTE: Cuando la pregunta sea sobre clientes específicos (ej: "¿quiénes son mis principales clientes?", "¿cuáles son mis mejores clientes?", "ranking de clientes"), DEBES incluir filtros en "accion" para que la tabla se actualice. Usa:\n- "filters.busqueda": el nombre del cliente más relevante (o el primero si hay varios)\n- "filters.fechaDesde" y "filters.fechaHasta": el periodo analizado si se menciona\nEjemplo: si listas "Juan Pueblo" como principal cliente, incluye filters: { busqueda: "Juan Pueblo" }.',
   llmFilterSchema: {
     busqueda: 'string (nombre/NIT del receptor)',
     fechaDesde: 'YYYY-MM-DD',

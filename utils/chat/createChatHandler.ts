@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Factory genérico: dado un ChatDomain, produce un queryHandler compatible
-// con ChatContext. Pipeline:  cache → parser local → LLM (con resumen).
+// con ChatContext. Pipeline:  cache → parser local → LLM (con resumen) → post-procesador opcional.
 
 import { callLLM, type LLMProvider } from '../chatHandlers';
 import { loadSettings } from '../settings';
@@ -54,6 +54,46 @@ const extractJson = (text: string): any | null => {
     }
     return null;
   }
+};
+
+// Post-procesador específico para historial: extrae nombres de clientes de la respuesta
+// y genera filtros locales si el LLM no los devolvió
+const postProcessHistorialResponse = (
+  response: ChatResponse,
+  question: string
+): ChatResponse => {
+  // Si ya tiene filtros, respetarlos
+  if (response.action?.filters?.busqueda) return response;
+
+  // Solo si la pregunta es sobre clientes
+  const lowerQ = question.toLowerCase();
+  if (!/cliente|clientes|receptor/.test(lowerQ)) return response;
+
+  // Extraer nombres en mayúsculas (patrón típico del LLM: "FRANCISCO JOSE CORNEJO MAZA")
+  const nombresEncontrados: string[] = [];
+  const regex = /\b([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{10,50})\b/g;
+  let match;
+  while ((match = regex.exec(response.content)) !== null) {
+    const nombre = match[1].trim();
+    if (nombre.length > 10 && !/CONSUMIDOR FINAL|TOTAL|DTE|FACTURA|DOCUMENTO/.test(nombre)) {
+      nombresEncontrados.push(nombre);
+    }
+  }
+
+  if (nombresEncontrados.length === 0) return response;
+
+  // Usar el primer nombre como filtro de búsqueda
+  const primerNombre = nombresEncontrados[0];
+  return {
+    ...response,
+    action: {
+      type: 'filter',
+      filters: {
+        ...(response.action?.filters || {}),
+        busqueda: primerNombre,
+      },
+    },
+  };
 };
 
 export const createChatHandler = <TFilters extends Record<string, any>>(
@@ -134,6 +174,11 @@ INSTRUCCIONES DE FORMATO:
         };
       } else {
         response = { content: raw, source: 'llm' };
+      }
+
+      // Post-procesador específico para historial: extraer filtros de clientes si el LLM no los devolvió
+      if (domain.id === 'historial') {
+        response = postProcessHistorialResponse(response, trimmed);
       }
 
       if (enableCache) setCachedResponse(domain.id, trimmed, response);
