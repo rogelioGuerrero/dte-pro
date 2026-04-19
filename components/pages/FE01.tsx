@@ -69,10 +69,10 @@ export const FE01: React.FC = () => {
     const tick = setInterval(() => {
       const elapsed = Math.floor((Date.now() - start) / 1000);
       setSendElapsed(elapsed);
-      if (elapsed < 5) setSendStage(0);
-      else if (elapsed < 20) setSendStage(1);
-      else if (elapsed < 60) setSendStage(2);
-      else if (elapsed < 120) setSendStage(3);
+      if (elapsed < 10) setSendStage(0);
+      else if (elapsed < 25) setSendStage(1);
+      else if (elapsed < 65) setSendStage(2);
+      else if (elapsed < 125) setSendStage(3);
       else setSendStage(4);
     }, 1000);
     return () => clearInterval(tick);
@@ -610,11 +610,14 @@ export const FE01: React.FC = () => {
               <h2 className="text-base font-semibold text-gray-900">Procesando tu factura</h2>
             </div>
             <p className="mt-4 text-sm text-gray-700">
-              {sendStage === 0 && 'Preparando documento y validando datos…'}
-              {sendStage === 1 && 'Firmando electrónicamente el DTE…'}
-              {sendStage === 2 && 'Conectando con Hacienda (MH). Esto puede tardar unos segundos.'}
-              {sendStage === 3 && 'El servicio de firma está despertando. Seguimos procesando, no cierres esta ventana.'}
-              {sendStage === 4 && 'Aún estamos trabajando con Hacienda. La transmisión puede tardar un poco más.'}
+              {sendStage === 0 && 'Preparando y validando tu documento…'}
+              {sendStage === 1 && 'Firmando el DTE electrónicamente…'}
+              {sendStage === 2 && 'Transmitiendo a Ministerio de Hacienda. Por favor espera.'}
+              {sendStage === 3 && 'Hacienda está procesando tu documento. Esto puede tomar un momento.'}
+              {sendStage === 4 && 'Seguimos en contacto con Hacienda. El resultado llegará pronto.'}
+            </p>
+            <p className="mt-3 text-sm text-indigo-700 font-medium">
+              Una vez procesada, podrás ver tu factura en la sección <strong>Historial</strong>.
             </p>
             <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
               <span>Tiempo transcurrido</span>
