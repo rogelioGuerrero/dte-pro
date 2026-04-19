@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FileText,
   Search,
@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { tiposDocumento } from '../utils/dteGenerator';
 import { useEmisor } from '../contexts/EmisorContext';
-import { useChat } from '../contexts/ChatContext';
+import { useChat, type PageAction } from '../contexts/ChatContext';
 import { useToast, ToastContainer } from './Toast';
 import ChatWidget from './ChatWidget';
 import {
@@ -43,26 +43,6 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
   const currentBusinessId = businessId || operationalBusinessId;
   const { setCurrentPage } = useChat();
 
-  // Configurar contexto de chat cuando el componente se monta
-  useEffect(() => {
-    if (currentBusinessId) {
-      createHistorialHandler(currentBusinessId).then(handler => {
-        setCurrentPage({
-          id: 'historial',
-          name: 'Historial de DTEs',
-          queryHandler: handler,
-          suggestedQuestions: [
-            '¿Cuánto vendí el último mes?',
-            '¿Cuántos DTEs tengo rechazados?',
-            '¿Quiénes son mis principales clientes?',
-            '¿Cuál es mi monto total facturado?',
-          ],
-        });
-      });
-    }
-    return () => setCurrentPage(null);
-  }, [currentBusinessId, setCurrentPage]);
-
   const [dtes, setDtes] = useState<DTEHistoryItem[]>([]);
   const [totalRegistros, setTotalRegistros] = useState(0);
   const [paginaActual, setPaginaActual] = useState(1);
@@ -76,8 +56,9 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
 
   const [loading, setLoading] = useState(false);
   const [resumen, setResumen] = useState<ResumenVentasResponse | null>(null);
+  const cargarDatosRef = useRef<((reset?: boolean) => Promise<void>) | null>(null);
 
-  const cargarDatos = async (resetPagina = false) => {
+  const cargarDatos = useCallback(async (resetPagina = false) => {
     if (!currentBusinessId) return;
     setLoading(true);
 
@@ -110,7 +91,44 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentBusinessId, paginaActual, busqueda, fechaDesde, fechaHasta, tipoDte, estado, addToast]);
+
+  cargarDatosRef.current = cargarDatos;
+
+  // Handler para aplicar filtros desde el chat
+  const handleChatAction = useCallback((action: PageAction) => {
+    if (action.type === 'filter' && action.filters) {
+      const filters = action.filters;
+      if (filters.estado) setEstado(filters.estado);
+      if (filters.fechaDesde) setFechaDesde(filters.fechaDesde);
+      if (filters.fechaHasta) setFechaHasta(filters.fechaHasta);
+      if (filters.tipoDte) setTipoDte(filters.tipoDte);
+      if (filters.busqueda) setBusqueda(filters.busqueda);
+      setPaginaActual(1);
+      cargarDatosRef.current?.(true);
+    }
+  }, [setEstado, setFechaDesde, setFechaHasta, setTipoDte, setBusqueda]);
+
+  // Configurar contexto de chat cuando el componente se monta
+  useEffect(() => {
+    if (currentBusinessId) {
+      createHistorialHandler(currentBusinessId).then(handler => {
+        setCurrentPage({
+          id: 'historial',
+          name: 'Historial de DTEs',
+          queryHandler: handler,
+          onAction: handleChatAction,
+          suggestedQuestions: [
+            '¿Cuánto vendí el último mes?',
+            '¿Cuántos DTEs tengo rechazados?',
+            '¿Quiénes son mis principales clientes?',
+            '¿Cuál es mi monto total facturado?',
+          ],
+        });
+      });
+    }
+    return () => setCurrentPage(null);
+  }, [currentBusinessId, setCurrentPage, handleChatAction]);
 
   const cargarResumen = async () => {
     if (!currentBusinessId || !fechaDesde || !fechaHasta) return;

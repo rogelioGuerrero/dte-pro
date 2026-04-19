@@ -28,7 +28,11 @@ const ChatWidget: React.FC = () => {
 
     try {
       const response = await currentPage.queryHandler(userMessage);
-      addMessage({ role: 'assistant', content: response });
+      addMessage({ role: 'assistant', content: response.content, action: response.action });
+
+      if (response.action && currentPage.onAction) {
+        currentPage.onAction(response.action);
+      }
     } catch (err) {
       console.error('[ChatWidget] Error:', err);
       addMessage({ role: 'assistant', content: 'Lo siento, hubo un error al procesar tu pregunta.' });

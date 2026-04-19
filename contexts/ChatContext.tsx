@@ -5,13 +5,22 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
+  action?: PageAction;
+}
+
+export interface PageAction {
+  type: 'filter' | 'navigate' | 'highlight';
+  filters?: Record<string, any>;
+  url?: string;
+  elementId?: string;
 }
 
 export interface PageContext {
   id: string;
   name: string;
-  queryHandler: (question: string) => Promise<string>;
+  queryHandler: (question: string) => Promise<{ content: string; action?: PageAction }>;
   suggestedQuestions?: string[];
+  onAction?: (action: PageAction) => void;
 }
 
 interface ChatContextValue {
