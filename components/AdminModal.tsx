@@ -436,79 +436,88 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, businessId, bu
                 {activeTab === 'ia' && (
                   <div className="space-y-5">
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-700">API Keys de Inteligencia Artificial</h4>
-                      <p className="text-xs text-gray-500 mt-1">Se guardan en este dispositivo. Nunca se envían al servidor.</p>
+                      <h4 className="text-sm font-semibold text-gray-700">Configuración de Inteligencia Artificial</h4>
+                      <p className="text-xs text-gray-500 mt-1">Las API keys se guardan localmente. Nunca se envían al servidor.</p>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Proveedor LLM</label>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Proveedor LLM (Modelo de IA)</label>
                       <select
                         value={settings.aiProvider || 'gemini'}
                         onChange={(e) => setSettings({ ...settings, aiProvider: e.target.value })}
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none"
                       >
-                        <option value="gemini">Google Gemini</option>
-                        <option value="groq">Groq (Llama 3.1)</option>
-                        <option value="deepseek">DeepSeek</option>
-                        <option value="zai">z.ai</option>
+                        <option value="gemini">Google Gemini (20 req/día gratis)</option>
+                        <option value="groq">Groq Llama 3.1 (30 req/min gratis)</option>
+                        <option value="deepseek">DeepSeek (cuota generosa)</option>
+                        <option value="zai">z.ai (si es gratis)</option>
                       </select>
+                      <p className="text-xs text-gray-400 mt-1">Selecciona el proveedor que quieras usar para el chat y análisis.</p>
                     </div>
 
                     <div className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Gemini API Key <span className="text-gray-400 font-normal">(Google AI Studio)</span></label>
-                        <input
-                          type="password"
-                          value={settings.geminiApiKey || settings.apiKey || ''}
-                          onChange={(e) => setSettings({ ...settings, geminiApiKey: e.target.value, apiKey: e.target.value })}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none font-mono"
-                          placeholder="AIzaSy..."
-                          autoComplete="off"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">Gratis en <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:underline">aistudio.google.com</a></p>
-                      </div>
+                      {(settings.aiProvider || 'gemini') === 'gemini' && (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1.5">Gemini API Key</label>
+                          <input
+                            type="password"
+                            value={settings.geminiApiKey || settings.apiKey || ''}
+                            onChange={(e) => setSettings({ ...settings, geminiApiKey: e.target.value, apiKey: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none font-mono"
+                            placeholder="AIzaSy..."
+                            autoComplete="off"
+                          />
+                          <p className="text-xs text-gray-400 mt-1">Obténla gratis en <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:underline">aistudio.google.com</a></p>
+                        </div>
+                      )}
 
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Groq API Key <span className="text-gray-400 font-normal">(llama-3.1-8b-instant)</span></label>
-                        <input
-                          type="password"
-                          value={settings.groqApiKey || ''}
-                          onChange={(e) => setSettings({ ...settings, groqApiKey: e.target.value })}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none font-mono"
-                          placeholder="gsk_..."
-                          autoComplete="off"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">Gratis en <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:underline">console.groq.com</a></p>
-                      </div>
+                      {(settings.aiProvider || 'gemini') === 'groq' && (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1.5">Groq API Key</label>
+                          <input
+                            type="password"
+                            value={settings.groqApiKey || ''}
+                            onChange={(e) => setSettings({ ...settings, groqApiKey: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none font-mono"
+                            placeholder="gsk_..."
+                            autoComplete="off"
+                          />
+                          <p className="text-xs text-gray-400 mt-1">Obténla gratis en <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:underline">console.groq.com</a></p>
+                        </div>
+                      )}
 
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">DeepSeek API Key</label>
-                        <input
-                          type="password"
-                          value={settings.deepseekApiKey || ''}
-                          onChange={(e) => setSettings({ ...settings, deepseekApiKey: e.target.value })}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none font-mono"
-                          placeholder="sk-..."
-                          autoComplete="off"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">Gratis en <a href="https://platform.deepseek.com" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:underline">platform.deepseek.com</a></p>
-                      </div>
+                      {(settings.aiProvider || 'gemini') === 'deepseek' && (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1.5">DeepSeek API Key</label>
+                          <input
+                            type="password"
+                            value={settings.deepseekApiKey || ''}
+                            onChange={(e) => setSettings({ ...settings, deepseekApiKey: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none font-mono"
+                            placeholder="sk-..."
+                            autoComplete="off"
+                          />
+                          <p className="text-xs text-gray-400 mt-1">Obténla en <a href="https://platform.deepseek.com" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:underline">platform.deepseek.com</a></p>
+                        </div>
+                      )}
 
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">z.ai API Key</label>
-                        <input
-                          type="password"
-                          value={settings.zaiApiKey || ''}
-                          onChange={(e) => setSettings({ ...settings, zaiApiKey: e.target.value })}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none font-mono"
-                          placeholder="..."
-                          autoComplete="off"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">Gratis en <a href="https://z.ai" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:underline">z.ai</a></p>
-                      </div>
+                      {(settings.aiProvider || 'gemini') === 'zai' && (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1.5">z.ai API Key</label>
+                          <input
+                            type="password"
+                            value={settings.zaiApiKey || ''}
+                            onChange={(e) => setSettings({ ...settings, zaiApiKey: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none font-mono"
+                            placeholder="..."
+                            autoComplete="off"
+                          />
+                          <p className="text-xs text-gray-400 mt-1">Obténla en <a href="https://z.ai" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:underline">z.ai</a></p>
+                        </div>
+                      )}
 
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">NewsAPI Key</label>
+                      <div className="pt-4 border-t border-gray-200">
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">NewsAPI Key (Noticias)</label>
                         <input
                           type="password"
                           value={settings.newsApiKey || ''}

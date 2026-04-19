@@ -109,25 +109,42 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
     }
   }, [setEstado, setFechaDesde, setFechaHasta, setTipoDte, setBusqueda]);
 
-  // Configurar contexto de chat cuando el componente se monta
+  // Configurar contexto de chat cuando el componente se monta o cambia el proveedor
   useEffect(() => {
-    if (currentBusinessId) {
-      createHistorialHandler(currentBusinessId).then(handler => {
-        setCurrentPage({
-          id: 'historial',
-          name: 'Historial de DTEs',
-          queryHandler: handler,
-          onAction: handleChatAction,
-          suggestedQuestions: [
-            '¿Cuánto vendí el último mes?',
-            '¿Cuántos DTEs tengo rechazados?',
-            '¿Quiénes son mis principales clientes?',
-            '¿Cuál es mi monto total facturado?',
-          ],
+    const setupChatHandler = () => {
+      if (currentBusinessId) {
+        createHistorialHandler(currentBusinessId).then(handler => {
+          setCurrentPage({
+            id: 'historial',
+            name: 'Historial de DTEs',
+            queryHandler: handler,
+            onAction: handleChatAction,
+            suggestedQuestions: [
+              '¿Cuánto vendí el último mes?',
+              '¿Cuántos DTEs tengo rechazados?',
+              '¿Quiénes son mis principales clientes?',
+              '¿Cuál es mi monto total facturado?',
+            ],
+          });
         });
-      });
-    }
-    return () => setCurrentPage(null);
+      }
+    };
+
+    setupChatHandler();
+
+    // Escuchar cambios en localStorage para recrear handler cuando cambian settings
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'dte_app_settings') {
+        setupChatHandler();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      setCurrentPage(null);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [currentBusinessId, setCurrentPage, handleChatAction]);
 
   const cargarResumen = async () => {
