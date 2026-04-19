@@ -154,21 +154,36 @@ ${JSON.stringify(datosResumen.slice(0, 50))}
 
 Pregunta del usuario: "${question}"
 
-Si la pregunta implica filtrar los datos (ej: "muéstrame solo rechazados", "del mes pasado", "mayores a $1000"),
-responde en formato JSON con esta estructura:
+IMPORTANTE: Si la pregunta implica filtrar los datos, DEBES responder en formato JSON con esta estructura:
 {
   "respuesta": "tu respuesta en español",
   "accion": {
     "type": "filter",
     "filters": {
+      "tipoDte": "03",
       "estado": "RECHAZADO",
       "fechaDesde": "2025-03-01",
+      "fechaHasta": "2025-04-30",
       "montoMin": 1000
     }
   }
 }
 
-Si no requiere filtros, responde solo con texto en español, máximo 150 palabras.`;
+Mapeo de tipos de DTE:
+- "01" = Factura Electrónica (FE)
+- "03" = Comprobante de Crédito Fiscal Electrónico (CCFE)
+- "04" = Nota de Remisión
+- "05" = Nota de Crédito
+- "06" = Nota de Débito
+- "14" = Sujeto Excluido
+
+Ejemplos:
+- Pregunta: "muéstrame los CCFE" → JSON con filters: { "tipoDte": "03" }
+- Pregunta: "muéstrame solo los rechazados" → JSON con filters: { "estado": "RECHAZADO" }
+- Pregunta: "del mes pasado" → JSON con filters: { "fechaDesde": "2025-03-01", "fechaHasta": "2025-03-31" }
+- Pregunta: "¿cuánto vendí?" → Solo texto, sin JSON
+
+Si NO requiere filtros (ej: preguntas de totales, resúmenes), responde solo con texto en español, máximo 150 palabras.`;
 
     try {
       const text = await callLLM(provider, apiKey, prompt);
