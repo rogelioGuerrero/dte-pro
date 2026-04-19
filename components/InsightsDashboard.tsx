@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Sparkles, TrendingUp, Newspaper, RefreshCw, AlertTriangle, CheckCircle, XCircle, Clock, ExternalLink, X, Image } from 'lucide-react';
+import { Sparkles, TrendingUp, Newspaper, RefreshCw, AlertTriangle, CheckCircle, XCircle, Clock, ExternalLink } from 'lucide-react';
 import { loadSettings } from '../utils/settings';
 import { getDTEHistory, getResumenVentas } from '../utils/api/historyApi';
 import { useEmisor } from '../contexts/EmisorContext';
@@ -10,7 +10,6 @@ function getKeys() {
     gemini: s.apiKey || (import.meta.env.VITE_GEMINI_API_KEY as string) || '',
     news:   s.newsApiKey || (import.meta.env.VITE_NEWS_API_KEY as string) || '',
     gnews:  s.gnewsApiKey || (import.meta.env.VITE_GNEWS_API_KEY as string) || '',
-    pexels: s.pexelsApiKey || (import.meta.env.VITE_PEXELS_API_KEY as string) || '',
   };
 }
 const NEWS_CACHE_KEY     = 'insights_news_cache';
@@ -42,14 +41,6 @@ interface NewsArticle {
   fuente: string;
   fecha: string;
   url: string;
-}
-
-interface PexelsMedia {
-  tipo: 'foto' | 'video';
-  thumb: string;
-  src: string;
-  autor: string;
-  autorUrl: string;
 }
 
 function geminiUrl() {
@@ -179,10 +170,6 @@ const InsightsDashboard: React.FC = () => {
     id: 'news', title: 'Contexto Económico', content: '', loading: true, error: null, updatedAt: null,
   });
   const [newsArticulos, setNewsArticulos] = useState<NewsArticle[]>([]);
-  const [showArticulos, setShowArticulos] = useState(false);
-  const [modalArticulo, setModalArticulo] = useState<NewsArticle | null>(null);
-  const [modalMedias, setModalMedias] = useState<PexelsMedia[]>([]);
-  const [modalMediaIdx, setModalMediaIdx] = useState(0);
 
   const loadFacturas = useCallback(async (forceRefresh = false) => {
     if (forceRefresh) localStorage.removeItem(FACTURAS_CACHE_KEY);
@@ -217,37 +204,6 @@ const InsightsDashboard: React.FC = () => {
     loadFacturas();
     loadNews();
   }, [loadFacturas, loadNews]);
-
-  const handleOpenArticulo = useCallback(async (articulo: NewsArticle) => {
-    setModalArticulo(articulo);
-    setModalMedias([]);
-    setModalMediaIdx(0);
-    const { pexels } = getKeys();
-    if (!pexels) return;
-    try {
-      const keyword = articulo.titulo.split(' ').slice(0, 4).join(' ');
-      const [fotoRes, videoRes] = await Promise.all([
-        fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(keyword)}&per_page=3&orientation=landscape`, { headers: { Authorization: pexels } }),
-        fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(keyword)}&per_page=2&orientation=landscape`, { headers: { Authorization: pexels } }),
-      ]);
-      const [fotoJson, videoJson] = await Promise.all([fotoRes.json(), videoRes.json()]);
-      const fotos: PexelsMedia[] = (fotoJson?.photos || []).map((p: { src: { large: string; medium: string }; photographer: string; photographer_url: string }) => ({
-        tipo: 'foto' as const,
-        thumb: p.src.medium,
-        src: p.src.large,
-        autor: p.photographer,
-        autorUrl: p.photographer_url,
-      }));
-      const videos: PexelsMedia[] = (videoJson?.videos || []).map((v: { image: string; video_files: { link: string; quality: string }[]; user: { name: string; url: string } }) => ({
-        tipo: 'video' as const,
-        thumb: v.image,
-        src: (v.video_files?.find((f: { quality: string }) => f.quality === 'hd') || v.video_files?.[0])?.link || '',
-        autor: v.user?.name || '',
-        autorUrl: v.user?.url || '',
-      })).filter((v: PexelsMedia) => v.src);
-      setModalMedias([...fotos, ...videos]);
-    } catch { /* media opcional */ }
-  }, []);
 
   const formatContent = (text: string) => {
     return text.split('\n').map((line, i) => {
@@ -351,19 +307,9 @@ const InsightsDashboard: React.FC = () => {
               <Newspaper className="w-5 h-5 text-blue-600" />
               <h2 className="font-semibold text-gray-900">Contexto Económico</h2>
             </div>
-            <div className="flex items-center gap-1">
-              {newsArticulos.length > 0 && (
-                <button
-                  onClick={() => setShowArticulos(v => !v)}
-                  className="p-1.5 rounded-lg hover:bg-blue-100 transition-colors text-xs text-blue-600 font-medium"
-                >
-                  {showArticulos ? 'Ocultar' : `Ver ${newsArticulos.length} fuentes`}
-                </button>
-              )}
-              <button onClick={() => loadNews(true)} className="p-1.5 rounded-lg hover:bg-blue-100 transition-colors" title="Actualizar">
-                <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${newsCard.loading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
+            <button onClick={() => loadNews(true)} className="p-1.5 rounded-lg hover:bg-blue-100 transition-colors" title="Actualizar">
+              <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${newsCard.loading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
           <div className="flex-1 px-5 py-4">
             {newsCard.loading && (
@@ -392,116 +338,32 @@ const InsightsDashboard: React.FC = () => {
                 {formatContent(newsCard.content)}
               </div>
             )}
-            {/* Lista de fuentes */}
-            {showArticulos && newsArticulos.length > 0 && (
-              <div className="mt-4 border-t border-gray-100 pt-3 space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Fuentes</p>
+            {/* Fuentes como links directos */}
+            {newsArticulos.length > 0 && !newsCard.loading && !newsCard.error && (
+              <div className="mt-4 border-t border-gray-100 pt-3 space-y-1.5">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Fuentes</p>
                 {newsArticulos.map((a, i) => (
-                  <button key={i} onClick={() => handleOpenArticulo(a)}
-                    className="flex items-start gap-2 text-xs text-blue-600 hover:text-blue-800 text-left w-full group">
-                    <ExternalLink className="w-3 h-3 mt-0.5 flex-shrink-0 opacity-60 group-hover:opacity-100" />
-                    <span>[{a.fecha}] {a.titulo} <span className="text-gray-400">({a.fuente})</span></span>
-                  </button>
+                  <a key={i} href={a.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-start gap-2 text-xs text-blue-600 hover:text-blue-800 hover:underline group">
+                    <ExternalLink className="w-3 h-3 mt-0.5 flex-shrink-0 opacity-50 group-hover:opacity-100" />
+                    <span>{a.titulo} <span className="text-gray-400">· {a.fuente}</span></span>
+                  </a>
                 ))}
               </div>
             )}
           </div>
           {newsCard.updatedAt && (
             <div className="px-5 py-2 border-t border-gray-100 flex items-center gap-1.5 text-xs text-gray-400">
-              <Clock className="w-3 h-3" />Actualizado a las {newsCard.updatedAt} · caché 1h · vía NewsAPI
+              <Clock className="w-3 h-3" />Actualizado a las {newsCard.updatedAt} · caché 1h · vía GNews
             </div>
           )}
         </div>
       </div>
 
-      {/* Footer note */}
+      {/* Footer */}
       <p className="text-xs text-center text-gray-400">
-        Los análisis se generan con Gemini 2.5 Flash · Los datos de facturación provienen de tu dispositivo local
+        Análisis generados con Gemini 2.5 Flash · Datos de facturación vía backend · Noticias vía GNews
       </p>
-
-      {/* Modal de artículo con galería Pexels */}
-      {modalArticulo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => { setModalArticulo(null); setModalMedias([]); setModalMediaIdx(0); }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-
-            {/* Media principal */}
-            {modalMedias.length > 0 ? (
-              <div className="relative h-52 bg-black flex-shrink-0">
-                {modalMedias[modalMediaIdx].tipo === 'foto' ? (
-                  <img src={modalMedias[modalMediaIdx].src} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <video src={modalMedias[modalMediaIdx].src} className="w-full h-full object-cover" autoPlay muted loop playsInline />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                {/* Controles de nav */}
-                {modalMedias.length > 1 && (
-                  <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
-                    {modalMedias.map((m, i) => (
-                      <button key={i} onClick={() => setModalMediaIdx(i)}
-                        className={`w-2 h-2 rounded-full transition-all ${
-                          i === modalMediaIdx ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/80'
-                        }`}
-                        title={m.tipo === 'video' ? 'Video' : 'Foto'}
-                      />
-                    ))}
-                  </div>
-                )}
-                <a href={modalMedias[modalMediaIdx].autorUrl} target="_blank" rel="noopener noreferrer"
-                  className="absolute bottom-3 left-4 text-white text-xs opacity-70 hover:opacity-100">
-                  {modalMedias[modalMediaIdx].tipo === 'video' ? '🎬' : '📷'} {modalMedias[modalMediaIdx].autor} · Pexels
-                </a>
-              </div>
-            ) : (
-              <div className="h-20 bg-gradient-to-r from-blue-50 to-indigo-100 flex items-center justify-center flex-shrink-0">
-                <Image className="w-7 h-7 text-blue-300" />
-              </div>
-            )}
-
-            {/* Thumbnails */}
-            {modalMedias.length > 1 && (
-              <div className="flex gap-2 px-4 pt-3 pb-1 overflow-x-auto flex-shrink-0">
-                {modalMedias.map((m, i) => (
-                  <button key={i} onClick={() => setModalMediaIdx(i)}
-                    className={`relative flex-shrink-0 w-16 h-10 rounded-lg overflow-hidden border-2 transition-all ${
-                      i === modalMediaIdx ? 'border-blue-500' : 'border-transparent opacity-60 hover:opacity-100'
-                    }`}>
-                    <img src={m.thumb} alt="" className="w-full h-full object-cover" />
-                    {m.tipo === 'video' && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                        <span className="text-white text-xs">▶</span>
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Contenido */}
-            <div className="p-5 overflow-y-auto space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="font-bold text-gray-900 text-base leading-snug">{modalArticulo.titulo}</h3>
-                <button onClick={() => { setModalArticulo(null); setModalMedias([]); setModalMediaIdx(0); }} className="p-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0">
-                  <X className="w-4 h-4 text-gray-500" />
-                </button>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <span className="font-medium text-gray-700">{modalArticulo.fuente}</span>
-                <span>·</span>
-                <span>{modalArticulo.fecha}</span>
-              </div>
-              <a
-                href={modalArticulo.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Leer artículo completo
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
