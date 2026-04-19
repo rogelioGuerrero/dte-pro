@@ -8,6 +8,10 @@ import { formatMoneda } from '../libros/librosConfig';
 import FormularioProducto from './FormularioProducto';
 import PreValidacionModal from './PreValidacionModal';
 import { ProductoImagen } from './ProductoImagen';
+import ChatWidget from '../ChatWidget';
+import { useChat, type PageAction } from '../../contexts/ChatContext';
+import { createChatHandler } from '../../utils/chat/createChatHandler';
+import { inventarioDomain } from '../../utils/chat/domains/inventarioDomain';
 
  type AccionPreValidacion = 'crear' | 'actualizar' | 'asociar' | 'omitir';
 
@@ -57,10 +61,31 @@ const CatalogoProductos: React.FC<CatalogoProductosProps> = ({
     motivo: ''
   });
 
+  const { setCurrentPage } = useChat();
+
   // Cargar datos iniciales
   useEffect(() => {
     cargarDatos();
   }, []);
+
+  // Registrar dominio del chat para filtrar el catálogo por lenguaje natural.
+  useEffect(() => {
+    const handler = createChatHandler({ domain: inventarioDomain });
+    const onAction = (action: PageAction) => {
+      if (action.type === 'filter' && action.filters) {
+        if (action.filters.busqueda !== undefined) setBusqueda(action.filters.busqueda);
+        if (action.filters.categoria !== undefined) setCategoriaFiltro(action.filters.categoria);
+      }
+    };
+    setCurrentPage({
+      id: inventarioDomain.id,
+      name: inventarioDomain.name,
+      queryHandler: handler,
+      onAction,
+      suggestedQuestions: inventarioDomain.suggestedQuestions,
+    });
+    return () => setCurrentPage(null);
+  }, [setCurrentPage]);
 
   useEffect(() => {
     const el = folderInputRef.current;
@@ -562,6 +587,7 @@ const CatalogoProductos: React.FC<CatalogoProductosProps> = ({
   };
 
   return (
+    <>
     <div className="max-w-7xl mx-auto">
       <input
         id="import-json"
@@ -1164,6 +1190,8 @@ const CatalogoProductos: React.FC<CatalogoProductosProps> = ({
         </div>
       )}
     </div>
+    <ChatWidget />
+    </>
   );
 };
 

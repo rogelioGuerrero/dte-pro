@@ -12,6 +12,10 @@ import {
 import { extractDataFromImage } from '../utils/ocr';
 import { ToastContainer, useToast } from './Toast';
 import Tooltip from './Tooltip';
+import ChatWidget from './ChatWidget';
+import { useChat, type PageAction } from '../contexts/ChatContext';
+import { createChatHandler } from '../utils/chat/createChatHandler';
+import { clientesDomain } from '../utils/chat/domains/clientesDomain';
 import { EmailField, NitOrDuiField, NrcField, PhoneField, SelectActividad, SelectUbicacion } from './formularios';
 import {
   validateNIT,
@@ -72,6 +76,7 @@ const ClientManager: React.FC = () => {
   const [mobilePane, setMobilePane] = useState<'list' | 'detail'>('list');
   
   const { toasts, addToast, removeToast } = useToast();
+  const { setCurrentPage } = useChat();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const panelsContainerRef = useRef<HTMLDivElement>(null);
@@ -79,6 +84,24 @@ const ClientManager: React.FC = () => {
   useEffect(() => {
     loadClients();
   }, []);
+
+  // Registrar dominio del chat: permite al usuario filtrar la tabla conversando.
+  useEffect(() => {
+    const handler = createChatHandler({ domain: clientesDomain });
+    const onAction = (action: PageAction) => {
+      if (action.type === 'filter' && action.filters) {
+        if (action.filters.busqueda !== undefined) setClientSearch(action.filters.busqueda);
+      }
+    };
+    setCurrentPage({
+      id: clientesDomain.id,
+      name: clientesDomain.name,
+      queryHandler: handler,
+      onAction,
+      suggestedQuestions: clientesDomain.suggestedQuestions,
+    });
+    return () => setCurrentPage(null);
+  }, [setCurrentPage]);
 
   useEffect(() => {
     try {
@@ -385,6 +408,7 @@ const ClientManager: React.FC = () => {
   };
 
   return (
+    <>
     <div className="h-[calc(100vh-180px)] flex flex-col">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
       
@@ -913,6 +937,8 @@ const ClientManager: React.FC = () => {
         </div>
       </div>
     </div>
+    <ChatWidget />
+    </>
   );
 };
 

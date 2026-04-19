@@ -26,7 +26,8 @@ import {
   downloadDTEPdf,
   downloadDTEXml
 } from '../utils/api/historyApi';
-import { createHistorialHandler } from '../utils/chatHandlers';
+import { createChatHandler } from '../utils/chat/createChatHandler';
+import { createHistorialDomain } from '../utils/chat/domains/historialDomain';
 import type { DTEHistoryParams, DTEHistoryResponse, ResumenVentasParams, ResumenVentasResponse } from '../types/history';
 import type { DTEHistoryItem } from '../types/history';
 
@@ -99,11 +100,12 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
   const handleChatAction = useCallback((action: PageAction) => {
     if (action.type === 'filter' && action.filters) {
       const filters = action.filters;
-      if (filters.estado) setEstado(filters.estado);
-      if (filters.fechaDesde) setFechaDesde(filters.fechaDesde);
-      if (filters.fechaHasta) setFechaHasta(filters.fechaHasta);
-      if (filters.tipoDte) setTipoDte(filters.tipoDte);
-      if (filters.busqueda) setBusqueda(filters.busqueda);
+      // Nota: cadenas vacías se respetan (sirven para limpiar filtros).
+      if (filters.estado !== undefined) setEstado(filters.estado);
+      if (filters.fechaDesde !== undefined) setFechaDesde(filters.fechaDesde);
+      if (filters.fechaHasta !== undefined) setFechaHasta(filters.fechaHasta);
+      if (filters.tipoDte !== undefined) setTipoDte(filters.tipoDte);
+      if (filters.busqueda !== undefined) setBusqueda(filters.busqueda);
       setPaginaActual(1);
       cargarDatosRef.current?.(true);
     }
@@ -112,22 +114,16 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
   // Configurar contexto de chat cuando el componente se monta o cambia el proveedor
   useEffect(() => {
     const setupChatHandler = () => {
-      if (currentBusinessId) {
-        createHistorialHandler(currentBusinessId).then(handler => {
-          setCurrentPage({
-            id: 'historial',
-            name: 'Historial de DTEs',
-            queryHandler: handler,
-            onAction: handleChatAction,
-            suggestedQuestions: [
-              '¿Cuánto vendí el último mes?',
-              '¿Cuántos DTEs tengo rechazados?',
-              '¿Quiénes son mis principales clientes?',
-              '¿Cuál es mi monto total facturado?',
-            ],
-          });
-        });
-      }
+      if (!currentBusinessId) return;
+      const domain = createHistorialDomain(currentBusinessId);
+      const handler = createChatHandler({ domain });
+      setCurrentPage({
+        id: domain.id,
+        name: domain.name,
+        queryHandler: handler,
+        onAction: handleChatAction,
+        suggestedQuestions: domain.suggestedQuestions,
+      });
     };
 
     setupChatHandler();
