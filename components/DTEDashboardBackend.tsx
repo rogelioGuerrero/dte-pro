@@ -98,8 +98,10 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
 
   // Handler para aplicar filtros desde el chat
   const handleChatAction = useCallback((action: PageAction) => {
+    console.log('[DTEDashboardBackend] handleChatAction recibido:', action);
     if (action.type === 'filter' && action.filters) {
       const filters = action.filters;
+      console.log('[DTEDashboardBackend] Filtros a aplicar:', filters);
       // Nota: cadenas vacías se respetan (sirven para limpiar filtros).
       if (filters.estado !== undefined) setEstado(filters.estado);
       if (filters.fechaDesde !== undefined) setFechaDesde(filters.fechaDesde);

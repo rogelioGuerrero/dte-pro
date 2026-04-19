@@ -62,12 +62,22 @@ const postProcessHistorialResponse = (
   response: ChatResponse,
   question: string
 ): ChatResponse => {
+  console.log('[postProcessHistorialResponse] Iniciando', { question, hasAction: !!response.action, hasFilters: !!response.action?.filters });
+
   // Si ya tiene filtros, respetarlos
-  if (response.action?.filters?.busqueda) return response;
+  if (response.action?.filters?.busqueda) {
+    console.log('[postProcessHistorialResponse] Ya tiene filtro busqueda:', response.action.filters.busqueda);
+    return response;
+  }
 
   // Solo si la pregunta es sobre clientes
   const lowerQ = question.toLowerCase();
-  if (!/cliente|clientes|receptor/.test(lowerQ)) return response;
+  if (!/cliente|clientes|receptor/.test(lowerQ)) {
+    console.log('[postProcessHistorialResponse] Pregunta no es sobre clientes');
+    return response;
+  }
+
+  console.log('[postProcessHistorialResponse] Pregunta sobre clientes, buscando nombres en respuesta:', response.content);
 
   // Extraer nombres en mayúsculas (patrón típico del LLM: "FRANCISCO JOSE CORNEJO MAZA")
   const nombresEncontrados: string[] = [];
@@ -80,10 +90,13 @@ const postProcessHistorialResponse = (
     }
   }
 
+  console.log('[postProcessHistorialResponse] Nombres encontrados:', nombresEncontrados);
+
   if (nombresEncontrados.length === 0) return response;
 
   // Usar el primer nombre como filtro de búsqueda
   const primerNombre = nombresEncontrados[0];
+  console.log('[postProcessHistorialResponse] Generando filtro con:', primerNombre);
   return {
     ...response,
     action: {
@@ -152,9 +165,9 @@ Pregunta del usuario: "${trimmed}"
 INSTRUCCIONES DE FORMATO:
 - Responde SIEMPRE en JSON válido con esta estructura exacta:
   { "respuesta": "<texto en español, max 120 palabras>", "accion": <null o objeto filter> }
-- Si la pregunta implica filtrar la tabla, "accion" debe ser:
+- Si la pregunta implica filtrar la tabla O menciona clientes/productos específicos, "accion" debe ser:
   { "type": "filter", "filters": { ...campos válidos según el esquema... } }
-- Si es solo informativa (totales, rankings), "accion" debe ser null.
+- Si es solo informativa general (ej: "¿cuánto vendí en total?"), "accion" puede ser null.
 - Esquema de filtros válidos: ${JSON.stringify(domain.llmFilterSchema)}
 - NO inventes campos fuera del esquema. Si el campo no aplica, omítelo.`;
 
