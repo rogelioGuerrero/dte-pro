@@ -84,19 +84,11 @@ async function fetchFacturasInsight(): Promise<{ content: string; meta: Record<s
   const db = await openCacheDb();
   const allDtes = await db.getAll('dteCache');
 
-  let dtes = allDtes;
-
-  // Datos de ejemplo si no hay nada
-  if (dtes.length === 0) {
-    dtes = [
-      { tipoDte:'01', fechaEmision:'2025-04-01', receptorNombre:'Juan García', montoTotal:115, montoIva:15, estado:'ACEPTADO' },
-      { tipoDte:'01', fechaEmision:'2025-04-03', receptorNombre:'María López', montoTotal:230, montoIva:30, estado:'ACEPTADO' },
-      { tipoDte:'03', fechaEmision:'2025-04-05', receptorNombre:'Empresa XYZ', montoTotal:500, montoIva:65, estado:'ACEPTADO' },
-      { tipoDte:'01', fechaEmision:'2025-04-08', receptorNombre:'Carlos Rivas', montoTotal:57.5, montoIva:7.5, estado:'RECHAZADO' },
-      { tipoDte:'03', fechaEmision:'2025-04-10', receptorNombre:'Distribuidora ABC', montoTotal:1200, montoIva:156, estado:'ACEPTADO' },
-      { tipoDte:'14', fechaEmision:'2025-04-12', receptorNombre:'Pedro Martínez', montoTotal:80, montoIva:0, estado:'ACEPTADO' },
-    ] as DteSummary[];
+  if (allDtes.length === 0) {
+    throw new Error('NO_DTES');
   }
+
+  const dtes = allDtes;
 
   const typed = dtes as DteSummary[];
   const total = typed.length;
@@ -159,7 +151,7 @@ const InsightsDashboard: React.FC = () => {
       setFacturasCard(c => ({ ...c, loading: false, content, meta, updatedAt: new Date().toLocaleTimeString('es-SV') }));
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error desconocido';
-      setFacturasCard(c => ({ ...c, loading: false, error: msg }));
+      setFacturasCard(c => ({ ...c, loading: false, error: msg === 'NO_DTES' ? 'NO_DTES' : msg }));
     }
   }, []);
 
@@ -283,7 +275,16 @@ const InsightsDashboard: React.FC = () => {
                 <span className="text-sm">Analizando tus facturas...</span>
               </div>
             )}
-            {facturasCard.error && (
+            {facturasCard.error === 'NO_DTES' && (
+              <div className="flex flex-col items-center justify-center h-32 gap-3 text-center px-4">
+                <TrendingUp className="w-8 h-8 text-gray-300" />
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Sin facturas aún</p>
+                  <p className="text-xs text-gray-400 mt-1">Importa o genera DTEs para ver tu análisis de facturación.</p>
+                </div>
+              </div>
+            )}
+            {facturasCard.error && facturasCard.error !== 'NO_DTES' && (
               <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50 rounded-lg p-3">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>{facturasCard.error}</span>
