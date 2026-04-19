@@ -172,17 +172,21 @@ Si no requiere filtros, responde solo con texto en español, máximo 150 palabra
 
     try {
       const text = await callLLM(provider, apiKey, prompt);
+      console.log('[chatHandlers] Respuesta LLM:', text.substring(0, 200) + '...');
 
       // Intentar parsear JSON si el LLM devolvió una acción
       try {
         const parsed = JSON.parse(text);
+        console.log('[chatHandlers] JSON parseado:', parsed);
         if (parsed.respuesta && parsed.accion) {
+          console.log('[chatHandlers] Acción detectada:', parsed.accion);
           return {
             content: parsed.respuesta,
             action: parsed.accion,
           };
         }
-      } catch {
+      } catch (e) {
+        console.log('[chatHandlers] No es JSON, es texto plano:', e);
         // No es JSON, es texto plano
       }
 

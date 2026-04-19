@@ -28,10 +28,14 @@ const ChatWidget: React.FC = () => {
 
     try {
       const response = await currentPage.queryHandler(userMessage);
+      console.log('[ChatWidget] Respuesta del handler:', response);
       addMessage({ role: 'assistant', content: response.content, action: response.action });
 
       if (response.action && currentPage.onAction) {
+        console.log('[ChatWidget] Ejecutando onAction:', response.action);
         currentPage.onAction(response.action);
+      } else {
+        console.log('[ChatWidget] No hay acción o onAction no definido');
       }
     } catch (err) {
       console.error('[ChatWidget] Error:', err);
