@@ -8,6 +8,7 @@ function getKeys() {
   return {
     gemini: s.apiKey || (import.meta.env.VITE_GEMINI_API_KEY as string) || '',
     news:   s.newsApiKey || (import.meta.env.VITE_NEWS_API_KEY as string) || '',
+    gnews:  s.gnewsApiKey || (import.meta.env.VITE_GNEWS_API_KEY as string) || '',
     pexels: s.pexelsApiKey || (import.meta.env.VITE_PEXELS_API_KEY as string) || '',
   };
 }
@@ -125,9 +126,39 @@ Por tipo: ${JSON.stringify(porTipo)}
 }
 
 async function fetchNewsInsight(): Promise<{ content: string; articulos: NewsArticle[] }> {
-  // NewsAPI free tier bloquea llamadas desde el browser (CORS/426).
-  // Se habilitará vía Netlify Function proxy en una próxima versión.
-  throw new Error('NEWSAPI_SUSPENDED');
+  const cached = JSON.parse(localStorage.getItem(NEWS_CACHE_KEY) || 'null');
+  if (cached && cached.articulos?.length > 0 && (Date.now() - cached.ts) < CACHE_TTL) {
+    return { content: cached.content, articulos: cached.articulos };
+  }
+
+  const keys = getKeys();
+  if (!keys.gemini) throw new Error('Configura tu Gemini API Key en Configuración Avanzada → IA & APIs');
+  if (!keys.gnews) throw new Error('GNEWS_MISSING');
+
+  const url = `https://gnews.io/api/v4/search?q=economia+negocios&lang=es&max=10&apikey=${keys.gnews}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok || json.errors) throw new Error(json.errors?.[0] || 'Error en GNews');
+
+  const articulos: NewsArticle[] = (json.articles || []).map((a: { title: string; source?: { name?: string }; publishedAt?: string; url: string }) => ({
+    titulo: a.title,
+    fuente: a.source?.name ?? '',
+    fecha: a.publishedAt?.split('T')[0] ?? '',
+    url: a.url,
+  }));
+
+  if (articulos.length === 0) throw new Error('No se encontraron noticias recientes');
+
+  const content = await callGemini(
+    'Eres un analista económico para empresarios salvadoreños. Produce briefs ejecutivos concisos en español. No repitas titulares literalmente.',
+    `Genera un brief ejecutivo (máximo 180 palabras) para un empresario salvadoreño basado en estos titulares recientes. Incluye: (1) qué está pasando, (2) impacto posible en su negocio, (3) recomendación práctica.
+
+Titulares:
+${articulos.map((a, i) => `${i + 1}. [${a.fecha}] ${a.titulo} (${a.fuente})`).join('\n')}`
+  );
+
+  localStorage.setItem(NEWS_CACHE_KEY, JSON.stringify({ ts: Date.now(), content, articulos }));
+  return { content, articulos };
 }
 
 const InsightsDashboard: React.FC = () => {
@@ -164,8 +195,8 @@ const InsightsDashboard: React.FC = () => {
       setNewsArticulos(articulos);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error desconocido';
-      if (msg === 'NEWSAPI_SUSPENDED') {
-        setNewsCard(c => ({ ...c, loading: false, error: 'SUSPENDED' }));
+      if (msg === 'NEWSAPI_SUSPENDED' || msg === 'GNEWS_MISSING') {
+        setNewsCard(c => ({ ...c, loading: false, error: 'GNEWS_MISSING' }));
       } else {
         setNewsCard(c => ({ ...c, loading: false, error: msg }));
       }
@@ -331,16 +362,16 @@ const InsightsDashboard: React.FC = () => {
                 <span className="text-sm">Obteniendo noticias y generando brief...</span>
               </div>
             )}
-            {newsCard.error === 'SUSPENDED' && (
+            {newsCard.error === 'GNEWS_MISSING' && (
               <div className="flex flex-col items-center justify-center h-32 gap-3 text-center px-4">
                 <Newspaper className="w-8 h-8 text-gray-300" />
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Noticias en pausa</p>
-                  <p className="text-xs text-gray-400 mt-1">NewsAPI requiere backend en plan gratuito. Próximamente via Netlify Function.</p>
+                  <p className="text-sm font-medium text-gray-600">Configura tu GNews API Key</p>
+                  <p className="text-xs text-gray-400 mt-1">Ve a Configuración Avanzada → IA & APIs y pega tu key de gnews.io</p>
                 </div>
               </div>
             )}
-            {newsCard.error && newsCard.error !== 'SUSPENDED' && (
+            {newsCard.error && newsCard.error !== 'GNEWS_MISSING' && (
               <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50 rounded-lg p-3">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>{newsCard.error}</span>

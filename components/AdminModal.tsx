@@ -468,6 +468,19 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, businessId, bu
                       </div>
 
                       <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">GNews API Key <span className="text-gray-400 font-normal">(noticias desde browser)</span></label>
+                        <input
+                          type="password"
+                          value={settings.gnewsApiKey || ''}
+                          onChange={(e) => setSettings({ ...settings, gnewsApiKey: e.target.value })}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none font-mono"
+                          placeholder="..."
+                          autoComplete="off"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Gratis (100 req/día) en <a href="https://gnews.io/dashboard" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:underline">gnews.io</a></p>
+                      </div>
+
+                      <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1.5">Pexels API Key <span className="text-gray-400 font-normal">(imágenes para artículos)</span></label>
                         <input
                           type="password"

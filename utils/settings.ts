@@ -7,6 +7,7 @@ export interface AppSettings {
   aiProvider?: string;
   aiModel?: string;
   newsApiKey?: string;
+  gnewsApiKey?: string;
   pexelsApiKey?: string;
 
   // --- Gestión de Licencias (solo lectura, controlado remotamente) ---
