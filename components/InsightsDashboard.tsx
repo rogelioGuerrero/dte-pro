@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Sparkles, TrendingUp, Newspaper, RefreshCw, AlertTriangle, CheckCircle, XCircle, Clock, ExternalLink } from 'lucide-react';
+import { callLLM, type LLMProvider } from '../utils/chatHandlers';
 import { loadSettings } from '../utils/settings';
 import { getDTEHistory, getResumenVentas } from '../utils/api/historyApi';
 import { useEmisor } from '../contexts/EmisorContext';
@@ -7,7 +8,11 @@ import { useEmisor } from '../contexts/EmisorContext';
 function getKeys() {
   const s = loadSettings();
   return {
-    gemini: s.apiKey || (import.meta.env.VITE_GEMINI_API_KEY as string) || '',
+    provider: (s.aiProvider as LLMProvider) || 'gemini',
+    gemini: s.geminiApiKey || s.apiKey || (import.meta.env.VITE_GEMINI_API_KEY as string) || '',
+    groq: s.groqApiKey || '',
+    deepseek: s.deepseekApiKey || '',
+    zai: s.zaiApiKey || '',
     news:   s.newsApiKey || (import.meta.env.VITE_NEWS_API_KEY as string) || '',
     gnews:  s.gnewsApiKey || (import.meta.env.VITE_GNEWS_API_KEY as string) || '',
   };
@@ -43,25 +48,14 @@ interface NewsArticle {
   url: string;
 }
 
-function geminiUrl() {
-  return `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${getKeys().gemini}`;
-}
+async function callLLMWithProvider(systemPrompt: string, userPrompt: string): Promise<string> {
+  const keys = getKeys();
+  const apiKey = keys[keys.provider] || keys.gemini;
+  if (!apiKey) throw new Error('Configura tu API Key de LLM en Configuración Avanzada → IA & APIs');
 
-async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
-  const res = await fetch(geminiUrl(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-      systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
-      generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
-    }),
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error?.message || 'Error llamando a Gemini');
-  const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('Gemini no devolvió respuesta');
-  return text;
+  // Combinar systemPrompt y userPrompt para callLLM (que solo acepta un prompt)
+  const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+  return await callLLM(keys.provider, apiKey, fullPrompt);
 }
 
 async function fetchFacturasInsight(businessId: string): Promise<{ content: string; meta: Record<string, string | number> }> {
@@ -106,7 +100,7 @@ async function fetchFacturasInsight(businessId: string): Promise<{ content: stri
     estado: d.estado,
   }));
 
-  const content = await callGemini(
+  const content = await callLLMWithProvider(
     'Eres un asistente fiscal experto en facturación electrónica de El Salvador (DTE). Analiza los datos reales del contribuyente y da respuestas claras en español. No inventes datos.',
     `Analiza estos documentos tributarios electrónicos (últimos 90 días) y genera un análisis ejecutivo conciso (máximo 180 palabras):
 1. Estado general de facturación
@@ -147,7 +141,7 @@ async function fetchNewsInsight(): Promise<{ content: string; articulos: NewsArt
 
   if (articulos.length === 0) throw new Error('No se encontraron noticias recientes');
 
-  const content = await callGemini(
+  const content = await callLLMWithProvider(
     'Eres un analista económico para empresarios salvadoreños. Produce briefs ejecutivos concisos en español. No repitas titulares literalmente.',
     `Genera un brief ejecutivo (máximo 180 palabras) para un empresario salvadoreño basado en estos titulares recientes. Incluye: (1) qué está pasando, (2) impacto posible en su negocio, (3) recomendación práctica.
 

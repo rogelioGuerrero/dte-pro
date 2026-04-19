@@ -6,9 +6,9 @@ interface PageContextHandler {
   (question: string): Promise<{ content: string; action?: PageAction }>;
 }
 
-type LLMProvider = 'gemini' | 'groq' | 'deepseek' | 'zai';
+export type LLMProvider = 'gemini' | 'groq' | 'deepseek' | 'zai';
 
-async function callLLM(provider: LLMProvider, apiKey: string, prompt: string): Promise<string> {
+export async function callLLM(provider: LLMProvider, apiKey: string, prompt: string): Promise<string> {
   switch (provider) {
     case 'gemini': {
       const geminiRes = await fetch(
