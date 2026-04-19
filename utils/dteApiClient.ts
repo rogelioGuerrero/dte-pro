@@ -207,7 +207,6 @@ export const firmarDocumento = async (params: {
   retries?: number;
   baseDelayMs?: number;
 }): Promise<string> => {
-  const timeoutMs = params.timeoutMs ?? 30000;
   const retries = params.retries ?? 2;
   const baseDelayMs = params.baseDelayMs ?? 1000;
   const url = buildUrl('/api/dte/sign');
@@ -215,9 +214,6 @@ export const firmarDocumento = async (params: {
 
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(new Error('Timeout firmando documento')), timeoutMs);
-
     try {
       const res = await fetch(url, {
         method: 'POST',
@@ -230,7 +226,6 @@ export const firmarDocumento = async (params: {
           dte,
           ...(params.passwordPri ? { passwordPri: params.passwordPri } : {}),
         }),
-        signal: controller.signal,
       });
 
       const contentType = res.headers.get('content-type') || '';
@@ -276,20 +271,14 @@ export const firmarDocumento = async (params: {
 
       return jws;
     } catch (err: unknown) {
-      // Detectar Timeout
-      const isTimeout = err instanceof Error && (err.name === 'AbortError' || err.message.includes('Timeout'));
-      const errorToThrow = isTimeout ? new Error(`Timeout firmando documento (${timeoutMs}ms)`) : err;
-      
-      lastError = errorToThrow;
+      lastError = err;
 
       if (attempt < retries) {
         await sleep(baseDelayMs * Math.pow(2, attempt));
         continue;
       }
 
-      throw errorToThrow;
-    } finally {
-      clearTimeout(timeout);
+      throw err;
     }
   }
 
@@ -307,56 +296,47 @@ export const transmitirDocumento = async (params: {
   retries?: number;
   baseDelayMs?: number;
 }): Promise<TransmitDTEResponse> => {
-  const timeoutMs = params.timeoutMs ?? 45000;
   const url = buildUrl('/api/dte/transmit');
   const dte = cloneObject(params.dte);
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(new Error('Timeout transmitiendo documento')), timeoutMs);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      Accept: 'application/json',
+      ...buildAuthHeaders(),
+    },
+    body: JSON.stringify({
+      dte,
+      ambiente: params.ambiente ?? '00',
+      flowType: params.flowType ?? 'emission',
+      businessId: params.businessId ?? null,
+      receptorEmail: params.receptorEmail ?? null,
+      ...(params.passwordPri ? { passwordPri: params.passwordPri } : {}),
+    }),
+  });
 
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        Accept: 'application/json',
-        ...buildAuthHeaders(),
-      },
-      body: JSON.stringify({
-        dte,
-        ambiente: params.ambiente ?? '00',
-        flowType: params.flowType ?? 'emission',
-        businessId: params.businessId ?? null,
-        receptorEmail: params.receptorEmail ?? null,
-        ...(params.passwordPri ? { passwordPri: params.passwordPri } : {}),
-      }),
-      signal: controller.signal,
-    });
+  const contentType = res.headers.get('content-type') || '';
+  const payload = contentType.includes('application/json')
+    ? ((await res.json().catch(() => ({}))) as TransmitDTEResponse)
+    : await res.text().catch(() => '');
 
-    const contentType = res.headers.get('content-type') || '';
-    const payload = contentType.includes('application/json')
-      ? ((await res.json().catch(() => ({}))) as TransmitDTEResponse)
-      : await res.text().catch(() => '');
-
-    if (!res.ok) {
-      if (res.status === 401) {
-        throw new Error('Sesión expirada o token faltante. Inicia sesión nuevamente para transmitir el documento.');
-      }
-
-      const detail = typeof payload === 'string'
-        ? payload
-        : payload?.mhResponse?.mensaje || JSON.stringify(payload);
-      throw new Error(detail || `Transmisión falló (HTTP ${res.status})`);
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('Sesión expirada o token faltante. Inicia sesión nuevamente para transmitir el documento.');
     }
 
-    if (typeof payload === 'string') {
-      throw new Error(`Respuesta inesperada del backend: ${payload}`);
-    }
-
-    return normalizeTransmitResponse(payload);
-  } finally {
-    clearTimeout(timeout);
+    const detail = typeof payload === 'string'
+      ? payload
+      : payload?.mhResponse?.mensaje || JSON.stringify(payload);
+    throw new Error(detail || `Transmisión falló (HTTP ${res.status})`);
   }
+
+  if (typeof payload === 'string') {
+    throw new Error(`Respuesta inesperada del backend: ${payload}`);
+  }
+
+  return normalizeTransmitResponse(payload);
 };
 
 export const limpiarDteParaFirma = <T extends Record<string, unknown>>(dte: T): T => {

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FileJson, FilePlus2, Plus, Send, Trash2, X } from 'lucide-react';
+import { FileJson, FilePlus2, Loader2, Plus, Send, Trash2, X } from 'lucide-react';
 import { ToastContainer, useToast } from '../Toast';
 import { useEmisor } from '../../contexts/EmisorContext';
 import { checkLicense } from '../../utils/licenseValidator';
@@ -39,6 +39,8 @@ export const FE01: React.FC = () => {
   const [receptorDireccion, setReceptorDireccion] = useState('');
   const [items, setItems] = useState<FE01ItemForm[]>([createItem(1)]);
   const [isSending, setIsSending] = useState(false);
+  const [sendElapsed, setSendElapsed] = useState(0);
+  const [sendStage, setSendStage] = useState(0);
   const [respuesta, setRespuesta] = useState<TransmitDTEResponse | { error: string } | null>(null);
   const [showDebug, setShowDebug] = useState(false);
   const [ambiente] = useState<'00' | '01'>(() => (localStorage.getItem('dte_ambiente') as '00' | '01') || '00');
@@ -56,6 +58,25 @@ export const FE01: React.FC = () => {
       mounted = false;
     };
   }, [businessId, operationalBusinessId]);
+
+  useEffect(() => {
+    if (!isSending) {
+      setSendElapsed(0);
+      setSendStage(0);
+      return;
+    }
+    const start = Date.now();
+    const tick = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      setSendElapsed(elapsed);
+      if (elapsed < 5) setSendStage(0);
+      else if (elapsed < 20) setSendStage(1);
+      else if (elapsed < 60) setSendStage(2);
+      else if (elapsed < 120) setSendStage(3);
+      else setSendStage(4);
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [isSending]);
 
   const handleReset = () => {
     setReceptorEmail('');
@@ -533,8 +554,8 @@ export const FE01: React.FC = () => {
               disabled={!emisor || !resolvedBusinessId || isSending}
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
             >
-              <Send className="h-4 w-4" />
-              {isSending ? 'Enviando...' : 'Firmar y Enviar FE 01'}
+              {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {isSending ? 'Procesando…' : 'Firmar y Enviar FE 01'}
             </button>
 
             <button
@@ -577,6 +598,34 @@ export const FE01: React.FC = () => {
                 <p className="text-sm text-gray-500">Aún no hay respuesta de transmisión para mostrar.</p>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {isSending && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+              <h2 className="text-base font-semibold text-gray-900">Procesando tu factura</h2>
+            </div>
+            <p className="mt-4 text-sm text-gray-700">
+              {sendStage === 0 && 'Preparando documento y validando datos…'}
+              {sendStage === 1 && 'Firmando electrónicamente el DTE…'}
+              {sendStage === 2 && 'Conectando con Hacienda (MH). Esto puede tardar unos segundos.'}
+              {sendStage === 3 && 'El servicio de firma está despertando. Seguimos procesando, no cierres esta ventana.'}
+              {sendStage === 4 && 'Aún estamos trabajando con Hacienda. La transmisión puede tardar un poco más.'}
+            </p>
+            <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
+              <span>Tiempo transcurrido</span>
+              <span className="font-mono text-gray-700">{Math.floor(sendElapsed / 60).toString().padStart(2, '0')}:{(sendElapsed % 60).toString().padStart(2, '0')}</span>
+            </div>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+              <div className="h-full w-1/3 animate-pulse rounded-full bg-indigo-500" />
+            </div>
+            <p className="mt-4 text-xs text-gray-500">
+              No cierres esta ventana ni recargues la página. Cuando termine, verás el resultado automáticamente.
+            </p>
           </div>
         </div>
       )}
