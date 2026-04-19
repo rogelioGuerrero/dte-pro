@@ -84,6 +84,7 @@ async function fetchFacturasInsight(): Promise<{ content: string; meta: Record<s
   // Leer DTEs de IndexedDB
   const db = await openCacheDb();
   const allDtes = await db.getAll('dteCache');
+  console.log('[InsightsIA] DTEs encontrados en IndexedDB:', allDtes.length, allDtes.slice(0, 2));
 
   if (allDtes.length === 0) {
     throw new Error('NO_DTES');
