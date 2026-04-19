@@ -8,7 +8,7 @@ function getKeys() {
   return {
     gemini: s.apiKey || (import.meta.env.VITE_GEMINI_API_KEY as string) || '',
     news:   s.newsApiKey || (import.meta.env.VITE_NEWS_API_KEY as string) || '',
-    unsplash: s.unsplashApiKey || (import.meta.env.VITE_UNSPLASH_API_KEY as string) || '',
+    pexels: s.pexelsApiKey || (import.meta.env.VITE_PEXELS_API_KEY as string) || '',
   };
 }
 const NEWS_CACHE_KEY     = 'insights_news_cache';
@@ -212,16 +212,16 @@ const InsightsDashboard: React.FC = () => {
   const handleOpenArticulo = useCallback(async (articulo: NewsArticle) => {
     setModalArticulo(articulo);
     setModalImagen(null);
-    const { unsplash } = getKeys();
-    if (!unsplash) return;
+    const { pexels } = getKeys();
+    if (!pexels) return;
     try {
       const keyword = articulo.titulo.split(' ').slice(0, 3).join(' ');
       const res = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keyword)}&per_page=1&orientation=landscape`,
-        { headers: { Authorization: `Client-ID ${unsplash}` } }
+        `https://api.pexels.com/v1/search?query=${encodeURIComponent(keyword)}&per_page=1&orientation=landscape`,
+        { headers: { Authorization: pexels } }
       );
       const json = await res.json();
-      const img = json?.results?.[0]?.urls?.regular;
+      const img = json?.photos?.[0]?.src?.large;
       if (img) setModalImagen(img);
     } catch { /* imagen opcional */ }
   }, []);
@@ -387,7 +387,7 @@ const InsightsDashboard: React.FC = () => {
               <div className="relative h-48 bg-gray-100 flex-shrink-0">
                 <img src={modalImagen} alt={modalArticulo.titulo} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                <span className="absolute bottom-3 left-4 text-white text-xs font-medium opacity-80">Foto: Unsplash</span>
+                <span className="absolute bottom-3 left-4 text-white text-xs font-medium opacity-80">Foto: Pexels</span>
               </div>
             ) : (
               <div className="h-24 bg-gradient-to-r from-blue-50 to-indigo-100 flex items-center justify-center flex-shrink-0">

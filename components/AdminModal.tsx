@@ -468,16 +468,16 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, businessId, bu
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Unsplash Access Key <span className="text-gray-400 font-normal">(imágenes para artículos)</span></label>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Pexels API Key <span className="text-gray-400 font-normal">(imágenes para artículos)</span></label>
                         <input
                           type="password"
-                          value={settings.unsplashApiKey || ''}
-                          onChange={(e) => setSettings({ ...settings, unsplashApiKey: e.target.value })}
+                          value={settings.pexelsApiKey || ''}
+                          onChange={(e) => setSettings({ ...settings, pexelsApiKey: e.target.value })}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none font-mono"
                           placeholder="..."
                           autoComplete="off"
                         />
-                        <p className="text-xs text-gray-400 mt-1">Gratis (50 req/hora) en <a href="https://unsplash.com/developers" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:underline">unsplash.com/developers</a></p>
+                        <p className="text-xs text-gray-400 mt-1">Gratis en <a href="https://www.pexels.com/api/" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:underline">pexels.com/api</a></p>
                       </div>
                     </div>
                   </div>
