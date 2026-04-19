@@ -135,7 +135,7 @@ async function fetchNewsInsight(): Promise<{ content: string; articulos: NewsArt
   if (!keys.gemini) throw new Error('Configura tu Gemini API Key en Configuración Avanzada → IA & APIs');
   if (!keys.gnews) throw new Error('GNEWS_MISSING');
 
-  const url = `https://gnews.io/api/v4/search?q=economia+negocios&lang=es&max=10&apikey=${keys.gnews}`;
+  const url = `/.netlify/functions/news-proxy?q=economia+negocios&lang=es&max=10&apikey=${keys.gnews}`;
   const res = await fetch(url);
   const json = await res.json();
   if (!res.ok || json.errors) throw new Error(json.errors?.[0] || 'Error en GNews');
