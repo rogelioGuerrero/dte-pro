@@ -9,6 +9,12 @@ export interface AppSettings {
   newsApiKey?: string;
   gnewsApiKey?: string;
 
+  // --- LLM Providers (gratuitos) ---
+  geminiApiKey?: string;
+  groqApiKey?: string;
+  deepseekApiKey?: string;
+  zaiApiKey?: string;
+
   // --- Gestión de Licencias (solo lectura, controlado remotamente) ---
   // NOTA: Este valor es ahora controlado por variables de entorno del servidor
   // licensingEnabled: boolean; // Eliminado - ahora es remoto
