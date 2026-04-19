@@ -99,34 +99,34 @@ export async function callLLM(provider: LLMProvider, apiKey: string, prompt: str
 }
 
 export async function createHistorialHandler(businessId: string): Promise<PageContextHandler> {
-  const settings = loadSettings();
-
-  // Determinar proveedor y API key a usar
-  const provider: LLMProvider = (settings.aiProvider as LLMProvider) || 'gemini';
-  let apiKey = '';
-
-  switch (provider) {
-    case 'gemini':
-      apiKey = settings.geminiApiKey || settings.apiKey || (import.meta.env.VITE_GEMINI_API_KEY as string) || '';
-      break;
-    case 'groq':
-      apiKey = settings.groqApiKey || '';
-      break;
-    case 'deepseek':
-      apiKey = settings.deepseekApiKey || '';
-      break;
-    case 'zai':
-      apiKey = settings.zaiApiKey || '';
-      break;
-  }
-
-  if (!apiKey) {
-    return async () => ({
-      content: `Configura tu API Key de ${provider.toUpperCase()} en Configuración Avanzada → IA & APIs`
-    });
-  }
-
   return async (question: string) => {
+    // Leer settings frescos cada vez que se llama el handler
+    const settings = loadSettings();
+
+    // Determinar proveedor y API key a usar
+    const provider: LLMProvider = (settings.aiProvider as LLMProvider) || 'gemini';
+    let apiKey = '';
+
+    switch (provider) {
+      case 'gemini':
+        apiKey = settings.geminiApiKey || settings.apiKey || (import.meta.env.VITE_GEMINI_API_KEY as string) || '';
+        break;
+      case 'groq':
+        apiKey = settings.groqApiKey || '';
+        break;
+      case 'deepseek':
+        apiKey = settings.deepseekApiKey || '';
+        break;
+      case 'zai':
+        apiKey = settings.zaiApiKey || '';
+        break;
+    }
+
+    if (!apiKey) {
+      return {
+        content: `Configura tu API Key de ${provider.toUpperCase()} en Configuración Avanzada → IA & APIs`
+      };
+    }
     // Cargar DTEs del último mes por defecto
     const fechaHasta = new Date().toISOString().split('T')[0];
     const fechaDesde = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
