@@ -34,18 +34,19 @@ interface DteSummary {
   estado: string;
 }
 
-interface RawNewsArticle {
-  title: string;
-  source?: { name?: string };
-  publishedAt?: string;
-  url: string;
-}
-
 interface NewsArticle {
   titulo: string;
   fuente: string;
   fecha: string;
   url: string;
+}
+
+interface PexelsMedia {
+  tipo: 'foto' | 'video';
+  thumb: string;
+  src: string;
+  autor: string;
+  autorUrl: string;
 }
 
 function geminiUrl() {
@@ -132,39 +133,9 @@ Por tipo: ${JSON.stringify(porTipo)}
 }
 
 async function fetchNewsInsight(): Promise<{ content: string; articulos: NewsArticle[] }> {
-  const cached = JSON.parse(localStorage.getItem(NEWS_CACHE_KEY) || 'null');
-  if (cached && cached.articulos?.length > 0 && (Date.now() - cached.ts) < CACHE_TTL) {
-    return { content: cached.content, articulos: cached.articulos };
-  }
-
-  const keys = getKeys();
-  if (!keys.gemini) throw new Error('Configura tu Gemini API Key en Configuración Avanzada → IA & APIs');
-  if (!keys.news) throw new Error('Configura tu NewsAPI Key en Configuración Avanzada → IA & APIs');
-
-  // NewsAPI - usar fecha de ayer por el retraso de indexación del plan gratuito
-  const ayer = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  const url = `https://newsapi.org/v2/everything?q=euro+dollar&from=${ayer}&sortBy=popularity&pageSize=10&apiKey=${keys.news}`;
-  const res = await fetch(url);
-  const json = await res.json();
-  if (!res.ok || json.status === 'error') throw new Error(json.message || 'Error en NewsAPI');
-
-  const articulos: NewsArticle[] = (json.articles as RawNewsArticle[] || []).map(a => ({
-    titulo: a.title, fuente: a.source?.name ?? '',
-    fecha: a.publishedAt?.split('T')[0] ?? '', url: a.url,
-  }));
-
-  if (articulos.length === 0) throw new Error('No se encontraron noticias recientes para este tema');
-
-  const content = await callGemini(
-    'Eres un analista económico para empresarios salvadoreños. Produce briefs ejecutivos concisos en español. No repitas titulares literalmente.',
-    `Genera un brief ejecutivo (máximo 180 palabras) para un empresario salvadoreño basado en estos titulares recientes de economía global. Incluye: (1) qué está pasando, (2) impacto posible en su negocio, (3) recomendación práctica.
-
-Titulares:
-${articulos.map((a, i) => `${i + 1}. [${a.fecha}] ${a.titulo} (${a.fuente})`).join('\n')}`
-  );
-
-  localStorage.setItem(NEWS_CACHE_KEY, JSON.stringify({ ts: Date.now(), content, articulos }));
-  return { content, articulos };
+  // NewsAPI free tier bloquea llamadas desde el browser (CORS/426).
+  // Se habilitará vía Netlify Function proxy en una próxima versión.
+  throw new Error('NEWSAPI_SUSPENDED');
 }
 
 const InsightsDashboard: React.FC = () => {
@@ -177,7 +148,8 @@ const InsightsDashboard: React.FC = () => {
   const [newsArticulos, setNewsArticulos] = useState<NewsArticle[]>([]);
   const [showArticulos, setShowArticulos] = useState(false);
   const [modalArticulo, setModalArticulo] = useState<NewsArticle | null>(null);
-  const [modalImagen, setModalImagen] = useState<string | null>(null);
+  const [modalMedias, setModalMedias] = useState<PexelsMedia[]>([]);
+  const [modalMediaIdx, setModalMediaIdx] = useState(0);
 
   const loadFacturas = useCallback(async (forceRefresh = false) => {
     if (forceRefresh) localStorage.removeItem(FACTURAS_CACHE_KEY);
@@ -200,7 +172,11 @@ const InsightsDashboard: React.FC = () => {
       setNewsArticulos(articulos);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error desconocido';
-      setNewsCard(c => ({ ...c, loading: false, error: msg }));
+      if (msg === 'NEWSAPI_SUSPENDED') {
+        setNewsCard(c => ({ ...c, loading: false, error: 'SUSPENDED' }));
+      } else {
+        setNewsCard(c => ({ ...c, loading: false, error: msg }));
+      }
     }
   }, []);
 
@@ -211,19 +187,33 @@ const InsightsDashboard: React.FC = () => {
 
   const handleOpenArticulo = useCallback(async (articulo: NewsArticle) => {
     setModalArticulo(articulo);
-    setModalImagen(null);
+    setModalMedias([]);
+    setModalMediaIdx(0);
     const { pexels } = getKeys();
     if (!pexels) return;
     try {
-      const keyword = articulo.titulo.split(' ').slice(0, 3).join(' ');
-      const res = await fetch(
-        `https://api.pexels.com/v1/search?query=${encodeURIComponent(keyword)}&per_page=1&orientation=landscape`,
-        { headers: { Authorization: pexels } }
-      );
-      const json = await res.json();
-      const img = json?.photos?.[0]?.src?.large;
-      if (img) setModalImagen(img);
-    } catch { /* imagen opcional */ }
+      const keyword = articulo.titulo.split(' ').slice(0, 4).join(' ');
+      const [fotoRes, videoRes] = await Promise.all([
+        fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(keyword)}&per_page=3&orientation=landscape`, { headers: { Authorization: pexels } }),
+        fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(keyword)}&per_page=2&orientation=landscape`, { headers: { Authorization: pexels } }),
+      ]);
+      const [fotoJson, videoJson] = await Promise.all([fotoRes.json(), videoRes.json()]);
+      const fotos: PexelsMedia[] = (fotoJson?.photos || []).map((p: { src: { large: string; medium: string }; photographer: string; photographer_url: string }) => ({
+        tipo: 'foto' as const,
+        thumb: p.src.medium,
+        src: p.src.large,
+        autor: p.photographer,
+        autorUrl: p.photographer_url,
+      }));
+      const videos: PexelsMedia[] = (videoJson?.videos || []).map((v: { image: string; video_files: { link: string; quality: string }[]; user: { name: string; url: string } }) => ({
+        tipo: 'video' as const,
+        thumb: v.image,
+        src: (v.video_files?.find((f: { quality: string }) => f.quality === 'hd') || v.video_files?.[0])?.link || '',
+        autor: v.user?.name || '',
+        autorUrl: v.user?.url || '',
+      })).filter((v: PexelsMedia) => v.src);
+      setModalMedias([...fotos, ...videos]);
+    } catch { /* media opcional */ }
   }, []);
 
   const formatContent = (text: string) => {
@@ -340,7 +330,16 @@ const InsightsDashboard: React.FC = () => {
                 <span className="text-sm">Obteniendo noticias y generando brief...</span>
               </div>
             )}
-            {newsCard.error && (
+            {newsCard.error === 'SUSPENDED' && (
+              <div className="flex flex-col items-center justify-center h-32 gap-3 text-center px-4">
+                <Newspaper className="w-8 h-8 text-gray-300" />
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Noticias en pausa</p>
+                  <p className="text-xs text-gray-400 mt-1">NewsAPI requiere backend en plan gratuito. Próximamente via Netlify Function.</p>
+                </div>
+              </div>
+            )}
+            {newsCard.error && newsCard.error !== 'SUSPENDED' && (
               <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50 rounded-lg p-3">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>{newsCard.error}</span>
@@ -375,30 +374,71 @@ const InsightsDashboard: React.FC = () => {
 
       {/* Footer note */}
       <p className="text-xs text-center text-gray-400">
-        Los análisis se generan con Gemini 2.5 Flash · Los datos de facturación provienen de tu dispositivo local · Las noticias provienen de NewsAPI
+        Los análisis se generan con Gemini 2.5 Flash · Los datos de facturación provienen de tu dispositivo local
       </p>
 
-      {/* Modal de artículo */}
+      {/* Modal de artículo con galería Pexels */}
       {modalArticulo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setModalArticulo(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-            {/* Imagen */}
-            {modalImagen ? (
-              <div className="relative h-48 bg-gray-100 flex-shrink-0">
-                <img src={modalImagen} alt={modalArticulo.titulo} className="w-full h-full object-cover" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => { setModalArticulo(null); setModalMedias([]); setModalMediaIdx(0); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+
+            {/* Media principal */}
+            {modalMedias.length > 0 ? (
+              <div className="relative h-52 bg-black flex-shrink-0">
+                {modalMedias[modalMediaIdx].tipo === 'foto' ? (
+                  <img src={modalMedias[modalMediaIdx].src} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <video src={modalMedias[modalMediaIdx].src} className="w-full h-full object-cover" autoPlay muted loop playsInline />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                <span className="absolute bottom-3 left-4 text-white text-xs font-medium opacity-80">Foto: Pexels</span>
+                {/* Controles de nav */}
+                {modalMedias.length > 1 && (
+                  <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                    {modalMedias.map((m, i) => (
+                      <button key={i} onClick={() => setModalMediaIdx(i)}
+                        className={`w-2 h-2 rounded-full transition-all ${
+                          i === modalMediaIdx ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/80'
+                        }`}
+                        title={m.tipo === 'video' ? 'Video' : 'Foto'}
+                      />
+                    ))}
+                  </div>
+                )}
+                <a href={modalMedias[modalMediaIdx].autorUrl} target="_blank" rel="noopener noreferrer"
+                  className="absolute bottom-3 left-4 text-white text-xs opacity-70 hover:opacity-100">
+                  {modalMedias[modalMediaIdx].tipo === 'video' ? '🎬' : '📷'} {modalMedias[modalMediaIdx].autor} · Pexels
+                </a>
               </div>
             ) : (
-              <div className="h-24 bg-gradient-to-r from-blue-50 to-indigo-100 flex items-center justify-center flex-shrink-0">
-                <Image className="w-8 h-8 text-blue-300" />
+              <div className="h-20 bg-gradient-to-r from-blue-50 to-indigo-100 flex items-center justify-center flex-shrink-0">
+                <Image className="w-7 h-7 text-blue-300" />
               </div>
             )}
+
+            {/* Thumbnails */}
+            {modalMedias.length > 1 && (
+              <div className="flex gap-2 px-4 pt-3 pb-1 overflow-x-auto flex-shrink-0">
+                {modalMedias.map((m, i) => (
+                  <button key={i} onClick={() => setModalMediaIdx(i)}
+                    className={`relative flex-shrink-0 w-16 h-10 rounded-lg overflow-hidden border-2 transition-all ${
+                      i === modalMediaIdx ? 'border-blue-500' : 'border-transparent opacity-60 hover:opacity-100'
+                    }`}>
+                    <img src={m.thumb} alt="" className="w-full h-full object-cover" />
+                    {m.tipo === 'video' && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                        <span className="text-white text-xs">▶</span>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Contenido */}
-            <div className="p-6 overflow-y-auto space-y-3">
+            <div className="p-5 overflow-y-auto space-y-3">
               <div className="flex items-start justify-between gap-3">
-                <h3 className="font-bold text-gray-900 text-lg leading-snug">{modalArticulo.titulo}</h3>
-                <button onClick={() => setModalArticulo(null)} className="p-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0">
+                <h3 className="font-bold text-gray-900 text-base leading-snug">{modalArticulo.titulo}</h3>
+                <button onClick={() => { setModalArticulo(null); setModalMedias([]); setModalMediaIdx(0); }} className="p-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0">
                   <X className="w-4 h-4 text-gray-500" />
                 </button>
               </div>
@@ -411,7 +451,7 @@ const InsightsDashboard: React.FC = () => {
                 href={modalArticulo.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 mt-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />
                 Leer artículo completo
