@@ -109,7 +109,8 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
       if (filters.tipoDte !== undefined) setTipoDte(filters.tipoDte);
       if (filters.busqueda !== undefined) setBusqueda(filters.busqueda);
       setPaginaActual(1);
-      cargarDatosRef.current?.(true);
+      // Nota: NO llamamos a cargarDatosRef directamente aquí.
+      // Un useEffect escuchará los cambios de filtros y recargará automáticamente.
     }
   }, [setEstado, setFechaDesde, setFechaHasta, setTipoDte, setBusqueda]);
 
@@ -264,6 +265,13 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
       cargarResumen();
     }
   }, [fechaDesde, fechaHasta, tipoDte, currentBusinessId]);
+
+  // Recargar datos automáticamente cuando cambian los filtros (incluyendo cambios desde el chat)
+  useEffect(() => {
+    if (currentBusinessId) {
+      cargarDatos(true);
+    }
+  }, [busqueda, fechaDesde, fechaHasta, tipoDte, estado, currentBusinessId]);
 
   if (!currentBusinessId) {
     return (
