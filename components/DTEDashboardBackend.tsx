@@ -13,7 +13,9 @@ import {
   ShieldCheck,
   DollarSign,
   FileJson,
-  Filter
+  Filter,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { tiposDocumento } from '../utils/dteGenerator';
 import { useEmisor } from '../contexts/EmisorContext';
@@ -36,7 +38,7 @@ interface DTEDashboardProps {
   logoUrl?: string;
 }
 
-const ITEMS_POR_PAGINA = 10;
+const ITEMS_POR_PAGINA_DEFAULT = 10;
 
 const DTEDashboard: React.FC<DTEDashboardProps> = () => {
   const { toasts, addToast, removeToast } = useToast();
@@ -47,6 +49,14 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
   const [dtes, setDtes] = useState<DTEHistoryItem[]>([]);
   const [totalRegistros, setTotalRegistros] = useState(0);
   const [paginaActual, setPaginaActual] = useState(1);
+  const [itemsPorPagina, setItemsPorPagina] = useState(ITEMS_POR_PAGINA_DEFAULT);
+
+  // Ordenamiento
+  const [sortColumn, setSortColumn] = useState<keyof DTEHistoryItem | ''>('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Agrupación
+  const [groupBy, setGroupBy] = useState<'tipoDte' | 'estado' | 'fecha' | ''>('');
 
   // Filtros
   const [busqueda, setBusqueda] = useState('');
@@ -65,7 +75,7 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
 
     try {
       const pagina = resetPagina ? 1 : paginaActual;
-      const offset = (pagina - 1) * ITEMS_POR_PAGINA;
+      const offset = (pagina - 1) * itemsPorPagina;
 
       const params: DTEHistoryParams = {
         search: busqueda || undefined,
@@ -73,28 +83,51 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
         fechaHasta: fechaHasta || undefined,
         tipo: tipoDte || undefined,
         estado: estado || undefined,
-        limit: ITEMS_POR_PAGINA,
+        limit: itemsPorPagina,
         offset,
+        sortBy: sortColumn || undefined,
+        sortOrder: sortDirection,
       };
 
       const response: DTEHistoryResponse = await getDTEHistory(currentBusinessId, params);
-      
+
       if (resetPagina) {
         setDtes(response.dtes);
         setPaginaActual(1);
       } else {
         setDtes(response.dtes);
       }
-      
+
       setTotalRegistros(response.total);
     } catch (error: any) {
       addToast(error.message || 'Error al cargar los documentos', 'error');
     } finally {
       setLoading(false);
     }
-  }, [currentBusinessId, paginaActual, busqueda, fechaDesde, fechaHasta, tipoDte, estado, addToast]);
+  }, [currentBusinessId, paginaActual, itemsPorPagina, busqueda, fechaDesde, fechaHasta, tipoDte, estado, sortColumn, sortDirection, addToast]);
 
   cargarDatosRef.current = cargarDatos;
+
+  // Handler para ordenamiento
+  const handleSort = (column: keyof DTEHistoryItem) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Handler para cambiar items por página
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPorPagina(value);
+    setPaginaActual(1);
+  };
+
+  // Handler para agrupación
+  const handleGroupBy = (value: 'tipoDte' | 'estado' | 'fecha' | '') => {
+    setGroupBy(value);
+  };
 
   // Handler para aplicar filtros desde el chat
   const handleChatAction = useCallback((action: PageAction) => {
@@ -208,7 +241,7 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
   };
 
   const cambiarPagina = (nuevaPagina: number) => {
-    if (nuevaPagina < 1 || nuevaPagina > Math.ceil(totalRegistros / ITEMS_POR_PAGINA)) return;
+    if (nuevaPagina < 1 || nuevaPagina > Math.ceil(totalRegistros / itemsPorPagina)) return;
     setPaginaActual(nuevaPagina);
   };
 
@@ -246,7 +279,24 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
     }
   };
 
-  const totalPaginas = Math.ceil(totalRegistros / ITEMS_POR_PAGINA);
+  const totalPaginas = Math.ceil(totalRegistros / itemsPorPagina);
+
+  // Helper para agrupar datos
+  const getGroupKey = (item: DTEHistoryItem): string => {
+    if (groupBy === 'tipoDte') return getTipoDteLabel(item.tipoDte);
+    if (groupBy === 'estado') return item.estado;
+    if (groupBy === 'fecha') return new Date(item.createdAt).toLocaleDateString('es-SV');
+    return '';
+  };
+
+  const groupedData = groupBy
+    ? dtes.reduce((acc, item) => {
+        const key = getGroupKey(item);
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(item);
+        return acc;
+      }, {} as Record<string, DTEHistoryItem[]>)
+    : { '': dtes };
 
   useEffect(() => {
     if (currentBusinessId) {
@@ -272,6 +322,13 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
       cargarDatos(true);
     }
   }, [busqueda, fechaDesde, fechaHasta, tipoDte, estado, currentBusinessId]);
+
+  // Recargar datos cuando cambian ordenamiento o items por página
+  useEffect(() => {
+    if (currentBusinessId) {
+      cargarDatos(true);
+    }
+  }, [sortColumn, sortDirection, itemsPorPagina, currentBusinessId]);
 
   if (!currentBusinessId) {
     return (
@@ -299,7 +356,7 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
             <h3 className="text-sm font-semibold text-gray-700">Filtros de búsqueda</h3>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Búsqueda</label>
               <div className="relative">
@@ -313,7 +370,7 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
                 />
               </div>
             </div>
-            
+
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Fecha desde</label>
               <input
@@ -323,7 +380,7 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               />
             </div>
-            
+
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Fecha hasta</label>
               <input
@@ -333,7 +390,7 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               />
             </div>
-            
+
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Tipo DTE</label>
               <select
@@ -347,7 +404,7 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
                 ))}
               </select>
             </div>
-            
+
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Estado</label>
               <select
@@ -359,6 +416,36 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
                 <option value="PROCESADO">Procesado</option>
                 <option value="RECHAZADO">Rechazado</option>
                 <option value="PENDIENTE">Pendiente</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Agrupar por</label>
+              <select
+                value={groupBy}
+                onChange={(e) => handleGroupBy(e.target.value as 'tipoDte' | 'estado' | 'fecha' | '')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              >
+                <option value="">Sin agrupación</option>
+                <option value="tipoDte">Tipo DTE</option>
+                <option value="estado">Estado</option>
+                <option value="fecha">Fecha</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 mt-4">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-gray-700">Filas por página:</label>
+              <select
+                value={itemsPorPagina}
+                onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
               </select>
             </div>
           </div>
@@ -469,66 +556,147 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No. Control</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receptor</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">NIT</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Monto</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Estado</th>
+                      <th
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('createdAt')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Fecha
+                          {sortColumn === 'createdAt' && (
+                            sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('tipoDte')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Tipo
+                          {sortColumn === 'tipoDte' && (
+                            sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('numeroControl')}
+                      >
+                        <div className="flex items-center gap-1">
+                          No. Control
+                          {sortColumn === 'numeroControl' && (
+                            sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('receptorNombre')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Receptor
+                          {sortColumn === 'receptorNombre' && (
+                            sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('receptorNit')}
+                      >
+                        <div className="flex items-center gap-1">
+                          NIT
+                          {sortColumn === 'receptorNit' && (
+                            sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('montoTotal')}
+                      >
+                        <div className="flex items-center gap-1 justify-end">
+                          Monto
+                          {sortColumn === 'montoTotal' && (
+                            sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('estado')}
+                      >
+                        <div className="flex items-center gap-1 justify-center">
+                          Estado
+                          {sortColumn === 'estado' && (
+                            sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                          )}
+                        </div>
+                      </th>
                       <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {dtes.map((item) => (
-                      <tr key={item.codigoGeneracion} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {formatearFecha(item.createdAt)}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {getTipoDteLabel(item.tipoDte)}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-mono text-gray-900">
-                          {item.numeroControl}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {item.receptorNombre}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-mono text-gray-900">
-                          {item.receptorNit}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right font-medium text-gray-900">
-                          ${item.montoTotal.toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${getEstadoColor(item.estado)}`}>
-                            {getEstadoIcon(item.estado)}
-                            {item.estado}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {item.tienePdf && (
-                              <button
-                                onClick={() => handleDescargarPdf(item)}
-                                className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                                title="Descargar PDF"
-                              >
-                                <Download className="w-4 h-4" />
-                              </button>
-                            )}
-                            {item.tieneXml && (
-                              <button
-                                onClick={() => handleDescargarXml(item)}
-                                className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-                                title="Descargar XML"
-                              >
-                                <FileJson className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
+                    {Object.entries(groupedData).map(([groupKey, groupItems]) => (
+                      <>
+                        {groupBy && (
+                          <tr className="bg-gray-100">
+                            <td colSpan={8} className="px-4 py-2 text-xs font-semibold text-gray-700">
+                              {groupKey} ({groupItems.length})
+                            </td>
+                          </tr>
+                        )}
+                        {groupItems.map((item) => (
+                          <tr key={item.codigoGeneracion} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {formatearFecha(item.createdAt)}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {getTipoDteLabel(item.tipoDte)}
+                            </td>
+                            <td className="px-4 py-3 text-sm font-mono text-gray-900">
+                              {item.numeroControl}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {item.receptorNombre}
+                            </td>
+                            <td className="px-4 py-3 text-sm font-mono text-gray-900">
+                              {item.receptorNit}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-right font-medium text-gray-900">
+                              ${item.montoTotal.toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${getEstadoColor(item.estado)}`}>
+                                {getEstadoIcon(item.estado)}
+                                {item.estado}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                {item.tienePdf && (
+                                  <button
+                                    onClick={() => handleDescargarPdf(item)}
+                                    className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                    title="Descargar PDF"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {item.tieneXml && (
+                                  <button
+                                    onClick={() => handleDescargarXml(item)}
+                                    className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+                                    title="Descargar XML"
+                                  >
+                                    <FileJson className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </>
                     ))}
                   </tbody>
                 </table>
@@ -539,7 +707,7 @@ const DTEDashboard: React.FC<DTEDashboardProps> = () => {
                 <div className="px-4 py-3 border-t border-gray-200">
                   <div className="flex items-center justify-between">
                     <p className="text-sm text-gray-700">
-                      Mostrando {((paginaActual - 1) * ITEMS_POR_PAGINA) + 1} a {Math.min(paginaActual * ITEMS_POR_PAGINA, totalRegistros)} de {totalRegistros} resultados
+                      Mostrando {((paginaActual - 1) * itemsPorPagina) + 1} a {Math.min(paginaActual * itemsPorPagina, totalRegistros)} de {totalRegistros} resultados
                     </p>
                     <div className="flex items-center gap-2">
                       <button

@@ -32,6 +32,8 @@ export interface DTEHistoryParams {
   estado?: string;
   limit?: number;
   offset?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 // Tipos para el resumen de ventas
