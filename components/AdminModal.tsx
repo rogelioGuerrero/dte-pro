@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Save, Settings, X, Key, LayoutTemplate, CheckCircle2, ShieldCheck, Smartphone, Trash2, Sparkles, RefreshCw } from 'lucide-react';
+import { Lock, Save, Settings, X, Key, LayoutTemplate, CheckCircle2, ShieldCheck, Smartphone, Trash2, Sparkles } from 'lucide-react';
 import QRCode from 'qrcode';
 import { loadSettings, saveSettings, AppSettings } from '../utils/settings';
 import { validateAdminPin, hasAdminPin } from '../utils/adminPin';
@@ -8,7 +8,6 @@ import { generateSecret, getTotpUri, verifyToken, saveSecret, hasTotpConfigured,
 import { notify } from '../utils/notifications';
 import { APP_TAB_LABELS, ManagedAppTab, MANAGED_APP_TABS } from '../utils/appTabs';
 import { BusinessSettings, normalizeBusinessSettings, saveBusinessSettingsToBackend } from '../utils/businessSettings';
-import { fetchLMStudioModels } from '../utils/chatHandlers';
 
 interface AdminModalProps {
   isOpen: boolean;
@@ -34,10 +33,6 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, businessId, bu
   const [newSecret, setNewSecret] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [setupToken, setSetupToken] = useState('');
-
-  // LM Studio Models State
-  const [lmstudioModels, setLmstudioModels] = useState<string[]>([]);
-  const [isLoadingModels, setIsLoadingModels] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -114,31 +109,6 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, businessId, bu
     if (window.confirm('¿Seguro que deseas desactivar la autenticación de dos pasos? Volverás a usar el PIN estático.')) {
       clearTotpConfig();
       setIsTotpEnabled(false);
-    }
-  };
-
-  const handleLoadModels = async () => {
-    if (!settings.lmstudioUrl) {
-      setError('Primero configura la URL de LM Studio');
-      return;
-    }
-    setIsLoadingModels(true);
-    try {
-      const models = await fetchLMStudioModels(settings.lmstudioUrl, settings.lmstudioApiKey);
-      if (models.length === 0) {
-        setError('No se encontraron modelos. Verifica que LM Studio esté ejecutándose y tenga un modelo cargado.');
-      } else {
-        setLmstudioModels(models);
-        setError('');
-        // Si no hay modelo seleccionado, seleccionar el primero
-        if (!settings.lmstudioModel && models.length > 0) {
-          setSettings({ ...settings, lmstudioModel: models[0] });
-        }
-      }
-    } catch (e) {
-      setError('Error al cargar modelos: ' + (e as Error).message);
-    } finally {
-      setIsLoadingModels(false);
     }
   };
 
@@ -575,31 +545,15 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, businessId, bu
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Modelo a usar</label>
-                            <div className="flex gap-2">
-                              <select
-                                value={settings.lmstudioModel || ''}
-                                onChange={(e) => setSettings({ ...settings, lmstudioModel: e.target.value })}
-                                className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none"
-                                disabled={lmstudioModels.length === 0}
-                              >
-                                {lmstudioModels.length === 0 ? (
-                                  <option value="">Carga modelos primero</option>
-                                ) : (
-                                  lmstudioModels.map((model) => (
-                                    <option key={model} value={model}>{model}</option>
-                                  ))
-                                )}
-                              </select>
-                              <button
-                                type="button"
-                                onClick={handleLoadModels}
-                                disabled={isLoadingModels || !settings.lmstudioUrl}
-                                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                              >
-                                <RefreshCw className={`w-4 h-4 ${isLoadingModels ? 'animate-spin' : ''}`} />
-                              </button>
-                            </div>
-                            <p className="text-xs text-gray-400 mt-1">Selecciona el modelo cargado en LM Studio</p>
+                            <input
+                              type="text"
+                              value={settings.lmstudioModel || ''}
+                              onChange={(e) => setSettings({ ...settings, lmstudioModel: e.target.value })}
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none font-mono"
+                              placeholder="llama-3.1-8b-instruct, mistral-7b, etc."
+                              autoComplete="off"
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Ingresa el nombre exacto del modelo cargado en LM Studio</p>
                           </div>
                         </div>
                       )}
