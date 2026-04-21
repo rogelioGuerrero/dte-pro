@@ -132,7 +132,8 @@ const rules: LocalIntentRule<HistorialFilters>[] = [
   // ---- Búsqueda por receptor/cliente ----
   {
     // "ventas a Juan Pueblo", "facturas de Juan Pueblo", "cliente Juan"
-    match: /\b(?:a|de|para|cliente|receptor)\s+([A-Za-zÁÉÍÓÚÑáéíóúñ][\wÁÉÍÓÚÑáéíóúñ\s.]{2,50}?)(?:\s*[?.,]|$)/,
+    // Ignora frases que comienzan con palabras de eliminación
+    match: /^(?!.*(quita|elimina|borra).*filtro).*\b(?:a|de|para|cliente|receptor)\s+([A-Za-zÁÉÍÓÚÑáéíóúñ][\wÁÉÍÓÚÑáéíóúñ\s.]{2,50}?)(?:\s*[?.,]|$)/i,
     filters: (m) => {
       const raw = (m[1] || '').trim();
       // Descarta matches triviales
