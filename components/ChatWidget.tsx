@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Loader2, Sparkles } from 'lucide-react';
 import { useChat } from '../contexts/ChatContext';
+import { clearChatCache } from '../utils/chat/chatCache';
 
 const ChatWidget: React.FC = () => {
   const { messages, addMessage, clearMessages, currentPage } = useChat();
@@ -47,6 +48,13 @@ const ChatWidget: React.FC = () => {
 
   const handleSuggested = (question: string) => {
     setInput(question);
+  };
+
+  const handleClearMessages = () => {
+    clearMessages();
+    if (currentPage) {
+      clearChatCache(currentPage.id);
+    }
   };
 
   if (!currentPage) return null;
@@ -142,7 +150,7 @@ const ChatWidget: React.FC = () => {
             </div>
             <div className="flex justify-between mt-2">
               <button
-                onClick={clearMessages}
+                onClick={handleClearMessages}
                 className="text-xs text-gray-400 hover:text-gray-600"
               >
                 Limpiar chat
