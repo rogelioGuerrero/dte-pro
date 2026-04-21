@@ -14,6 +14,9 @@ export interface AppSettings {
   groqApiKey?: string;
   deepseekApiKey?: string;
   zaiApiKey?: string;
+  lmstudioApiKey?: string;
+  lmstudioUrl?: string;
+  lmstudioModel?: string;
 
   // --- Gestión de Licencias (solo lectura, controlado remotamente) ---
   // NOTA: Este valor es ahora controlado por variables de entorno del servidor

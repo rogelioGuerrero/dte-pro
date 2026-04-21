@@ -29,6 +29,9 @@ const resolveLLMCredentials = (): { provider: LLMProvider; apiKey: string } | nu
     case 'zai':
       apiKey = settings.zaiApiKey || '';
       break;
+    case 'lmstudio':
+      apiKey = settings.lmstudioApiKey || '';
+      break;
   }
   return apiKey ? { provider, apiKey } : null;
 };

@@ -13,6 +13,7 @@ function getKeys() {
     groq: s.groqApiKey || '',
     deepseek: s.deepseekApiKey || '',
     zai: s.zaiApiKey || '',
+    lmstudio: s.lmstudioApiKey || '',
     news:   s.newsApiKey || (import.meta.env.VITE_NEWS_API_KEY as string) || '',
     gnews:  s.gnewsApiKey || (import.meta.env.VITE_GNEWS_API_KEY as string) || '',
   };

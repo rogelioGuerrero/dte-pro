@@ -6,7 +6,27 @@ interface PageContextHandler {
   (question: string): Promise<{ content: string; action?: PageAction }>;
 }
 
-export type LLMProvider = 'gemini' | 'groq' | 'deepseek' | 'zai';
+export type LLMProvider = 'gemini' | 'groq' | 'deepseek' | 'zai' | 'lmstudio';
+
+export async function fetchLMStudioModels(lmstudioUrl: string, apiKey?: string): Promise<string[]> {
+  try {
+    const endpoint = `${lmstudioUrl}/v1/models`;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    const res = await fetch(endpoint, { headers });
+    if (!res.ok) throw new Error(`Error ${res.status} al listar modelos`);
+
+    const data = await res.json() as { data?: Array<{ id: string }> };
+    const models = data?.data?.map((m) => m.id) || [];
+    return models;
+  } catch (e) {
+    console.error('[fetchLMStudioModels] Error:', e);
+    return [];
+  }
+}
 
 export async function callLLM(provider: LLMProvider, apiKey: string, prompt: string): Promise<string> {
   switch (provider) {
@@ -93,6 +113,32 @@ export async function callLLM(provider: LLMProvider, apiKey: string, prompt: str
       return zaiText;
     }
 
+    case 'lmstudio': {
+      // LM Studio usa API compatible con OpenAI, necesita URL personalizada (ngrok)
+      const settings = loadSettings();
+      const lmstudioUrl = settings.lmstudioUrl || 'http://localhost:1234';
+      const lmstudioModel = settings.lmstudioModel || 'model';
+      const endpoint = `${lmstudioUrl}/v1/chat/completions`;
+      const lmstudioRes = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: lmstudioModel,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.4,
+          max_tokens: 1024,
+        }),
+      });
+      const lmstudioJson = await lmstudioRes.json();
+      if (!lmstudioRes.ok) throw new Error(lmstudioJson?.error?.message || 'Error llamando a LM Studio');
+      const lmstudioText = lmstudioJson?.choices?.[0]?.message?.content;
+      if (!lmstudioText) throw new Error('LM Studio no devolvió respuesta');
+      return lmstudioText;
+    }
+
     default:
       throw new Error('Proveedor LLM no soportado');
   }
@@ -119,6 +165,9 @@ export async function createHistorialHandler(businessId: string): Promise<PageCo
         break;
       case 'zai':
         apiKey = settings.zaiApiKey || '';
+        break;
+      case 'lmstudio':
+        apiKey = settings.lmstudioApiKey || '';
         break;
     }
 
