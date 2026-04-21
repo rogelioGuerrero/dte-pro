@@ -122,6 +122,13 @@ const rules: LocalIntentRule<HistorialFilters>[] = [
     reply: 'Filtrando por los últimos 7 días.',
   },
 
+  // ---- Eliminar filtro específico ----
+  {
+    match: /\b(quita|elimina|borra)\s*(el\s*)?(filtro\s*de\s*|filtro\s*)?([A-Za-zÁÉÍÓÚÑáéíóúñ][\wÁÉÍÓÚÑáéíóúñ\s.]{2,50}?)(?:\s*[?.,]|$)/i,
+    filters: { busqueda: '' },
+    reply: 'Filtro de búsqueda eliminado.',
+  },
+
   // ---- Búsqueda por receptor/cliente ----
   {
     // "ventas a Juan Pueblo", "facturas de Juan Pueblo", "cliente Juan"
